@@ -1,0 +1,57 @@
+@model CapaModelo.Producto
+
+<form id="formProducto">
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.ProductoID, new { id = "txtProductoID" })
+
+    <div class="row">
+        <div class="col-md-6 mb-3">
+            @Html.LabelFor(m => m.Nombre)
+            @Html.TextBoxFor(m => m.Nombre, new { @class = "form-control", id = "txtNombre", required = "required" })
+        </div>
+        <div class="col-md-6 mb-3">
+            @Html.LabelFor(m => m.CodigoInterno)
+            @Html.TextBoxFor(m => m.CodigoInterno, new { @class = "form-control", id = "txtCodigoInterno" })
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            @Html.Label("Categoría")
+            @Html.DropDownList("CategoriaID", (SelectList)ViewBag.Categorias, "-- Seleccionar --", new { @class = "form-control", id = "cboCategoria", required = "required" })
+        </div>
+        <div class="col-md-4 mb-3">
+            @Html.Label("Clave SAT")
+            @Html.DropDownList("ClaveProdServSATID", (SelectList)ViewBag.ClavesProdServSAT, "-- Seleccionar --", new { @class = "form-control", id = "cboClaveSAT", required = "required" })
+        </div>
+        <div class="col-md-4 mb-3">
+            @Html.Label("Unidad SAT")
+            @Html.DropDownList("ClaveUnidadSAT", (SelectList)ViewBag.UnidadesSAT, "-- Seleccionar --", new { @class = "form-control", id = "cboUnidadSAT", required = "required" })
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-4 mb-3">
+            @Html.Label("Tasa IVA")
+            @Html.DropDownList("TasaIVA", (SelectList)ViewBag.TasasIVA, "-- Seleccionar --", new { @class = "form-control", id = "cboTasaIVA", required = "required" })
+        </div>
+        <div class="col-md-4 mb-3">
+            @Html.Label("Tasa IEPS")
+            @Html.DropDownList("TasaIEPS", (SelectList)ViewBag.TasasIEPS, "-- Seleccionar --", new { @class = "form-control", id = "cboTasaIEPS" })
+        </div>
+        <div class="col-md-4 mb-3 form-check">
+            <input type="checkbox" class="form-check-input" id="chkExento" />
+            <label class="form-check-label" for="chkExento">Exento</label>
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label>Estatus</label>
+        <select class="form-control" id="cboEstatus">
+            <option value="1">Activo</option>
+            <option value="0">Inactivo</option>
+        </select>
+    </div>
+
+    <button type="button" class="btn btn-primary" onclick="Guardar();">Guardar Producto</button>
+</form>

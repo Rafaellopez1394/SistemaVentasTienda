@@ -1,0 +1,91 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewBag.Title = "Generar Póliza";
+}
+
+<h2>Generar Póliza</h2>
+
+<div>
+    <label>Tipo de Póliza</label>
+    <input id="tipo" />
+</div>
+<div>
+    <label>Fecha</label>
+    <input id="fecha" type="date" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+</div>
+<div>
+    <label>Concepto</label>
+    <input id="concepto" style="width:60%" />
+</div>
+
+<h4>Detalles</h4>
+<table id="detalles" class="table">
+    <thead>
+        <tr><th>CuentaID</th><th>Debe</th><th>Haber</th><th>Concepto</th><th></th></tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<button id="addDetalle" class="btn btn-default">Agregar detalle</button>
+<button id="btnCrear" class="btn btn-primary">Crear Póliza</button>
+
+<div id="resultado" style="margin-top:15px"></div>
+
+<script src="/Scripts/jquery-3.3.1.min.js"></script>
+<script>
+    function nuevaFila() {
+        return '<tr>' +
+            '<td><input class="cuenta form-control" type="number" /></td>' +
+            '<td><input class="debe form-control" type="number" step="0.01" /></td>' +
+            '<td><input class="haber form-control" type="number" step="0.01" /></td>' +
+            '<td><input class="conceptoDetalle form-control" /></td>' +
+            '<td><button class="btn btn-danger remove">Quitar</button></td>' +
+            '</tr>';
+    }
+
+    $(function () {
+        $('#addDetalle').click(function (e) {
+            e.preventDefault();
+            $('#detalles tbody').append(nuevaFila());
+        });
+
+        $(document).on('click', '.remove', function (e) {
+            e.preventDefault();
+            $(this).closest('tr').remove();
+        });
+
+        $('#btnCrear').click(function (e) {
+            e.preventDefault();
+            var poliza = {
+                TipoPoliza: $('#tipo').val(),
+                FechaPoliza: $('#fecha').val(),
+                Concepto: $('#concepto').val(),
+                Detalles: []
+            };
+
+            $('#detalles tbody tr').each(function () {
+                var cuenta = parseInt($(this).find('.cuenta').val() || 0);
+                var debe = parseFloat($(this).find('.debe').val() || 0);
+                var haber = parseFloat($(this).find('.haber').val() || 0);
+                var concepto = $(this).find('.conceptoDetalle').val() || '';
+                if (cuenta > 0 && (debe > 0 || haber > 0)) {
+                    poliza.Detalles.push({ CuentaID: cuenta, Debe: debe, Haber: haber, Concepto: concepto });
+                }
+            });
+
+            $.ajax({
+                url: '/Poliza/Crear',
+                method: 'POST',
+                contentType: 'application/json; charset=utf-8',
+                data: JSON.stringify(poliza),
+                success: function (res) {
+                    if (res.resultado) $('#resultado').html('<div class="alert alert-success">Póliza creada</div>');
+                    else $('#resultado').html('<div class="alert alert-danger">Error al crear: ' + (res.mensaje || '') + '</div>');
+                },
+                error: function (xhr) {
+                    $('#resultado').html('<div class="alert alert-danger">Error en el servidor</div>');
+                }
+            });
+        });
+    });
+</script>

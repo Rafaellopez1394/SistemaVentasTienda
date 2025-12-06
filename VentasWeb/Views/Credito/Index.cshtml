@@ -1,0 +1,134 @@
+@{
+    ViewBag.Title = "Créditos de Clientes";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    @if (ViewBag.ErrorMessage != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <strong>Error:</strong> @ViewBag.ErrorMessage
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    }
+
+    <h2 class="mb-4"><i class="fas fa-credit-card"></i> Gestión de Créditos y Cobranza</h2>
+
+    <!-- Búsqueda de Cliente -->
+    <div class="card shadow mb-4">
+        <div class="card-header bg-primary text-white">
+            <i class="fas fa-user"></i> Buscar Cliente
+        </div>
+        <div class="card-body">
+            <div class="input-group mb-3">
+                <input type="text" id="txtBuscarCliente" class="form-control" placeholder="Buscar por RFC o Nombre..." autocomplete="off">
+                <div class="input-group-append">
+                    <button class="btn btn-outline-secondary" type="button" id="btnBuscarCliente">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </div>
+            <div id="infoCliente" class="alert alert-info d-none">
+                <h5 id="lblNombreCliente"></h5>
+                <p id="lblInfoExtraCliente"></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Contenido de Créditos (inicialmente oculto) -->
+    <div id="seccionCreditos" class="d-none">
+        <div class="row">
+            <!-- Ventas a Crédito -->
+            <div class="col-lg-8">
+                <div class="card shadow">
+                    <div class="card-header bg-warning">
+                        <i class="fas fa-file-invoice-dollar"></i> Ventas a Crédito Pendientes
+                    </div>
+                    <div class="card-body">
+                        <table id="tblVentasCredito" class="table table-bordered table-hover" style="width:100%">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Folio</th>
+                                    <th>Fecha</th>
+                                    <th>Total</th>
+                                    <th>Saldo Pendiente</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Los datos se cargarán con JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <!-- Resumen y Pagos -->
+            <div class="col-lg-4">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-hand-holding-usd"></i> Resumen y Pagos
+                    </div>
+                    <div class="card-body">
+                        <h4>Saldo Total: <span id="lblSaldoTotal" class="badge bg-danger text-white">S/ 0.00</span></h4>
+                        <hr />
+                        <h5>Registrar Nuevo Pago</h5>
+                        <div class="form-group">
+                            <label for="txtMontoPago">Monto del Pago:</label>
+                            <input type="number" step="0.01" class="form-control" id="txtMontoPago" placeholder="0.00">
+                        </div>
+                        <div class="form-group">
+                            <label for="txtComentarioPago">Comentario (Opcional):</label>
+                            <textarea class="form-control" id="txtComentarioPago" rows="2"></textarea>
+                        </div>
+                        <button class="btn btn-success w-100" id="btnRegistrarPago"><i class="fas fa-save"></i> Registrar Pago</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle de Venta -->
+<div class="modal fade" id="modalDetalleVenta" tabindex="-1" role="dialog" aria-labelledby="modalDetalleVentaLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="modalDetalleVentaLabel">Detalle de la Venta</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p><strong>Folio:</strong> <span id="detalleFolio"></span></p>
+                <p><strong>Fecha:</strong> <span id="detalleFecha"></span></p>
+                <p><strong>Total:</strong> <span id="detalleTotal"></span></p>
+                <p><strong>Saldo Pendiente:</strong> <span id="detalleSaldo"></span></p>
+                <hr/>
+                <h5>Productos</h5>
+                <table class="table table-sm table-bordered">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Producto</th>
+                            <th>Cantidad</th>
+                            <th>Precio Unitario</th>
+                            <th>Subtotal</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tblDetalleProductos">
+                        <!-- Contenido se cargará dinámicamente -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <!-- Referencia al JS específico para esta vista -->
+    <script src="~/Scripts/Views/Credito.js"></script>
+}

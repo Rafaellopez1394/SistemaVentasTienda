@@ -1,0 +1,200 @@
+﻿@{
+    ViewBag.Title = "Clientes";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Inicio</a></li>
+        <li class="breadcrumb-item active">Clientes</li>
+    </ol>
+</nav>
+
+<div class="card shadow mb-4">
+    <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+        <h5 class="m-0 font-weight-bold">Gestión de Clientes</h5>
+        <button class="btn btn-light btn-sm" onclick="abrirModal({})">
+            <i class="fas fa-plus"></i> Nuevo Cliente
+        </button>
+    </div>
+
+    <div class="card-body">
+        <table id="tbClientes" class="table table-bordered table-hover" style="width:100%">
+            <thead class="thead-light">
+                <tr>
+                    <th>RFC</th>
+                    <th>Razón Social</th>
+                    <th>Correo</th>
+                    <th>Teléfono</th>
+                    <th>Régimen</th>
+                    <th>CFDI</th>
+                    <th>Estado</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- MODAL CLIENTE -->
+<div class="modal fade" id="modalCliente" tabindex="-1" role="dialog" aria-labelledby="modalClienteLabel">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content shadow border-0 rounded">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalClienteLabel">
+                    <i class="fas fa-user-tie mr-2"></i>
+                    <span id="modalTitulo">Nuevo Cliente</span>
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+
+            <div class="modal-body">
+                <form id="formCliente" autocomplete="off">
+                    <input type="hidden" id="txtClienteID" />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <label class="font-weight-bold text-primary">RFC *</label>
+                            <input type="text" class="form-control" id="txtRFC" maxlength="13" required />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="font-weight-bold text-primary">Razón Social *</label>
+                            <input type="text" class="form-control" id="txtRazonSocial" required />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="font-weight-bold">Correo</label>
+                            <input type="email" class="form-control" id="txtCorreo" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="font-weight-bold">Teléfono</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light"><i class="fas fa-phone text-primary"></i></span>
+                                <input type="text" class="form-control" id="txtTelefono" />
+                            </div>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="font-weight-bold text-primary">Código Postal *</label>
+                            <input type="text" class="form-control" id="txtCodigoPostal" maxlength="5" required />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="font-weight-bold text-primary">Régimen Fiscal *</label>
+                            <select class="form-control select2" id="cboRegimenFiscal"></select>
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="font-weight-bold text-primary">Uso de CFDI *</label>
+                            <select class="form-control select2" id="cboUsoCFDI"></select>
+                        </div>
+                    </div>
+
+                    <hr class="my-4" />
+
+                    <div class="row">
+                        <div class="col-12">
+                            <h6 class="font-weight-bold text-primary">Asignación de Crédito</h6>
+                            <p class="small text-muted">Seleccione los tipos de crédito para este cliente. Si no selecciona ninguno, se considerará cliente de contado.</p>
+                            <div id="divTiposDeCredito" class="mt-2 p-3 bg-light rounded border">
+                                <!-- Los checkboxes de tipos de crédito se cargarán aquí dinámicamente -->
+                                <span class="text-muted">Cargando tipos de crédito...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ESTADO DE CRÉDITO (Solo lectura cuando se está editando) -->
+                    <div id="divEstadoCredito" class="row mt-4" style="display:none;">
+                        <div class="col-md-3">
+                            <div class="card bg-light border-primary">
+                                <div class="card-body text-center">
+                                    <small class="text-muted">Límite de Crédito</small>
+                                    <h5 class="text-primary font-weight-bold mt-2" id="lblLimite">$0.00</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light border-danger">
+                                <div class="card-body text-center">
+                                    <small class="text-muted">Saldo Actual</small>
+                                    <h5 class="text-danger font-weight-bold mt-2" id="lblSaldo">$0.00</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light border-warning">
+                                <div class="card-body text-center">
+                                    <small class="text-muted">Crédito Disponible</small>
+                                    <h5 class="text-warning font-weight-bold mt-2" id="lblDisponible">$0.00</h5>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-light border-info">
+                                <div class="card-body text-center">
+                                    <small class="text-muted">Días Vencidos</small>
+                                    <h5 class="text-info font-weight-bold mt-2" id="lblDiasVencidos">0</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <div class="modal-footer bg-light border-0">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times mr-2"></i>Cancelar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="Guardar()" id="btnGuardar">
+                    <i class="fas fa-save mr-2"></i><span id="textoBoton">Guardar Cliente</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- TOAST -->
+<div class="position-fixed" style="right:20px; bottom:20px; z-index:9999;">
+    <div id="liveToast" class="toast" role="alert">
+        <div class="toast-header">
+            <strong class="mr-auto" id="toastTitulo">Éxito</strong>
+            <button type="button" class="close" data-dismiss="toast">&times;</button>
+        </div>
+        <div class="toast-body" id="toastMensaje"></div>
+    </div>
+</div>
+
+@section scripts {
+    <!-- Bundles: jQuery, Bootstrap, PluginsJS -->
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+    @Scripts.Render("~/Content/PluginsJS")
+
+    <!-- Script de página -->
+    <script src="~/Scripts/Views/Cliente.js"></script>
+
+    <script>
+        // Esperar a que jQuery y los plugins estén listos
+        $(function () {
+            // Inicializar Select2 si existe
+            if (typeof $.fn.select2 === 'function') {
+                $('.select2').select2({
+                    theme: 'bootstrap4',
+                    width: '100%',
+                    placeholder: "Seleccionar...",
+                    allowClear: true
+                });
+            }
+
+            // DataTables será inicializado por Cliente.js en inicializarTabla()
+        });
+
+        // Para compatibilidad con Modernizr
+        window.Modernizr = window.Modernizr || {};
+    </script>
+}

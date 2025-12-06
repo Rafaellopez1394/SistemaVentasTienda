@@ -1,0 +1,99 @@
+@{
+    ViewBag.Title = "Ventas";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="fas fa-cash-register"></i> Punto de Venta</h2>
+
+    <div class="row">
+        <!-- Cliente -->
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-user"></i> Cliente
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" id="txtBuscarCliente" class="form-control" placeholder="RFC o Nombre" autocomplete="off">
+                        <div class="input-group-append">
+                            <button class="btn btn-outline-secondary" type="button" onclick="buscarCliente()">
+                                <i class="fas fa-search"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="infoCliente" class="alert alert-info d-none">
+                        <strong id="lblCliente"></strong><br>
+                        <small id="lblCredito"></small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carrito -->
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <i class="fas fa-shopping-cart"></i> Carrito de Venta
+                </div>
+                <div class="card-body">
+                    <div class="row mb-3">
+                        <div class="col-md-8">
+                            <input type="text" id="txtBuscarProducto" class="form-control" placeholder="Buscar producto...">
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary w-100" onclick="finalizarVenta()">
+                                <i class="fas fa-check"></i> Finalizar Venta
+                            </button>
+                        </div>
+                    </div>
+
+                    <table id="tbCarrito" class="table table-bordered">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Lote</th>
+                                <th>Cant.</th>
+                                <th>Precio</th>
+                                <th>Subtotal</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+
+                    <div class="text-right">
+                        <h3>Total: $<span id="lblTotal">0.00</span></h3>
+                        <select id="cboTipoVenta" class="form-control w-50 d-inline-block">
+                            <option value="CONTADO">Venta al Contado</option>
+                            <option value="CREDITO">Venta a Crédito</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Pago Crédito -->
+<div class="modal fade" id="modalPago" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5>Pago de Crédito</h5>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="txtVentaIDPago">
+                <label>Importe a Pagar</label>
+                <input type="number" step="0.01" class="form-control" id="txtImportePago">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-success" onclick="registrarPago()">Registrar Pago</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/Views/Venta.js"></script>
+}

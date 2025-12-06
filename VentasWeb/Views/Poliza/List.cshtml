@@ -1,0 +1,33 @@
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    ViewBag.Title = "Listado de Pólizas";
+}
+
+<h2>Listado de Pólizas</h2>
+
+<table id="tblPolizas" class="table table-striped">
+    <thead>
+        <tr><th>ID</th><th>Fecha</th><th>Tipo</th><th>Concepto</th><th>Total Debe</th><th>Total Haber</th></tr>
+    </thead>
+    <tbody></tbody>
+</table>
+
+<script src="/Scripts/jquery-3.3.1.min.js"></script>
+<script>
+    $(function () {
+        $.getJSON('/Poliza/Obtener', { top: 200 }, function (res) {
+            var rows = '';
+            $.each(res.data, function (i, p) {
+                rows += '<tr>' +
+                    '<td>' + p.PolizaID + '</td>' +
+                    '<td>' + new Date(p.FechaPoliza).toLocaleString() + '</td>' +
+                    '<td>' + (p.TipoPoliza || '') + '</td>' +
+                    '<td>' + (p.Concepto || '') + '</td>' +
+                    '<td>' + p.TotalDebe.toFixed(2) + '</td>' +
+                    '<td>' + p.TotalHaber.toFixed(2) + '</td>' +
+                    '</tr>';
+            });
+            $('#tblPolizas tbody').html(rows);
+        });
+    });
+</script>

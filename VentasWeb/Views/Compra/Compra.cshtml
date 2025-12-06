@@ -1,0 +1,90 @@
+@{
+    ViewBag.Title = "Compras";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="fas fa-truck-loading"></i> Registro de Compras</h2>
+
+    <div class="row">
+        <!-- Proveedor y Factura -->
+        <div class="col-md-4">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white">
+                    <i class="fas fa-building"></i> Proveedor
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" id="txtBuscarProveedor" class="form-control" placeholder="RFC o Razón Social" autocomplete="off">
+                        <button class="btn btn-outline-secondary" onclick="buscarProveedor()"><i class="fas fa-search"></i></button>
+                    </div>
+                    <div id="infoProveedor" class="alert alert-info d-none">
+                        <strong id="lblProveedor"></strong><br>
+                        <small id="lblDatosProveedor"></small>
+                    </div>
+
+                    <div class="mt-3">
+                        <label>Folio de Factura</label>
+                        <input type="text" id="txtFolioFactura" class="form-control" placeholder="Ej. A12345" />
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Carrito de Compra -->
+        <div class="col-md-8">
+            <div class="card shadow">
+                <div class="card-header bg-danger text-white d-flex justify-content-between">
+                    <span><i class="fas fa-shopping-cart"></i> Productos a Comprar</span>
+                    <button class="btn btn-light btn-sm" onclick="finalizarCompra()">
+                        <i class="fas fa-save"></i> Registrar Compra
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-3">
+                        <input type="text" id="txtBuscarProducto" class="form-control" placeholder="Buscar producto por nombre o código..." autocomplete="off">
+                        <button class="btn btn-primary" onclick="agregarProductoManual()">+ Agregar</button>
+                    </div>
+
+                    <table id="tbCarrito" class="table table-bordered table-hover">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                                <th>Precio Compra</th>
+                                <th>Precio Venta</th>
+                                <th>Subtotal</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                        <tfoot>
+                            <tr class="table-success">
+                                <th colspan="4" class="text-right">TOTAL:</th>
+                                <th id="lblTotal">0.00</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast -->
+<div class="position-fixed top-0 end-0 p-3" style="z-index: 9999;">
+    <div id="liveToast" class="toast" role="alert">
+        <div class="toast-header">
+            <strong class="me-auto" id="toastTitulo">Notificación</strong>
+            <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" id="toastMensaje"></div>
+    </div>
+</div>
+
+@section scripts {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+    <script src="~/Scripts/Views/vCompra.js"></script>
+}

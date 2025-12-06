@@ -1,0 +1,155 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Sucursal Online</title>
+
+    <!-- Bootstrap 4.6 CSS -->
+    @Styles.Render("~/Content/bootstrap")
+
+    <!-- CSS principal del sitio -->
+    @Styles.Render("~/Content/css")
+
+    <!-- Plugins CSS -->
+    @Styles.Render("~/Content/PluginsCSS")
+
+    <!-- FontAwesome (nube) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
+
+    <!-- Select2 CSS (CDN fallback) -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-css/1.4.6/select2-bootstrap.min.css" rel="stylesheet" />
+
+    @RenderSection("estilos", required: false)
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-info fw-bold">
+        <div class="container-fluid">
+
+            <a class="navbar-brand" href="@Url.Action("Index","Home")">
+                <img src="~/Imagenes/tiendalogo.png" width="110" height="45" alt="logo">
+            </a>
+
+            <button class="navbar-toggler" type="button" data-toggle="collapse"
+                    data-target="#navbarSupportedContent">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto">
+
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Home" ? "active" : "")"
+                           href="@Url.Action("Index", "Home")">
+                            <i class="fas fa-home"></i> Inicio
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Cliente" ? "active" : "")"
+                           href="@Url.Action("Index", "Cliente")">
+                            <i class="fas fa-users"></i> Clientes
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Credito" ? "active" : "")"
+                           href="@Url.Action("Index", "Credito")">
+                            <i class="fas fa-credit-card"></i> Créditos
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Producto" ? "active" : "")"
+                           href="@Url.Action("Index", "Producto")">
+                            <i class="fas fa-box"></i> Productos
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Venta" ? "active" : "")"
+                           href="@Url.Action("Index", "Venta")">
+                            <i class="fas fa-cash-register"></i> Punto de Venta
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Compra" ? "active" : "")"
+                           href="@Url.Action("Index", "Compra")">
+                            <i class="fas fa-shopping-cart"></i> Compras
+                        </a>
+                    </li>
+
+                    <li class="nav-item">
+                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Reporte" ? "active" : "")"
+                           href="@Url.Action("Index", "Reporte")">
+                            <i class="fas fa-chart-bar"></i> Reportes
+                        </a>
+                    </li>
+
+                    @if (User.IsInRole("Administrador"))
+                    {
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">
+                                <i class="fas fa-cogs"></i> Administración
+                            </a>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="@Url.Action("Index","Usuario")">Usuarios</a></li>
+                                <li><a class="dropdown-item" href="@Url.Action("Index","Rol")">Roles</a></li>
+                                <li><a class="dropdown-item" href="@Url.Action("Index","Sucursal")">Sucursales</a></li>
+                                <li><a class="dropdown-item" href="@Url.Action("Index","Proveedor")">Proveedores</a></li>
+                            </ul>
+                        </li>
+                    }
+                </ul>
+
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link text-white" href="@Url.Action("Salir", "Home")">
+                            <i class="fas fa-sign-out-alt"></i>
+                            <strong>Salir (@User.Identity.Name)</strong>
+                        </a>
+                    </li>
+                </ul>
+
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        @RenderBody()
+        <hr />
+        <footer class="text-center text-muted">
+            <p>© @DateTime.Now.Year - Mi Sucursal Online</p>
+        </footer>
+    </div>
+
+    <!-- jQuery DESDE BUNDLE -->
+    @Scripts.Render("~/bundles/jquery")
+
+    <!-- Bootstrap 4.6 JS DESDE BUNDLE -->
+    @Scripts.Render("~/bundles/bootstrap")
+
+    <!-- Plugins JS -->
+    @Scripts.Render("~/Content/PluginsJS")
+
+    <!-- Select2 JS (CDN fallback) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
+    <script>
+        $.extend({ MisUrls: { url: {}, urls: function (a) { $.extend($.MisUrls.url, a); } } });
+
+        $.MisUrls.urls({
+            _ObtenerClientes: '@Url.Action("Obtener", "Cliente")',
+            _GuardarCliente: '@Url.Action("Guardar", "Cliente")',
+            _EliminarCliente: '@Url.Action("Eliminar", "Cliente")',
+            _ObtenerCatalogosCliente: '@Url.Action("ObtenerCatalogos", "Cliente")',
+            Url_datatable_spanish: '@Url.Content("~/Content/Plugins/datatables/js/datatable_spanish.json")'
+        });
+    </script>
+
+    @RenderSection("scripts", required: false)
+</body>
+</html>

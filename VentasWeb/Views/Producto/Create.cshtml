@@ -1,0 +1,80 @@
+@model CapaModelo.Producto
+
+@{
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<!-- Botón para abrir el modal -->
+<button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#productoModal">
+    @Model.ProductoID == 0 ? "Nuevo Producto" : "Editar Producto"
+</button>
+
+<!-- Modal -->
+<div class="modal fade" id="productoModal" tabindex="-1" aria-labelledby="productoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="productoModalLabel">
+                    @Model.ProductoID == 0 ? "Nuevo Producto" : "Editar Producto"
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+                @using (Html.BeginForm("Create", "Producto", FormMethod.Post, new { @id = "formProducto" }))
+                {
+                    @Html.AntiForgeryToken()
+                    @Html.HiddenFor(m => m.ProductoID)
+
+                    <div class="mb-3">
+                        @Html.LabelFor(m => m.Nombre)
+                        @Html.TextBoxFor(m => m.Nombre, new { @class = "form-control", required = "required" })
+                        @Html.ValidationMessageFor(m => m.Nombre, "", new { @class = "text-danger" })
+                    </div>
+
+                    <div class="mb-3">
+                        @Html.LabelFor(m => m.Descripcion)
+                        @Html.TextAreaFor(m => m.Descripcion, new { @class = "form-control", rows = 3 })
+                        @Html.ValidationMessageFor(m => m.Descripcion, "", new { @class = "text-danger" })
+                    </div>
+
+                    <div class="mb-3">
+                        @Html.LabelFor(m => m.CategoriaID, "Categoría")
+                        @Html.DropDownListFor(m => m.CategoriaID, (SelectList)ViewBag.Categorias, "-- Seleccionar --", new { @class = "form-control", required = "required" })
+                        @Html.ValidationMessageFor(m => m.CategoriaID, "", new { @class = "text-danger" })
+                    </div>
+
+                    <div class="mb-3">
+                        @Html.LabelFor(m => m.ClaveProdServSATID, "Clave ProdServ SAT")
+                        @Html.DropDownListFor(m => m.ClaveProdServSATID, (SelectList)ViewBag.ClavesProdServSAT, "-- Seleccionar --", new { @class = "form-control", required = "required" })
+                        @Html.ValidationMessageFor(m => m.ClaveProdServSATID, "", new { @class = "text-danger" })
+                    </div>
+
+                    <div class="mb-3">
+                        @Html.LabelFor(m => m.ClaveUnidadSAT, "Unidad SAT")
+                        @Html.DropDownListFor(m => m.ClaveUnidadSAT, (SelectList)ViewBag.UnidadesSAT, "-- Seleccionar --", new { @class = "form-control", required = "required" })
+                        @Html.ValidationMessageFor(m => m.ClaveUnidadSAT, "", new { @class = "text-danger" })
+                    </div>
+
+                    <div class="mb-3">
+                        @Html.LabelFor(m => m.TasaIVA, "Tasa IVA")
+                        @Html.DropDownListFor(m => m.TasaIVA, (SelectList)ViewBag.TasasIVA, "-- Seleccionar --", new { @class = "form-control", required = "required" })
+                        @Html.ValidationMessageFor(m => m.TasaIVA, "", new { @class = "text-danger" })
+                    </div>
+
+                    <div class="mb-3">
+                        @Html.LabelFor(m => m.TasaIEPS, "Tasa IEPS")
+                        @Html.DropDownListFor(m => m.TasaIEPS, (SelectList)ViewBag.TasasIEPS, "-- Seleccionar --", new { @class = "form-control" })
+                        @Html.ValidationMessageFor(m => m.TasaIEPS, "", new { @class = "text-danger" })
+                    </div>
+                }
+            </div>
+            <div class="modal-footer">
+                <button type="submit" form="formProducto" class="btn btn-primary">Guardar</button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Scripts de Bootstrap 5 (si aún no los tienes incluidos) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>

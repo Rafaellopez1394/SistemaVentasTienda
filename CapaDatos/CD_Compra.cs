@@ -1,0 +1,199 @@
+﻿// CapaDatos/CD_Compra.cs
+using CapaModelo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+
+namespace CapaDatos
+{
+    public class CD_Compra
+    {
+        private static CD_Compra _instancia;
+        public static CD_Compra Instancia => _instancia ??= new CD_Compra();
+
+        public bool RegistrarCompraConLotes(Compra compra, string usuario)
+        {
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                cnx.Open();
+                SqlTransaction tran = cnx.BeginTransaction();
+
+                try
+                {
+                    DataTable tabla = new DataTable();
+                    tabla.Columns.Add("ProductoID", typeof(int));
+                    tabla.Columns.Add("Cantidad", typeof(int));
+                    tabla.Columns.Add("PrecioCompra", typeof(decimal));
+                    tabla.Columns.Add("PrecioVenta", typeof(decimal));
+
+                    foreach (var d in compra.Detalle)
+                    {
+                        tabla.Rows.Add(d.ProductoID, d.Cantidad, d.PrecioCompra, d.PrecioVenta);
+                    }
+
+                    SqlCommand cmd = new SqlCommand("sp_RegistrarCompraConLote", cnx, tran) { CommandType = CommandType.StoredProcedure };
+                    cmd.Parameters.AddWithValue("@ProveedorID", compra.ProveedorID);
+                    cmd.Parameters.AddWithValue("@FolioFactura", compra.FolioFactura);
+                    cmd.Parameters.AddWithValue("@Usuario", usuario);
+
+                    SqlParameter tvp = cmd.Parameters.AddWithValue("@ProductosComprados", tabla);
+                    tvp.SqlDbType = SqlDbType.Structured;
+                    tvp.TypeName = "dbo.TipoTablaProductosComprados";
+
+                    cmd.ExecuteNonQuery();
+
+                    // ===== GENERAR PÓLIZA CON DESGLOSE DE IVA =====
+                    var detallesIVA = new Dictionary<string, IVABreakdown>();
+                    decimal totalBase = 0, totalIVA = 0, totalInventario = 0;
+
+                    foreach (var d in compra.Detalle)
+                    {
+                        // Calcular base sin IVA (asumiendo PrecioCompra ya es el precio neto)
+                        decimal baseLinea = d.PrecioCompra * d.Cantidad;
+                        decimal ivaLinea = 0m;
+
+                        if (!d.Exento && d.TasaIVAPorcentaje > 0)
+                        {
+                            ivaLinea = baseLinea * (d.TasaIVAPorcentaje / 100m);
+                        }
+
+                        string keyIVA = d.Exento ? "EXENTO" : d.TasaIVAPorcentaje.ToString();
+                        if (!detallesIVA.ContainsKey(keyIVA))
+                            detallesIVA[keyIVA] = new IVABreakdown { Base = 0, IVA = 0 };
+
+                        detallesIVA[keyIVA].Base += baseLinea;
+                        detallesIVA[keyIVA].IVA += ivaLinea;
+
+                        totalBase += baseLinea;
+                        totalIVA += ivaLinea;
+                        totalInventario += baseLinea; // Inventario se valúa sin IVA en algunos sistemas
+                    }
+
+                    decimal totalCompra = totalBase + totalIVA;
+
+                    var cuentaInventarioObj = CD_CatalogoContable.Instancia.ObtenerPorSubTipo("INVENTARIO");
+                    var cuentaProveedoresObj = CD_CatalogoContable.Instancia.ObtenerPorSubTipo("PROVEEDOR");
+
+                    if (cuentaInventarioObj == null || cuentaProveedoresObj == null)
+                    {
+                        tran.Rollback();
+                        throw new Exception("Faltan cuentas contables en el catálogo. Configurar CatalogoContable.");
+                    }
+
+                    int cuentaInventario = cuentaInventarioObj.CuentaID;
+                    int cuentaProveedores = cuentaProveedoresObj.CuentaID;
+
+                    var poliza = new Poliza
+                    {
+                        TipoPoliza = "COMPRA",
+                        FechaPoliza = DateTime.Now,
+                        Concepto = $"Compra - Proveedor: {compra.ProveedorID} - {compra.FolioFactura}",
+                        ReferenciaTipo = "COMPRA"
+                    };
+
+                    // 1. DÉBITO: Inventario (solo base, sin IVA)
+                    poliza.Detalles.Add(new PolizaDetalle 
+                    { 
+                        CuentaID = cuentaInventario, 
+                        Debe = totalInventario, 
+                        Haber = 0, 
+                        Concepto = "Entrada de inventario (neto)" 
+                    });
+
+                    // 2. DÉBITO: IVA pagado por tasa (desde MapeoContableIVA)
+                    foreach (var kvp in detallesIVA)
+                    {
+                        IVABreakdown breakdown = kvp.Value;
+                        if (breakdown.IVA > 0)
+                        {
+                            bool esExento = kvp.Key == "EXENTO";
+                            decimal tasa = esExento ? 0 : decimal.Parse(kvp.Key);
+
+                            var mapeo = CD_MapeoIVA.Instancia.ObtenerPorTasa(tasa, esExento);
+                            if (mapeo != null)
+                            {
+                                poliza.Detalles.Add(new PolizaDetalle
+                                {
+                                    CuentaID = mapeo.CuentaDeudora, // En compras, IVA es deudor (acreedor fiscal)
+                                    Debe = breakdown.IVA,
+                                    Haber = 0,
+                                    Concepto = $"IVA pagado ({mapeo.Descripcion})"
+                                });
+                            }
+                        }
+                    }
+
+                    // 3. CRÉDITO: Proveedores (monto total con IVA)
+                    poliza.Detalles.Add(new PolizaDetalle 
+                    { 
+                        CuentaID = cuentaProveedores, 
+                        Debe = 0, 
+                        Haber = totalCompra, 
+                        Concepto = "Cuenta por pagar a proveedor" 
+                    });
+
+                    bool polOk = CD_Poliza.Instancia.CrearPoliza(poliza, cnx, tran);
+                    if (!polOk)
+                    {
+                        tran.Rollback();
+                        return false;
+                    }
+
+                    tran.Commit();
+                    return true;
+                }
+                catch
+                {
+                    tran.Rollback();
+                    return false;
+                }
+            }
+        }
+        // ===============================================
+        // MÉTODO QUE TE FALTABA → LISTAR TODAS LAS COMPRAS
+        // ===============================================
+        public List<Compra> ObtenerTodas()
+        {
+            var lista = new List<Compra>();
+
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                string query = @"
+            SELECT 
+                c.CompraID,
+                c.ProveedorID,
+                p.RazonSocial AS RazonSocialProveedor,
+                c.FolioFactura,
+                c.FechaCompra,
+                c.Total,
+                c.Usuario
+            FROM Compras c
+            INNER JOIN Proveedores p ON c.ProveedorID = p.ProveedorID
+            ORDER BY c.FechaCompra DESC";
+
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cnx.Open();
+
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(new Compra
+                        {
+                            CompraID = Convert.ToInt32(dr["CompraID"]),
+                            ProveedorID = Guid.Parse(dr["ProveedorID"].ToString()),
+                            RazonSocialProveedor = dr["RazonSocialProveedor"].ToString(),
+                            FolioFactura = dr["FolioFactura"].ToString(),
+                            FechaCompra = Convert.ToDateTime(dr["FechaCompra"]),
+                            Total = Convert.ToDecimal(dr["Total"]),
+                            Usuario = dr["Usuario"].ToString()
+                        });
+                    }
+                }
+            }
+
+            return lista;
+        }
+    }
+}

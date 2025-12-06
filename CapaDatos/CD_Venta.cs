@@ -1,0 +1,265 @@
+﻿// CapaDatos/CD_Venta.cs
+using CapaModelo;
+using System;
+using System.Collections.Generic;
+using System.Data;
+using System.Data.SqlClient;
+
+namespace CapaDatos
+{
+    // Helper class to avoid tuples (not supported in .NET Framework 4.6)
+    internal class IVABreakdown
+    {
+        public decimal Base { get; set; }
+        public decimal IVA { get; set; }
+    }
+
+    public class CD_Venta
+    {
+        private static CD_Venta _instancia;
+        public static CD_Venta Instancia => _instancia ??= new CD_Venta();
+
+        public bool RegistrarVentaCredito(VentaCliente venta, string usuario)
+        {
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                cnx.Open();
+                SqlTransaction tran = cnx.BeginTransaction();
+
+                DataTable tabla = new DataTable();
+                tabla.Columns.Add("ProductoID", typeof(int));
+                tabla.Columns.Add("LoteID", typeof(int));
+                tabla.Columns.Add("Cantidad", typeof(int));
+
+                foreach (var d in venta.Detalle)
+                {
+                    tabla.Rows.Add(d.ProductoID, d.LoteID, d.Cantidad);
+                }
+
+                try
+                {
+                    SqlCommand cmd = new SqlCommand("sp_RegistrarVentaCredito", cnx, tran) { CommandType = CommandType.StoredProcedure };
+                    cmd.Parameters.AddWithValue("@ClienteID", venta.ClienteID);
+                    cmd.Parameters.AddWithValue("@Usuario", usuario);
+
+                    SqlParameter tvp = cmd.Parameters.AddWithValue("@Productos", tabla);
+                    tvp.SqlDbType = SqlDbType.Structured;
+                    tvp.TypeName = "dbo.TipoTablaVentaProductos";
+
+                    cmd.ExecuteNonQuery();
+
+                    // ===== GENERAR PÓLIZA CON DESGLOSE DE IVA =====
+                    var detallesIVA = new Dictionary<string, IVABreakdown>();
+                    decimal totalBase = 0, totalIVA = 0, totalCOGS = 0;
+
+                    foreach (var d in venta.Detalle)
+                    {
+                        // Calcular base sin IVA (asumiendo PrecioVenta ya es el precio neto)
+                        decimal baseLinea = d.PrecioVenta * d.Cantidad;
+                        decimal ivaLinea = 0m;
+
+                        if (!d.Exento && d.TasaIVAPorcentaje > 0)
+                        {
+                            ivaLinea = baseLinea * (d.TasaIVAPorcentaje / 100m);
+                        }
+
+                        string keyIVA = d.Exento ? "EXENTO" : d.TasaIVAPorcentaje.ToString();
+                        if (!detallesIVA.ContainsKey(keyIVA))
+                            detallesIVA[keyIVA] = new IVABreakdown { Base = 0, IVA = 0 };
+
+                        detallesIVA[keyIVA].Base += baseLinea;
+                        detallesIVA[keyIVA].IVA += ivaLinea;
+
+                        totalBase += baseLinea;
+                        totalIVA += ivaLinea;
+
+                        // Calcular COGS
+                        decimal precioCompra = d.PrecioCompra;
+                        if (precioCompra <= 0 && d.LoteID > 0)
+                        {
+                            var lote = CD_Producto.Instancia.ObtenerLotePorId(d.LoteID);
+                            if (lote != null) precioCompra = lote.PrecioCompra;
+                        }
+                        totalCOGS += precioCompra * d.Cantidad;
+                    }
+
+                    decimal totalVenta = totalBase + totalIVA;
+
+                    // Leer cuentas base desde CatalogoContable
+                    var cuentaClienteObj = CD_CatalogoContable.Instancia.ObtenerPorSubTipo("CLIENTE");
+                    var cuentaCajaObj = CD_CatalogoContable.Instancia.ObtenerPorSubTipo("CAJA");
+                    var cuentaVentasObj = CD_CatalogoContable.Instancia.ObtenerPorSubTipo("VENTAS");
+                    var cuentaCostoObj = CD_CatalogoContable.Instancia.ObtenerPorSubTipo("COSTO_VENTAS");
+                    var cuentaInventarioObj = CD_CatalogoContable.Instancia.ObtenerPorSubTipo("INVENTARIO");
+
+                    if (cuentaClienteObj == null || cuentaCajaObj == null || cuentaVentasObj == null 
+                        || cuentaCostoObj == null || cuentaInventarioObj == null)
+                    {
+                        tran.Rollback();
+                        throw new Exception("Faltan cuentas contables en el catálogo. Configurar CatalogoContable.");
+                    }
+
+                    int cuentaClientes = cuentaClienteObj.CuentaID;
+                    int cuentaCaja = cuentaCajaObj.CuentaID;
+                    int cuentaVentas = cuentaVentasObj.CuentaID;
+                    int cuentaCosto = cuentaCostoObj.CuentaID;
+                    int cuentaInventario = cuentaInventarioObj.CuentaID;
+
+                    var poliza = new Poliza
+                    {
+                        TipoPoliza = "VENTA",
+                        FechaPoliza = DateTime.Now,
+                        Concepto = $"Venta - Cliente: {venta.ClienteID}",
+                        ReferenciaTipo = "VENTA"
+                    };
+
+                    // 1. DÉBITO: Cliente/Caja (monto total con IVA)
+                    int cuentaDeudora = (venta.Estatus ?? string.Empty).ToUpper() == "CREDITO" ? cuentaClientes : cuentaCaja;
+                    poliza.Detalles.Add(new PolizaDetalle 
+                    { 
+                        CuentaID = cuentaDeudora, 
+                        Debe = totalVenta, 
+                        Haber = 0, 
+                        Concepto = $"Venta a {(venta.Estatus ?? "").ToUpper()}" 
+                    });
+
+                    // 2. DÉBITO: Costo de Ventas
+                    if (totalCOGS > 0)
+                        poliza.Detalles.Add(new PolizaDetalle 
+                        { 
+                            CuentaID = cuentaCosto, 
+                            Debe = totalCOGS, 
+                            Haber = 0, 
+                            Concepto = "Costo de ventas" 
+                        });
+
+                    // 3. CRÉDITO: Ventas (solo la base)
+                    poliza.Detalles.Add(new PolizaDetalle 
+                    { 
+                        CuentaID = cuentaVentas, 
+                        Debe = 0, 
+                        Haber = totalBase, 
+                        Concepto = "Ingresos por ventas (neto)" 
+                    });
+
+                    // 4. CRÉDITO: IVA por tasa (desde MapeoContableIVA)
+                    foreach (var kvp in detallesIVA)
+                    {
+                        IVABreakdown breakdown = kvp.Value;
+                        if (breakdown.IVA > 0)
+                        {
+                            // Obtener tasa
+                            bool esExento = kvp.Key == "EXENTO";
+                            decimal tasa = esExento ? 0 : decimal.Parse(kvp.Key);
+                            
+                            var mapeo = CD_MapeoIVA.Instancia.ObtenerPorTasa(tasa, esExento);
+                            if (mapeo != null)
+                            {
+                                poliza.Detalles.Add(new PolizaDetalle
+                                {
+                                    CuentaID = mapeo.CuentaAcreedora,
+                                    Debe = 0,
+                                    Haber = breakdown.IVA,
+                                    Concepto = $"IVA cobrado ({mapeo.Descripcion})"
+                                });
+                            }
+                        }
+                    }
+
+                    // 5. CRÉDITO: Inventario (reducción por COGS)
+                    if (totalCOGS > 0)
+                        poliza.Detalles.Add(new PolizaDetalle 
+                        { 
+                            CuentaID = cuentaInventario, 
+                            Debe = 0, 
+                            Haber = totalCOGS, 
+                            Concepto = "Reducción inventario" 
+                        });
+
+                    bool polOk = CD_Poliza.Instancia.CrearPoliza(poliza, cnx, tran);
+                    if (!polOk)
+                    {
+                        tran.Rollback();
+                        return false;
+                    }
+
+                    tran.Commit();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    tran.Rollback();
+                    throw;
+                }
+            }
+        }
+
+        public List<VentaCliente> ObtenerVentasCliente(Guid clienteId)
+        {
+            var lista = new List<VentaCliente>();
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                SqlCommand cmd = new SqlCommand("sp_ConsultarVentasCliente", cnx) { CommandType = CommandType.StoredProcedure };
+                cmd.Parameters.AddWithValue("@ClienteID", clienteId);
+                cnx.Open();
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(new VentaCliente
+                        {
+                            VentaID = Guid.Parse(dr["VentaID"].ToString()),
+                            ClienteID = Guid.Parse(dr["ClienteID"].ToString()),
+                            RazonSocial = dr["RazonSocial"].ToString(),
+                            FechaVenta = Convert.ToDateTime(dr["FechaVenta"]),
+                            Total = Convert.ToDecimal(dr["Total"]),
+                            Estatus = dr["Estatus"].ToString(),
+                            FechaVencimiento = dr["FechaVencimiento"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["FechaVencimiento"]),
+                            TotalPagado = Convert.ToDecimal(dr["TotalPagado"]),
+                            SaldoPendiente = Convert.ToDecimal(dr["SaldoPendiente"])
+                        });
+                    }
+                }
+            }
+            return lista;
+        }
+
+        public bool RegistrarPago(PagoCliente pago)
+        {
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                SqlCommand cmd = new SqlCommand("sp_RegistrarPagoCliente", cnx) { CommandType = CommandType.StoredProcedure };
+                cmd.Parameters.AddWithValue("@VentaID", pago.VentaID);
+                cmd.Parameters.AddWithValue("@Importe", pago.Importe);
+                cmd.Parameters.AddWithValue("@Usuario", pago.Usuario ?? "system");
+                try { cnx.Open(); cmd.ExecuteNonQuery(); return true; }
+                catch { return false; }
+            }
+        }
+        public decimal ObtenerSaldoPendiente(Guid clienteId)
+        {
+            decimal saldo = 0;
+
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                string query = @"
+            SELECT ISNULL(SUM(Total - ISNULL((SELECT SUM(Importe) 
+                                             FROM PagosClientes 
+                                             WHERE VentaID = v.VentaID), 0)), 0) AS SaldoPendiente
+            FROM Ventas v
+            WHERE v.ClienteID = @ClienteID 
+              AND v.Estatus = 'CREDITO'";
+
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@ClienteID", clienteId);
+
+                cnx.Open();
+                object resultado = cmd.ExecuteScalar();
+                if (resultado != null && resultado != DBNull.Value)
+                    saldo = Convert.ToDecimal(resultado);
+            }
+
+            return saldo;
+        }
+    }
+}

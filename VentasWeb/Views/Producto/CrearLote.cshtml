@@ -1,0 +1,141 @@
+@{
+    ViewBag.Title = "Ingresar Lote";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0"><i class="fas fa-cubes"></i> Ingresar Lote Nuevo</h4>
+                </div>
+                <div class="card-body">
+                    @if (TempData["Success"] != null)
+                    {
+                        <div class="alert alert-success alert-dismissible fade show" role="alert">
+                            <strong>Éxito!</strong> @TempData["Success"]
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Cerrar">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                    }
+
+                    <div class="alert alert-info">
+                        <h5><i class="fas fa-box"></i> Producto: <strong>@ViewBag.ProductoNombre</strong></h5>
+                        <p class="mb-0">Estás ingresando un nuevo lote para este producto.</p>
+                    </div>
+
+                    @using (Html.BeginForm("CrearLote", "Producto", FormMethod.Post, new { @class = "needs-validation", novalidate = "novalidate" }))
+                    {
+                        @Html.AntiForgeryToken()
+                        //@Html.Hidden("ProductoID", Model.ProductoID)
+                        //@Html.Hidden("ProductoID", Convert.ToInt32(Model.ProductoID))
+                        //@Html.Hidden("ProductoID", Convert.ToInt32(Model.ProductoID))
+                        <input type="hidden" name="ProductoID" value="@Model.ProductoID" />
+
+
+                        <div class="row g-4">
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Cantidad Total *</label>
+                                <input type="number" name="CantidadTotal" value="@Model.CantidadTotal" class="form-control form-control-lg text-center" min="1" step="1" required />
+                                <div class="invalid-feedback">Ingresa una cantidad válida mayor a 0.</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Precio de Compra (unitario) *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="PrecioCompra" value="@Model.PrecioCompra" class="form-control form-control-lg" step="0.01" min="0" required />
+                                </div>
+                                <div class="invalid-feedback">Ingresa un precio válido.</div>
+                            </div>
+
+                            <div class="col-md-4">
+                                <label class="form-label fw-bold">Precio de Venta (unitario) *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" name="PrecioVenta" value="@Model.PrecioVenta" class="form-control form-control-lg" step="0.01" min="0" required />
+                                </div>
+                                <div class="invalid-feedback">Ingresa un precio válido.</div>
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Fecha de Entrada</label>
+                                <input type="datetime-local" name="FechaEntrada" value="@(Model.FechaEntrada.ToString("yyyy-MM-ddTHH:mm"))" class="form-control" />
+                            </div>
+
+                            <div class="col-md-6">
+                                <label class="form-label">Fecha de Caducidad (opcional)</label>
+                                <input type="date" name="FechaCaducidad" value="@(Model.FechaCaducidad?.ToString("yyyy-MM-dd"))" class="form-control" />
+                                <small class="text-muted">Déjalo vacío si no tiene caducidad</small>
+                            </div>
+
+                            <div class="col-12 mt-4">
+                                <hr />
+                                <div class="d-flex justify-content-between">
+                                    <a href="@Url.Action("Index")" class="btn btn-secondary btn-lg"><i class="fas fa-arrow-left"></i> Regresar al Catálogo</a>
+                                    <button type="submit" class="btn btn-success btn-lg px-5"><i class="fas fa-save"></i> Guardar Lote</button>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        (function () {
+            'use strict';
+            var forms = document.querySelectorAll('.needs-validation');
+
+            Array.prototype.slice.call(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                    }
+
+                    const compra = parseFloat($('input[name="PrecioCompra"]').val());
+                    const venta = parseFloat($('input[name="PrecioVenta"]').val());
+
+                    if (venta <= compra) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        toastr.warning('El precio de venta debe ser mayor al precio de compra.');
+                        return false;
+                    }
+
+                    form.classList.add('was-validated');
+                }, false);
+            });
+        })();
+
+        $(document).ready(function () {
+            function calcularGanancia() {
+                const cantidad = parseFloat($('input[name="CantidadTotal"]').val()) || 0;
+                const compra = parseFloat($('input[name="PrecioCompra"]').val()) || 0;
+                const venta = parseFloat($('input[name="PrecioVenta"]').val()) || 0;
+                const gananciaUnitaria = venta - compra;
+                const gananciaTotal = gananciaUnitaria * cantidad;
+
+                $('#gananciaInfo').remove();
+
+                if (cantidad > 0 && compra > 0 && venta > 0) {
+                    $('button[type="submit"]').before(`
+                            <div id="gananciaInfo" class="alert alert-success mt-3">
+                                <strong>Ganancia estimada:</strong><br>
+                                • Por unidad: $${gananciaUnitaria.toFixed(2)}<br>
+                                • Total del lote: <strong>$${gananciaTotal.toFixed(2)}</strong>
+                            </div>
+                        `);
+                }
+            }
+
+            $('input[name="CantidadTotal"], input[name="PrecioCompra"], input[name="PrecioVenta"]').on('input', calcularGanancia);
+        });
+    </script>
+}

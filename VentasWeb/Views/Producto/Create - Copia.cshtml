@@ -1,0 +1,83 @@
+@model CapaModelo.Producto
+
+@{
+    ViewBag.Title = Model.ProductoID == 0 ? "Nuevo Producto" : "Editar Producto";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>@ViewBag.Title</h2>
+
+@using (Html.BeginForm())
+{
+    @Html.AntiForgeryToken()
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Nombre)
+        @Html.TextBoxFor(m => m.Nombre, new { @class = "form-control", required = "required" })
+        @Html.ValidationMessageFor(m => m.Nombre, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Descripcion)
+        @Html.TextAreaFor(m => m.Descripcion, new { @class = "form-control", rows = 3 })
+        @Html.ValidationMessageFor(m => m.Descripcion, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.CategoriaID, "Categoría")
+        @Html.DropDownListFor(
+            m => m.CategoriaID,
+            (SelectList)ViewBag.Categorias,
+            "-- Seleccionar --",
+            new { @class = "form-control", required = "required" }
+        )
+        @Html.ValidationMessageFor(m => m.CategoriaID, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.ClaveProdServSATID, "Clave ProdServ SAT")
+        @Html.DropDownListFor(
+            m => m.ClaveProdServSATID,
+            (SelectList)ViewBag.ClavesProdServSAT,
+            "-- Seleccionar --",
+            new { @class = "form-control", required = "required" }
+        )
+        @Html.ValidationMessageFor(m => m.ClaveProdServSATID, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.ClaveUnidadSAT, "Unidad SAT")
+        @Html.DropDownListFor(
+            m => m.ClaveUnidadSAT,
+            (SelectList)ViewBag.UnidadesSAT,
+            "-- Seleccionar --",
+            new { @class = "form-control", required = "required" }
+        )
+        @Html.ValidationMessageFor(m => m.ClaveUnidadSAT, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.TasaIVA, "Tasa IVA")
+        @Html.DropDownListFor(
+            m => m.TasaIVA,
+            (SelectList)ViewBag.TasasIVA,
+            "-- Seleccionar --",
+            new { @class = "form-control", required = "required" }
+        )
+        @Html.ValidationMessageFor(m => m.TasaIVA, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.TasaIEPS, "Tasa IEPS")
+        @Html.DropDownListFor(
+            m => m.TasaIEPS,
+            (SelectList)ViewBag.TasasIEPS,
+            "-- Seleccionar --",
+            new { @class = "form-control" }
+        )
+        @Html.ValidationMessageFor(m => m.TasaIEPS, "", new { @class = "text-danger" })
+    </div>
+
+    <button type="submit" class="btn btn-primary">Guardar Producto</button>
+    <a href="@Url.Action("Index")" class="btn btn-secondary">Cancelar</a>
+}

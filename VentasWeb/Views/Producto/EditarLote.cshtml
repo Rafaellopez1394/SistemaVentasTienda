@@ -1,0 +1,100 @@
+@{
+    ViewBag.Title = "Editar Lote";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@if (Model == null)
+{
+    <script type="text/javascript">
+        alert("El lote no existe o fue eliminado.");
+        window.location.href = '@Url.Action("Index", "Producto")';
+    </script>
+    return;
+}
+
+<div class="container-fluid py-4">
+    <div class="card shadow">
+        <div class="card-header bg-warning text-white">
+            <h4 class="mb-0">Editar Lote #@Model.LoteID</h4>
+        </div>
+        <div class="card-body">
+
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success">@TempData["Success"]</div>
+            }
+
+            <div class="alert alert-info mb-4">
+                <strong>Producto:</strong> @ViewBag.ProductoNombre
+            </div>
+
+            <!-- FORMULARIO SIMPLE Y SEGURO -->
+            <form action="@Url.Action("EditarLote", "Producto")" method="post" class="needs-validation" novalidate>
+
+                <!-- AntiForgeryToken de forma segura (NUNCA falla) -->
+                @Html.AntiForgeryToken()
+
+                <input type="hidden" name="LoteID" value="@Model.LoteID" />
+                <input type="hidden" name="ProductoID" value="@Model.ProductoID" />
+
+                <div class="row g-4">
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Cantidad Total *</label>
+                        <input type="number" name="CantidadTotal" value="@Model.CantidadTotal"
+                               class="form-control" required min="1" />
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Precio Compra *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" name="PrecioCompra"
+                                   value="@Model.PrecioCompra.ToString("F2")"
+                                   class="form-control" required />
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Precio Venta *</label>
+                        <div class="input-group">
+                            <span class="input-group-text">$</span>
+                            <input type="number" step="0.01" name="PrecioVenta"
+                                   value="@Model.PrecioVenta.ToString("F2")"
+                                   class="form-control" required />
+                        </div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label>Fecha Entrada</label>
+                        <input type="datetime-local" name="FechaEntrada"
+                               value="@Model.FechaEntrada.ToString("yyyy-MM-ddTHH:mm")"
+                               class="form-control" />
+                    </div>
+                    <div class="col-md-6">
+                        <label>Fecha Caducidad</label>
+                        <input type="date" name="FechaCaducidad"
+                               value="@(Model.FechaCaducidad?.ToString("yyyy-MM-dd") ?? "")"
+                               class="form-control" />
+                    </div>
+                </div>
+
+                <hr class="my-4" />
+                <div class="d-flex justify-content-end gap-3">
+                    <a href="@Url.Action("Index")" class="btn btn-secondary">Cancelar</a>
+                    <button type="submit" class="btn btn-warning btn-lg">Guardar Cambios</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        document.querySelector('form').addEventListener('submit', function (e) {
+            const compra = parseFloat(document.querySelector('[name="PrecioCompra"]').value);
+            const venta = parseFloat(document.querySelector('[name="PrecioVenta"]').value);
+            if (venta <= compra) {
+                e.preventDefault();
+                alert('El precio de venta debe ser mayor al precio de compra');
+            }
+        });
+    </script>
+}

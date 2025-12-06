@@ -1,0 +1,58 @@
+@*@model CapaModelo.Producto
+
+@{
+    ViewBag.Title = "Editar Producto";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<h2>@ViewBag.Title</h2>
+
+@using (Html.BeginForm("Edit", "Producto", FormMethod.Post, new { @class = "needs-validation", novalidate = "novalidate" }))
+{
+    @Html.AntiForgeryToken()
+    @Html.HiddenFor(m => m.ProductoID)
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.Nombre, "Nombre del Producto")
+        @Html.TextBoxFor(m => m.Nombre, new { @class = "form-control", required = "required" })
+        @Html.ValidationMessageFor(m => m.Nombre, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.CategoriaID, "Categoría")
+        @Html.DropDownListFor(m => m.CategoriaID, (SelectList)ViewBag.Categorias, "-- Seleccionar --", new { @class = "form-control", required = "required" })
+        @Html.ValidationMessageFor(m => m.CategoriaID, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.ClaveProdServSATID, "Clave ProdServ SAT")
+        @Html.DropDownListFor(m => m.ClaveProdServSATID, (SelectList)ViewBag.ClavesProdServSAT, "-- Seleccionar --", new { @class = "form-control", required = "required" })
+        @Html.ValidationMessageFor(m => m.ClaveProdServSATID, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.ClaveUnidadSAT, "Unidad SAT")
+        @Html.DropDownListFor(m => m.ClaveUnidadSAT, (SelectList)ViewBag.UnidadesSAT, "-- Seleccionar --", new { @class = "form-control", required = "required" })
+        @Html.ValidationMessageFor(m => m.ClaveUnidadSAT, "", new { @class = "text-danger" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.CodigoInterno, "Código Interno")
+        @Html.TextBoxFor(m => m.CodigoInterno, new { @class = "form-control" })
+    </div>
+
+    <div class="form-group">
+        @Html.LabelFor(m => m.TasaIVA, "Tasa IVA")
+        @Html.TextBoxFor(m => m.TasaIVA, "{0:F2}", new { @class = "form-control", type = "number", step = "0.01" })
+    </div>
+
+    <div class="form-group form-check">
+        @Html.CheckBoxFor(m => m.Exento, new { @class = "form-check-input" })
+        @Html.LabelFor(m => m.Exento, "Exento de IVA", new { @class = "form-check-label" })
+    </div>
+
+    <button type="submit" class="btn btn-success">
+        <i class="fas fa-save me-2"></i>Actualizar Producto
+    </button>
+    <a href="@Url.Action("Index", "Producto")" class="btn btn-secondary">Cancelar</a>
+}*@
