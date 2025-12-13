@@ -142,19 +142,138 @@ namespace VentasWeb.Controllers
             return View(lote);
         }
         [HttpPost]
-        public ActionResult EditarLote(LoteProducto lote)
+        public ActionResult EditarLote(LoteProducto lote, string motivoAjuste)
         {
             if (ModelState.IsValid)
             {
-                lote.Usuario = User.Identity.Name ?? "system";
-                if (CD_Producto.Instancia.ActualizarLote(lote)) // Asume método basado en sp_Lote_Actualizar
+                // Obtener lote original para comparar cantidades
+                var loteOriginal = CD_Producto.Instancia.ObtenerLotePorId(lote.LoteID);
+                if (loteOriginal == null)
                 {
-                    TempData["Success"] = "Lote actualizado correctamente";
+                    TempData["Error"] = "El lote no existe";
+                    return RedirectToAction("Index");
+                }
+
+                int diferenciaCantidad = lote.CantidadTotal - loteOriginal.CantidadTotal;
+                lote.Usuario = User.Identity.Name ?? "system";
+
+                // Si hay cambio en la cantidad, registrar movimiento y póliza
+                if (diferenciaCantidad != 0)
+                {
+                    if (string.IsNullOrWhiteSpace(motivoAjuste))
+                    {
+                        ModelState.AddModelError("", "Debe proporcionar un motivo para el ajuste de inventario");
+                        ViewBag.ProductoNombre = CD_Producto.Instancia.ObtenerPorId(lote.ProductoID)?.Nombre;
+                        return View(lote);
+                    }
+
+                    // Ajustar CantidadDisponible proporcionalmente
+                    decimal porcentajeDisponible = loteOriginal.CantidadTotal > 0 
+                        ? (decimal)loteOriginal.CantidadDisponible / loteOriginal.CantidadTotal 
+                        : 0;
+                    lote.CantidadDisponible = (int)(lote.CantidadTotal * porcentajeDisponible);
+
+                    // Registrar en bitácora de movimientos
+                    var movimiento = new MovimientoInventario
+                    {
+                        LoteID = lote.LoteID,
+                        ProductoID = lote.ProductoID,
+                        TipoMovimiento = diferenciaCantidad > 0 ? "AJUSTE_ENTRADA" : "AJUSTE_SALIDA",
+                        Cantidad = Math.Abs(diferenciaCantidad),
+                        CostoUnitario = lote.PrecioCompra,
+                        Usuario = lote.Usuario,
+                        Fecha = DateTime.Now,
+                        Comentarios = motivoAjuste
+                    };
+                    CD_Producto.Instancia.RegistrarMovimientoInventario(movimiento);
+
+                    // Crear póliza contable
+                    CrearPolizaAjusteInventario(lote, diferenciaCantidad, motivoAjuste);
+                }
+
+                if (CD_Producto.Instancia.ActualizarLote(lote))
+                {
+                    TempData["Success"] = diferenciaCantidad != 0 
+                        ? $"Lote actualizado correctamente. Ajuste de {(diferenciaCantidad > 0 ? "+" : "")}{diferenciaCantidad} unidades registrado."
+                        : "Lote actualizado correctamente";
                     return RedirectToAction("Index");
                 }
             }
             ViewBag.ProductoNombre = CD_Producto.Instancia.ObtenerPorId(lote.ProductoID).Nombre;
             return View(lote);
+        }
+
+        private void CrearPolizaAjusteInventario(LoteProducto lote, int diferenciaCantidad, string motivo)
+        {
+            try
+            {
+                decimal costoTotal = Math.Abs(diferenciaCantidad) * lote.PrecioCompra;
+                bool esIncremento = diferenciaCantidad > 0;
+                
+                // Determinar tipo de póliza según el motivo
+                string tipoPoliza = esIncremento ? "AJUSTE_ENTRADA" : 
+                    (motivo.Contains("CADUCIDAD") || motivo.Contains("MERMA") || motivo.Contains("DAÑADO") 
+                        ? "MERMA" : "AJUSTE_SALIDA");
+
+                var poliza = new Poliza
+                {
+                    PolizaID = Guid.NewGuid(),
+                    FechaPoliza = DateTime.Now,
+                    TipoPoliza = tipoPoliza,
+                    Concepto = $"Ajuste de inventario Lote #{lote.LoteID}: {motivo}",
+                    Usuario = User.Identity.Name ?? "system",
+                    ReferenciaId = lote.LoteID,
+                    ReferenciaTipo = "LOTE"
+                };
+
+                if (esIncremento)
+                {
+                    // Incremento: DEBE Inventario, HABER Ajuste Inventario
+                    poliza.Detalles.Add(new PolizaDetalle
+                    {
+                        CuentaID = 1, // Inventario (Activo)
+                        Debe = costoTotal,
+                        Haber = 0,
+                        Concepto = $"Incremento inventario: {Math.Abs(diferenciaCantidad)} unidades"
+                    });
+                    poliza.Detalles.Add(new PolizaDetalle
+                    {
+                        CuentaID = 50, // Ajustes de Inventario (Ingresos)
+                        Debe = 0,
+                        Haber = costoTotal,
+                        Concepto = $"Contrapartida ajuste inventario"
+                    });
+                }
+                else
+                {
+                    // Disminución: DEBE Pérdida/Merma, HABER Inventario
+                    int cuentaContrapartida = motivo.Contains("CADUCIDAD") || motivo.Contains("MERMA") || motivo.Contains("DAÑADO")
+                        ? 60 // Costo de Ventas / Mermas
+                        : 50; // Ajustes de Inventario
+
+                    poliza.Detalles.Add(new PolizaDetalle
+                    {
+                        CuentaID = cuentaContrapartida,
+                        Debe = costoTotal,
+                        Haber = 0,
+                        Concepto = $"Salida inventario por {tipoPoliza}"
+                    });
+                    poliza.Detalles.Add(new PolizaDetalle
+                    {
+                        CuentaID = 1, // Inventario (Activo)
+                        Debe = 0,
+                        Haber = costoTotal,
+                        Concepto = $"Disminución inventario: {Math.Abs(diferenciaCantidad)} unidades"
+                    });
+                }
+
+                CD_Poliza.Instancia.RegistrarPoliza(poliza);
+            }
+            catch (Exception ex)
+            {
+                // Log error pero no detener el proceso
+                System.Diagnostics.Debug.WriteLine($"Error al crear póliza: {ex.Message}");
+            }
         }
 
         // Nueva acción para ajustar lote (merma/ajuste) - Modal o vista separada
@@ -208,6 +327,16 @@ namespace VentasWeb.Controllers
                 return Json(new { success = polizaCreada, message = "Ajuste registrado y póliza generada" });
             }
             return Json(new { success = false, message = "Error al registrar ajuste" });
+        }
+
+        // Bitácora de movimientos de inventario
+        [HttpGet]
+        public ActionResult BitacoraInventario(int? productoId, int? loteId, DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            var movimientos = CD_Producto.Instancia.ObtenerMovimientosInventario(productoId, loteId, fechaInicio, fechaFin);
+            ViewBag.ProductoId = productoId;
+            ViewBag.LoteId = loteId;
+            return View(movimientos);
         }
     }
 }

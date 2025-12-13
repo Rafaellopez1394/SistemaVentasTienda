@@ -34,10 +34,24 @@ namespace CapaModelo
 
     public class PagoCliente
     {
-        public int PagoID { get; set; }
+        public Guid PagoID { get; set; }
         public Guid VentaID { get; set; }
-        public decimal Importe { get; set; }
+        public Guid ClienteID { get; set; }
+        public decimal Monto { get; set; }
         public DateTime FechaPago { get; set; }
+        public string FormaPago { get; set; }
+        public string Referencia { get; set; }
+        public string Comentario { get; set; }
+        public bool GenerarFactura { get; set; }
+        public bool GenerarComplemento { get; set; }
         public string Usuario { get; set; }
+        
+        // Mantener propiedades antiguas por compatibilidad
+        [Obsolete("Use Monto instead")]
+        public decimal Importe
+        {
+            get => Monto;
+            set => Monto = value;
+        }
     }
 }

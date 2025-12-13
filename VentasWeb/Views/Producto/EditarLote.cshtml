@@ -29,19 +29,22 @@
             </div>
 
             <!-- FORMULARIO SIMPLE Y SEGURO -->
-            <form action="@Url.Action("EditarLote", "Producto")" method="post" class="needs-validation" novalidate>
+            <form id="formEditarLote" action="@Url.Action("EditarLote", "Producto")" method="post" class="needs-validation" novalidate>
 
                 <!-- AntiForgeryToken de forma segura (NUNCA falla) -->
                 @Html.AntiForgeryToken()
 
                 <input type="hidden" name="LoteID" value="@Model.LoteID" />
                 <input type="hidden" name="ProductoID" value="@Model.ProductoID" />
+                <input type="hidden" id="cantidadOriginal" value="@Model.CantidadTotal" />
+                <input type="hidden" id="motivoAjuste" name="MotivoAjuste" value="" />
 
                 <div class="row g-4">
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Cantidad Total *</label>
-                        <input type="number" name="CantidadTotal" value="@Model.CantidadTotal"
+                        <input type="number" id="cantidadTotal" name="CantidadTotal" value="@Model.CantidadTotal"
                                class="form-control" required min="1" />
+                        <small class="text-muted">Cantidad disponible actual: @Model.CantidadDisponible</small>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label fw-bold">Precio Compra *</label>
@@ -86,15 +89,140 @@
     </div>
 </div>
 
+<!-- Modal de Justificación de Ajuste -->
+<div class="modal fade" id="modalJustificacion" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    Justificación de Cambio de Inventario
+                </h5>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info mb-3">
+                    <strong>Cantidad Original:</strong> <span id="spanCantidadOriginal"></span><br />
+                    <strong>Cantidad Nueva:</strong> <span id="spanCantidadNueva"></span><br />
+                    <strong>Diferencia:</strong> <span id="spanDiferencia" class="fw-bold"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Motivo del Ajuste *</label>
+                    <select id="selectMotivo" class="form-select" required>
+                        <option value="">Seleccione un motivo...</option>
+                        <optgroup label="Incrementos">
+                            <option value="AJUSTE_CONTEO">Ajuste por conteo físico</option>
+                            <option value="CORRECCION_ENTRADA">Corrección de entrada</option>
+                            <option value="DEVOLUCION">Devolución de cliente</option>
+                        </optgroup>
+                        <optgroup label="Disminuciones">
+                            <option value="MERMA">Merma</option>
+                            <option value="CADUCIDAD">Producto caducado</option>
+                            <option value="DAÑADO">Producto dañado</option>
+                            <option value="ROBO">Robo o pérdida</option>
+                            <option value="CORRECCION_SISTEMA">Corrección de sistema</option>
+                        </optgroup>
+                    </select>
+                </div>
+
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Descripción Detallada *</label>
+                    <textarea id="txtDescripcion" class="form-control" rows="4" 
+                              placeholder="Explique el motivo del ajuste de inventario..." required></textarea>
+                    <small class="text-muted">Mínimo 10 caracteres</small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="cancelarAjuste()">Cancelar</button>
+                <button type="button" class="btn btn-warning" onclick="confirmarAjuste()">
+                    <i class="fas fa-check me-2"></i>Confirmar y Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section Scripts {
     <script>
-        document.querySelector('form').addEventListener('submit', function (e) {
+        const cantidadOriginal = parseInt($('#cantidadOriginal').val());
+        let modalJustificacion;
+
+        $(document).ready(function() {
+            modalJustificacion = new bootstrap.Modal(document.getElementById('modalJustificacion'));
+        });
+
+        document.querySelector('#formEditarLote').addEventListener('submit', function (e) {
+            e.preventDefault();
+
+            // Validar precios
             const compra = parseFloat(document.querySelector('[name="PrecioCompra"]').value);
             const venta = parseFloat(document.querySelector('[name="PrecioVenta"]').value);
             if (venta <= compra) {
-                e.preventDefault();
                 alert('El precio de venta debe ser mayor al precio de compra');
+                return false;
+            }
+
+            // Verificar si cambió la cantidad
+            const cantidadNueva = parseInt($('#cantidadTotal').val());
+            const diferencia = cantidadNueva - cantidadOriginal;
+
+            if (diferencia !== 0) {
+                // Mostrar modal de justificación
+                mostrarModalJustificacion(cantidadNueva, diferencia);
+            } else {
+                // Si no cambió la cantidad, enviar directamente
+                this.submit();
             }
         });
+
+        function mostrarModalJustificacion(cantidadNueva, diferencia) {
+            $('#spanCantidadOriginal').text(cantidadOriginal);
+            $('#spanCantidadNueva').text(cantidadNueva);
+            
+            const spanDif = $('#spanDiferencia');
+            if (diferencia > 0) {
+                spanDif.text('+' + diferencia + ' unidades (Incremento)')
+                    .removeClass('text-danger').addClass('text-success');
+            } else {
+                spanDif.text(diferencia + ' unidades (Disminución)')
+                    .removeClass('text-success').addClass('text-danger');
+            }
+
+            // Limpiar campos
+            $('#selectMotivo').val('');
+            $('#txtDescripcion').val('');
+            
+            modalJustificacion.show();
+        }
+
+        function cancelarAjuste() {
+            // Restaurar cantidad original
+            $('#cantidadTotal').val(cantidadOriginal);
+            modalJustificacion.hide();
+        }
+
+        function confirmarAjuste() {
+            const motivo = $('#selectMotivo').val();
+            const descripcion = $('#txtDescripcion').val().trim();
+
+            // Validar
+            if (!motivo) {
+                alert('Debe seleccionar un motivo');
+                return;
+            }
+
+            if (descripcion.length < 10) {
+                alert('La descripción debe tener al menos 10 caracteres');
+                return;
+            }
+
+            // Construir texto completo del motivo
+            const motivoCompleto = `[${motivo}] ${descripcion}`;
+            $('#motivoAjuste').val(motivoCompleto);
+
+            // Cerrar modal y enviar formulario
+            modalJustificacion.hide();
+            document.getElementById('formEditarLote').submit();
+        }
     </script>
 }

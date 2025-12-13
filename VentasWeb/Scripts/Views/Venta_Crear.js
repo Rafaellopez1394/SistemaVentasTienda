@@ -1,4 +1,4 @@
-﻿var tablaproducto;
+var tablaproducto;
 var tablacliente;
 let tiposPrecio = [];           // Catálogo de tipos de precio
 let clienteSeleccionado = null; // Cliente actual

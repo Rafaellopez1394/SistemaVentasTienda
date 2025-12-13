@@ -253,19 +253,56 @@ namespace CapaDatos
             {
                 var cmd = new SqlCommand(@"
             UPDATE LotesProducto SET
+                CantidadTotal = @CantidadTotal,
+                CantidadDisponible = @CantidadDisponible,
                 FechaCaducidad = @FechaCaducidad,
                 PrecioCompra = @PrecioCompra,
                 PrecioVenta = @PrecioVenta,
+                Usuario = @Usuario,
                 UltimaAct = GETDATE()
             WHERE LoteID = @LoteID", cnx);
 
+                cmd.Parameters.AddWithValue("@CantidadTotal", lote.CantidadTotal);
+                cmd.Parameters.AddWithValue("@CantidadDisponible", lote.CantidadDisponible);
                 cmd.Parameters.AddWithValue("@FechaCaducidad", (object)lote.FechaCaducidad ?? DBNull.Value);
                 cmd.Parameters.AddWithValue("@PrecioCompra", lote.PrecioCompra);
                 cmd.Parameters.AddWithValue("@PrecioVenta", lote.PrecioVenta);
+                cmd.Parameters.AddWithValue("@Usuario", lote.Usuario ?? "system");
                 cmd.Parameters.AddWithValue("@LoteID", lote.LoteID);
 
                 try { cnx.Open(); return cmd.ExecuteNonQuery() > 0; }
                 catch { return false; }
+            }
+        }
+
+        public bool RegistrarMovimientoInventario(MovimientoInventario movimiento)
+        {
+            using (var cnx = new SqlConnection(Conexion.CN))
+            {
+                var cmd = new SqlCommand(@"
+                    INSERT INTO MovimientosInventario (
+                        LoteID, ProductoID, TipoMovimiento, Cantidad, 
+                        CostoUnitario, Usuario, Fecha, Comentarios
+                    ) VALUES (
+                        @LoteID, @ProductoID, @TipoMovimiento, @Cantidad,
+                        @CostoUnitario, @Usuario, @Fecha, @Comentarios
+                    )", cnx);
+
+                cmd.Parameters.AddWithValue("@LoteID", movimiento.LoteID);
+                cmd.Parameters.AddWithValue("@ProductoID", movimiento.ProductoID);
+                cmd.Parameters.AddWithValue("@TipoMovimiento", movimiento.TipoMovimiento);
+                cmd.Parameters.AddWithValue("@Cantidad", movimiento.Cantidad);
+                cmd.Parameters.AddWithValue("@CostoUnitario", movimiento.CostoUnitario);
+                cmd.Parameters.AddWithValue("@Usuario", movimiento.Usuario);
+                cmd.Parameters.AddWithValue("@Fecha", movimiento.Fecha);
+                cmd.Parameters.AddWithValue("@Comentarios", movimiento.Comentarios ?? "");
+
+                try { cnx.Open(); return cmd.ExecuteNonQuery() > 0; }
+                catch (Exception ex) 
+                { 
+                    System.Diagnostics.Debug.WriteLine($"Error registrando movimiento: {ex.Message}");
+                    return false; 
+                }
             }
         }
 
@@ -460,6 +497,65 @@ namespace CapaDatos
             }
             // Default values si no encuentra el producto
             return new { TasaIVAPorcentaje = 16.00m, Exento = false };
+        }
+
+        public List<MovimientoInventario> ObtenerMovimientosInventario(int? productoId, int? loteId, DateTime? fechaInicio, DateTime? fechaFin)
+        {
+            var lista = new List<MovimientoInventario>();
+            using (var cnx = new SqlConnection(Conexion.CN))
+            {
+                var query = @"
+                    SELECT 
+                        m.MovimientoID, m.LoteID, m.ProductoID, m.TipoMovimiento,
+                        m.Cantidad, m.CostoUnitario, m.Usuario, m.Fecha, m.Comentarios
+                    FROM MovimientosInventario m
+                    WHERE 1=1";
+
+                if (productoId.HasValue)
+                    query += " AND m.ProductoID = @ProductoID";
+                if (loteId.HasValue)
+                    query += " AND m.LoteID = @LoteID";
+                if (fechaInicio.HasValue)
+                    query += " AND m.Fecha >= @FechaInicio";
+                if (fechaFin.HasValue)
+                    query += " AND m.Fecha <= @FechaFin";
+
+                query += " ORDER BY m.Fecha DESC";
+
+                var cmd = new SqlCommand(query, cnx);
+                if (productoId.HasValue) cmd.Parameters.AddWithValue("@ProductoID", productoId.Value);
+                if (loteId.HasValue) cmd.Parameters.AddWithValue("@LoteID", loteId.Value);
+                if (fechaInicio.HasValue) cmd.Parameters.AddWithValue("@FechaInicio", fechaInicio.Value);
+                if (fechaFin.HasValue) cmd.Parameters.AddWithValue("@FechaFin", fechaFin.Value.AddDays(1));
+
+                try
+                {
+                    cnx.Open();
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            lista.Add(new MovimientoInventario
+                            {
+                                MovimientoID = (int)dr["MovimientoID"],
+                                LoteID = (int)dr["LoteID"],
+                                ProductoID = (int)dr["ProductoID"],
+                                TipoMovimiento = dr["TipoMovimiento"].ToString(),
+                                Cantidad = (int)dr["Cantidad"],
+                                CostoUnitario = (decimal)dr["CostoUnitario"],
+                                Usuario = dr["Usuario"].ToString(),
+                                Fecha = (DateTime)dr["Fecha"],
+                                Comentarios = dr["Comentarios"].ToString()
+                            });
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error obteniendo movimientos: {ex.Message}");
+                }
+            }
+            return lista;
         }
     }
 }

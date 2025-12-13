@@ -4,7 +4,7 @@ let tiposFinanciamiento = [];
 
 $(document).ready(function () {
 
-    // 1. CARGAR CATÁLOGOS PRIMERO
+    // 1. CARGAR CATéLOGOS PRIMERO
     cargarCatalogos();
 
     // 2. INICIALIZAR DATATABLE
@@ -14,7 +14,7 @@ $(document).ready(function () {
             url: '/Cliente/Obtener',
             type: 'GET',
             dataType: 'json',
-            dataSrc: 'data'  // ¡CRUCIAL! Tu controlador devuelve { data: lista }
+            dataSrc: 'data'  // Â¡CRUCIAL! Tu controlador devuelve { data: lista }
         },
         columns: [
             { data: 'ClienteID' },
@@ -27,7 +27,7 @@ $(document).ready(function () {
                 data: 'TipoPrecioID',
                 render: function (data) {
                     const tipo = tiposPrecio.find(t => t.TipoPrecioID == data);
-                    return tipo ? `<strong>${tipo.Nombre}</strong>` : 'Público General';
+                    return tipo ? `<strong>${tipo.Nombre}</strong>` : 'Péºblico General';
                 }
             },
             {
@@ -40,7 +40,7 @@ $(document).ready(function () {
             {
                 data: 'Activo',
                 render: d => d
-                    ? '<span class="badge badge-success">Sí</span>'
+                    ? '<span class="badge badge-success">Sé­</span>'
                     : '<span class="badge badge-danger">No</span>'
             },
             {
@@ -62,7 +62,7 @@ $(document).ready(function () {
     });
 });
 
-// CARGAR CATÁLOGOS
+// CARGAR CATéLOGOS
 function cargarCatalogos() {
     $.getJSON('/Cliente/ObtenerCatalogos')
         .done(function (res) {
@@ -106,7 +106,7 @@ function abrirPopUpForm(jsonString) {
         $("#txtLimiteCredito").val(data.LimiteCredito || '');
         $("#txtSaldoPendiente").val(data.SaldoPendiente || '');
         
-        // AQUÍ ESTÁ LA CLAVE: usar IDs, no texto
+        // AQUé ESTé LA CLAVE: usar IDs, no texto
         $("#cboTipoPrecio").val(data.TipoPrecioID || 1);
         $("#cboTipoFinanciamiento").val(data.TipoFinanciamientoID || '');
         
@@ -149,7 +149,7 @@ function Guardar() {
         UnidadesCredito: $("#txtUnidadesCredito").val() ? parseInt($("#txtUnidadesCredito").val()) : null,
         Notas: $("#txtNotas").val().trim(),
 
-        // AQUÍ ESTÁ EL CAMBIO CLAVE:
+        // AQUé ESTé EL CAMBIO CLAVE:
         TipoPrecioID: parseInt($("#cboTipoPrecio").val()) || 1,
         TipoFinanciamientoID: $("#cboTipoFinanciamiento").val() ? parseInt($("#cboTipoFinanciamiento").val()) : null,
 
@@ -170,14 +170,14 @@ function Guardar() {
             }
         },
         error: function () {
-            alert("Error de comunicación");
+            alert("Error de comunicacié³n");
         }
     });
 }
 
 // ELIMINAR
 function Eliminar(id) {
-    if (confirm("¿Eliminar este cliente?")) {
+    if (confirm("Â¿Eliminar este cliente?")) {
         $.get("/Cliente/Eliminar?id=" + id, function (resp) {
             if (resp.resultado) {
                 tabla.ajax.reload();

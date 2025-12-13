@@ -32,9 +32,9 @@ $(document).ready(function () {
                     infoCreditoHtml += `<br/><strong>Créditos Activos:</strong><ul>`;
                     creditosActivos.forEach(cred => {
                         let detalle = `<li>${cred.TipoCredito} (${cred.Criterio}): `;
-                        if(cred.Criterio === 'Dinero') detalle += `Límite $${cred.LimiteDinero.toFixed(2)}`;
-                        if(cred.Criterio === 'Producto') detalle += `Límite ${cred.LimiteProducto} unidades`;
-                        if(cred.Criterio === 'Tiempo') detalle += `Plazo de ${cred.PlazoDias} días`;
+                        if (cred.Criterio === 'Dinero') detalle += `Límite $${cred.LimiteDinero.toFixed(2)}`;
+                        if (cred.Criterio === 'Producto') detalle += `Límite ${cred.LimiteProducto} unidades`;
+                        if (cred.Criterio === 'Tiempo') detalle += `Plazo de ${cred.PlazoDias} días`;
                         detalle += `</li>`;
                         infoCreditoHtml += detalle;
                     });
@@ -43,57 +43,15 @@ $(document).ready(function () {
                     infoCreditoHtml += "<br/><strong>Crédito:</strong> Cliente sin créditos activos asignados.";
                 }
                 $("#lblInfoExtraCliente").html(infoCreditoHtml);
-            }).fail(function() {
+            }).fail(function () {
                 $("#lblInfoExtraCliente").html(infoCreditoHtml + "<br/><em>No se pudo cargar la información del crédito.</em>");
             });
-
 
             // Cargar tabla de ventas a crédito
             cargarVentasCredito(clienteSeleccionado.ClienteID);
         }
     });
 
-    // 2. LÓGICA PARA REGISTRAR UN PAGO
-    $("#btnRegistrarPago").on("click", function () {
-        const monto = parseFloat($("#txtMontoPago").val());
-
-        if (!clienteSeleccionado) {
-            alert("Por favor, seleccione un cliente.");
-            return;
-        }
-        if (isNaN(monto) || monto <= 0) {
-            alert("El monto del pago debe ser un número mayor a cero.");
-            return;
-        }
-
-        const pago = {
-            ClienteID: clienteSeleccionado.ClienteID,
-            Monto: monto,
-            Comentario: $("#txtComentarioPago").val()
-        };
-
-        // Reutilizamos el endpoint de VentaController para registrar el pago
-        $.ajax({
-            url: "/Venta/RegistrarPago",
-            type: "POST",
-            contentType: "application/json",
-            data: JSON.stringify(pago),
-            success: function (response) {
-                if (response.resultado) {
-                    alert("Pago registrado con éxito.");
-                    // Limpiar campos y recargar las ventas
-                    $("#txtMontoPago").val("");
-                    $("#txtComentarioPago").val("");
-                    cargarVentasCredito(clienteSeleccionado.ClienteID);
-                } else {
-                    alert("Hubo un error al registrar el pago.");
-                }
-            },
-            error: function () {
-                alert("Error de comunicación con el servidor.");
-            }
-        });
-    });
 });
 
 /**
@@ -109,16 +67,20 @@ function cargarVentasCredito(clienteId) {
 
         if (response.data && response.data.length > 0) {
             response.data.forEach(venta => {
-                saldoTotal += venta.Saldo;
+                saldoTotal += venta.SaldoPendiente;
+                const fechaVenta = parsearFechaNet(venta.FechaVenta).toLocaleDateString();
                 tbody.append(`
                     <tr>
-                        <td>${venta.Folio}</td>
-                        <td>${new Date(parseInt(venta.Fecha.substr(6))).toLocaleDateString()}</td>
+                        <td>${venta.VentaID.substr(0, 8).toUpperCase()}</td>
+                        <td>${fechaVenta}</td>
                         <td>$${venta.Total.toFixed(2)}</td>
-                        <td>$${venta.Saldo.toFixed(2)}</td>
+                        <td class="text-danger font-weight-bold">$${venta.SaldoPendiente.toFixed(2)}</td>
                         <td>
-                            <button class="btn btn-info btn-sm" onclick="verDetalleVenta('${venta.VentaID}')">
-                                <i class="fas fa-eye"></i> Ver Detalle
+                            <button class="btn btn-success btn-sm mr-1" onclick="abrirModalPago('${venta.VentaID}', '${venta.ClienteID}', '${venta.RazonSocial}', ${venta.Total}, ${venta.SaldoPendiente})" title="Registrar Pago">
+                                <i class="fas fa-dollar-sign"></i>
+                            </button>
+                            <button class="btn btn-info btn-sm" onclick="verDetalleVenta('${venta.VentaID}')" title="Ver Detalle">
+                                <i class="fas fa-eye"></i>
                             </button>
                         </td>
                     </tr>
@@ -130,16 +92,211 @@ function cargarVentasCredito(clienteId) {
 
         // Actualizar el saldo total y mostrar la sección
         $("#lblSaldoTotal").text(`$${saldoTotal.toFixed(2)}`);
+        
+        // Mostrar botón "Pagar Todo" si hay saldo pendiente
+        if (saldoTotal > 0) {
+            $("#btnPagarTodo").show();
+        } else {
+            $("#btnPagarTodo").hide();
+        }
+        
         $("#seccionCreditos").removeClass("d-none");
     });
 }
 
 /**
- * (Función PENDIENTE) Muestra el detalle de una venta específica.
+ * Convierte fecha de formato .NET JSON (/Date(...)/) a objeto Date
+ */
+function parsearFechaNet(fechaNet) {
+    if (!fechaNet) return new Date();
+    const timestamp = parseInt(fechaNet.replace(/\/Date\((\d+)\)\//, '$1'));
+    return new Date(timestamp);
+}
+
+/**
+ * Muestra el detalle de una venta específica en un modal.
  * @param {string} ventaId - El ID de la venta a detallar.
  */
 function verDetalleVenta(ventaId) {
-    // Aquí se podría abrir un modal para mostrar los productos de esa venta.
-    // Esto requeriría un nuevo endpoint en el controlador.
-    alert("Función para ver detalle no implementada. ID de Venta: " + ventaId);
+    // Primero mostrar el modal con datos de carga
+    $("#modalDetalleVenta").modal("show");
+
+    $.get("/Venta/ObtenerDetalleVenta", { ventaId: ventaId }, function (response) {
+        if (response.success && response.data) {
+            var venta = response.data;
+
+            document.getElementById("modalDetalleVentaLabel").innerHTML = "Detalle de Venta - " + ventaId.substr(0, 8).toUpperCase();
+            document.getElementById("lblDetalleCliente").innerHTML = venta.RazonSocial || "N/A";
+            document.getElementById("lblDetalleFecha").innerHTML = parsearFechaNet(venta.FechaVenta).toLocaleDateString();
+            document.getElementById("lblDetalleTotal").innerHTML = "$" + venta.Total.toFixed(2);
+            document.getElementById("lblDetalleSaldo").innerHTML = "$" + venta.SaldoPendiente.toFixed(2);
+
+            var tbody = document.querySelector("#tblDetalleVenta tbody");
+            var filasHTML = "";
+
+            if (venta.Detalle && venta.Detalle.length > 0) {
+                for (var i = 0; i < venta.Detalle.length; i++) {
+                    var item = venta.Detalle[i];
+                    var subtotal = item.Cantidad * item.PrecioVenta;
+                    filasHTML += "<tr>" +
+                        "<td>" + item.Producto + "</td>" +
+                        "<td>" + item.Cantidad + "</td>" +
+                        "<td>$" + item.PrecioVenta.toFixed(2) + "</td>" +
+                        "<td>$" + subtotal.toFixed(2) + "</td>" +
+                        "</tr>";
+                }
+            } else {
+                filasHTML = '<tr><td colspan="4" class="text-center">Sin productos</td></tr>';
+            }
+
+            tbody.innerHTML = filasHTML;
+        } else {
+            $("#modalDetalleVenta").modal("hide");
+            alert("No se pudo cargar el detalle de la venta");
+        }
+    }).fail(function () {
+        $("#modalDetalleVenta").modal("hide");
+        alert("Error al obtener el detalle de la venta");
+    });
 }
+
+/**
+ * Abre el modal para registrar un pago
+ */
+function abrirModalPago(ventaId, clienteId, razonSocial, total, saldoPendiente) {
+    $("#pagoVentaId").val(ventaId);
+    $("#pagoClienteId").val(clienteId);
+    $("#pagoCliente").text(razonSocial);
+    $("#pagoFolio").text(ventaId.substr(0, 8).toUpperCase());
+    $("#pagoTotal").text("$" + total.toFixed(2));
+    $("#pagoSaldoPendiente").text("$" + saldoPendiente.toFixed(2));
+
+    $("#pagoMonto").val(saldoPendiente.toFixed(2));
+    $("#pagoFormaPago").val("");
+    $("#pagoReferencia").val("");
+    $("#pagoComentario").val("");
+    $("#pagoGenerarFactura").prop("checked", false);
+    $("#pagoGenerarComplemento").prop("checked", false);
+
+    $("#modalRegistrarPago").modal("show");
+}
+
+/**
+ * Abre el modal para pagar todo el saldo pendiente del cliente
+ */
+$("#btnPagarTodo").click(function () {
+    if (!clienteSeleccionado) {
+        alert("No hay cliente seleccionado");
+        return;
+    }
+
+    const saldoTotalTexto = $("#lblSaldoTotal").text().replace("$", "");
+    const saldoTotal = parseFloat(saldoTotalTexto);
+
+    if (saldoTotal <= 0) {
+        alert("No hay saldo pendiente para pagar");
+        return;
+    }
+
+    // Usar el modal existente pero con valores especiales (Guid vacío indica pago total)
+    $("#pagoVentaId").val("00000000-0000-0000-0000-000000000000");
+    $("#pagoClienteId").val(clienteSeleccionado.ClienteID);
+    $("#pagoCliente").text(clienteSeleccionado.RazonSocial);
+    $("#pagoFolio").text("PAGO TOTAL");
+    $("#pagoTotal").text("$" + saldoTotal.toFixed(2));
+    $("#pagoSaldoPendiente").text("$" + saldoTotal.toFixed(2));
+
+    $("#pagoMonto").val(saldoTotal.toFixed(2));
+    $("#pagoFormaPago").val("");
+    $("#pagoReferencia").val("");
+    $("#pagoComentario").val("Pago total de saldo pendiente");
+    $("#pagoGenerarFactura").prop("checked", false);
+    $("#pagoGenerarComplemento").prop("checked", false);
+
+    $("#modalRegistrarPago").modal("show");
+});
+
+/**
+ * Registra el pago de una venta a crédito
+ */
+$("#btnConfirmarPago").click(function () {
+    const ventaId = $("#pagoVentaId").val();
+    const clienteId = $("#pagoClienteId").val();
+    const monto = parseFloat($("#pagoMonto").val());
+    const formaPago = $("#pagoFormaPago").val();
+    const referencia = $("#pagoReferencia").val();
+    const comentario = $("#pagoComentario").val();
+    const generarFactura = $("#pagoGenerarFactura").is(":checked");
+    const generarComplemento = $("#pagoGenerarComplemento").is(":checked");
+
+    if (!monto || monto <= 0) {
+        alert("Por favor ingrese un monto válido");
+        $("#pagoMonto").focus();
+        return;
+    }
+
+    if (!formaPago) {
+        alert("Por favor seleccione una forma de pago");
+        $("#pagoFormaPago").focus();
+        return;
+    }
+
+    const saldoPendiente = parseFloat($("#pagoSaldoPendiente").text().replace("$", ""));
+    if (monto > saldoPendiente) {
+        alert("El monto del pago no puede ser mayor al saldo pendiente");
+        $("#pagoMonto").focus();
+        return;
+    }
+
+    const pago = {
+        VentaID: ventaId,
+        ClienteID: clienteId,
+        Monto: monto,
+        FormaPago: formaPago,
+        Referencia: referencia,
+        Comentario: comentario,
+        GenerarFactura: generarFactura,
+        GenerarComplemento: generarComplemento
+    };
+
+    const montoPagoStr = monto.toFixed(2);
+    const esPagoTotal = ventaId === "00000000-0000-0000-0000-000000000000";
+    const mensaje = esPagoTotal 
+        ? `¿Confirma el pago total de $${montoPagoStr} para liquidar todas las ventas pendientes?`
+        : `¿Confirma el registro del pago por $${montoPagoStr}?`;
+
+    if (!confirm(mensaje)) {
+        return;
+    }
+
+    $("#btnConfirmarPago")
+        .prop("disabled", true)
+        .html('<i class="fas fa-spinner fa-spin"></i> Procesando...');
+
+    // Si es pago total, usar endpoint especial
+    const url = esPagoTotal ? "/Venta/RegistrarPagoTotal" : "/Venta/RegistrarPago";
+
+    $.ajax({
+        url: url,
+        method: "POST",
+        contentType: "application/json",
+        data: JSON.stringify(pago),
+        success: function (response) {
+            if (response.success) {
+                alert("Pago registrado correctamente");
+                $("#modalRegistrarPago").modal("hide");
+
+                const clienteIdActual = $("#pagoClienteId").val();
+                cargarVentasCredito(clienteIdActual);
+            } else {
+                alert("Error al registrar el pago: " + (response.mensaje || "Error desconocido"));
+            }
+        },
+        error: function () {
+            alert("Error de comunicación con el servidor");
+        },
+        complete: function () {
+            $("#btnConfirmarPago").prop("disabled", false).html('<i class="fas fa-check"></i> Registrar Pago');
+        }
+    });
+});

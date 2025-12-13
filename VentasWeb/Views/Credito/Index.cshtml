@@ -47,7 +47,7 @@
                         <i class="fas fa-file-invoice-dollar"></i> Ventas a Crédito Pendientes
                     </div>
                     <div class="card-body">
-                        <table id="tblVentasCredito" class="table table-bordered table-hover" style="width:100%">
+                        <table id="tblVentasCredito" class="table table-bordered table-hover table-sm" style="width:100%">
                             <thead class="thead-light">
                                 <tr>
                                     <th>Folio</th>
@@ -64,25 +64,23 @@
                     </div>
                 </div>
             </div>
-            <!-- Resumen y Pagos -->
+            <!-- Resumen -->
             <div class="col-lg-4">
                 <div class="card shadow">
                     <div class="card-header bg-success text-white">
-                        <i class="fas fa-hand-holding-usd"></i> Resumen y Pagos
+                        <i class="fas fa-hand-holding-usd"></i> Resumen de Crédito
                     </div>
                     <div class="card-body">
-                        <h4>Saldo Total: <span id="lblSaldoTotal" class="badge bg-danger text-white">S/ 0.00</span></h4>
+                        <h4>Saldo Total Pendiente:</h4>
+                        <h3><span id="lblSaldoTotal" class="badge badge-danger">$0.00</span></h3>
                         <hr />
-                        <h5>Registrar Nuevo Pago</h5>
-                        <div class="form-group">
-                            <label for="txtMontoPago">Monto del Pago:</label>
-                            <input type="number" step="0.01" class="form-control" id="txtMontoPago" placeholder="0.00">
+                        <button id="btnPagarTodo" class="btn btn-success btn-block mb-3" style="display:none;">
+                            <i class="fas fa-money-bill-wave"></i> Pagar Todo el Saldo
+                        </button>
+                        <div class="alert alert-info" role="alert">
+                            <i class="fas fa-info-circle"></i>
+                            Para registrar un pago, haga clic en el botón de la venta correspondiente.
                         </div>
-                        <div class="form-group">
-                            <label for="txtComentarioPago">Comentario (Opcional):</label>
-                            <textarea class="form-control" id="txtComentarioPago" rows="2"></textarea>
-                        </div>
-                        <button class="btn btn-success w-100" id="btnRegistrarPago"><i class="fas fa-save"></i> Registrar Pago</button>
                     </div>
                 </div>
             </div>
@@ -90,24 +88,35 @@
     </div>
 </div>
 
-<!-- Modal Detalle de Venta -->
+<!-- Modal: Detalle de Venta -->
 <div class="modal fade" id="modalDetalleVenta" tabindex="-1" role="dialog" aria-labelledby="modalDetalleVentaLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header bg-info text-white">
-                <h5 class="modal-title" id="modalDetalleVentaLabel">Detalle de la Venta</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <h5 class="modal-title" id="modalDetalleVentaLabel">Detalle de Venta</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
             <div class="modal-body">
-                <p><strong>Folio:</strong> <span id="detalleFolio"></span></p>
-                <p><strong>Fecha:</strong> <span id="detalleFecha"></span></p>
-                <p><strong>Total:</strong> <span id="detalleTotal"></span></p>
-                <p><strong>Saldo Pendiente:</strong> <span id="detalleSaldo"></span></p>
-                <hr/>
-                <h5>Productos</h5>
-                <table class="table table-sm table-bordered">
+                <div class="row mb-3">
+                    <div class="col-md-12">
+                        <p><strong>Cliente:</strong> <span id="lblDetalleCliente">Cargando...</span></p>
+                    </div>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-4">
+                        <p><strong>Fecha:</strong> <span id="lblDetalleFecha">Cargando...</span></p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong>Total:</strong> <span id="lblDetalleTotal" class="text-success font-weight-bold">Cargando...</span></p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong>Saldo Pendiente:</strong> <span id="lblDetalleSaldo" class="text-danger font-weight-bold">Cargando...</span></p>
+                    </div>
+                </div>
+                <h6><i class="fas fa-boxes"></i> Productos:</h6>
+                <table class="table table-bordered table-sm" id="tblDetalleVenta">
                     <thead class="thead-light">
                         <tr>
                             <th>Producto</th>
@@ -116,10 +125,39 @@
                             <th>Subtotal</th>
                         </tr>
                     </thead>
-                    <tbody id="tblDetalleProductos">
-                        <!-- Contenido se cargará dinámicamente -->
+                    <tbody>
+                        <tr><td colspan="4" class="text-center">Cargando...</td></tr>
                     </tbody>
                 </table>
+                
+                <hr />
+                
+                <!-- Historial de Pagos/Abonos -->
+                <h6><i class="fas fa-money-check-alt"></i> Historial de Pagos/Abonos:</h6>
+                <div id="seccionPagos">
+                    <table class="table table-bordered table-sm" id="tblHistorialPagos">
+                        <thead class="thead-success">
+                            <tr>
+                                <th>Fecha</th>
+                                <th>Monto</th>
+                                <th>Forma de Pago</th>
+                                <th>Referencia</th>
+                                <th>Comentario</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr><td colspan="5" class="text-center">Cargando...</td></tr>
+                        </tbody>
+                    </table>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Total Pagado:</strong> <span id="lblTotalPagado" class="text-success font-weight-bold">$0.00</span></p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Estatus:</strong> <span id="lblEstatusPago" class="badge">Pendiente</span></p>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
@@ -128,7 +166,228 @@
     </div>
 </div>
 
+<!-- Modal: Registrar Pago -->
+<div class="modal fade" id="modalRegistrarPago" tabindex="-1" role="dialog" aria-labelledby="modalRegistrarPagoLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title" id="modalRegistrarPagoLabel">Registrar Pago</h5>
+                <button type="button" class="close text-white" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="pagoVentaId" />
+                <input type="hidden" id="pagoClienteId" />
+                
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <p><strong>Cliente:</strong> <span id="pagoCliente"></span></p>
+                        <p><strong>Folio:</strong> <span id="pagoFolio"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Total Venta:</strong> <span id="pagoTotal" class="text-info"></span></p>
+                        <p><strong>Saldo Pendiente:</strong> <span id="pagoSaldoPendiente" class="text-danger font-weight-bold"></span></p>
+                    </div>
+                </div>
+                
+                <hr />
+                
+                <div class="form-group">
+                    <label for="pagoMonto">Monto del Pago <span class="text-danger">*</span></label>
+                    <input type="number" step="0.01" class="form-control form-control-lg" id="pagoMonto" placeholder="0.00" />
+                    <small class="form-text text-muted">Ingrese el monto que el cliente está pagando</small>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pagoFormaPago">Forma de Pago <span class="text-danger">*</span></label>
+                    <select class="form-control" id="pagoFormaPago">
+                        <option value="">-- Seleccione --</option>
+                        <option value="01">01 - Efectivo</option>
+                        <option value="02">02 - Cheque nominativo</option>
+                        <option value="03">03 - Transferencia electrónica de fondos</option>
+                        <option value="04">04 - Tarjeta de crédito</option>
+                        <option value="28">28 - Tarjeta de débito</option>
+                        <option value="99">99 - Por definir</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="pagoReferencia">Referencia / No. de Operación</label>
+                    <input type="text" class="form-control" id="pagoReferencia" placeholder="Número de cheque, referencia bancaria, etc." />
+                </div>
+                
+                <div class="form-group">
+                    <label for="pagoComentario">Comentario / Notas</label>
+                    <textarea class="form-control" id="pagoComentario" rows="2" placeholder="Comentarios adicionales..."></textarea>
+                </div>
+                
+                <hr />
+                
+                <h6 class="mb-3"><i class="fas fa-file-invoice"></i> Opciones de Facturación</h6>
+                
+                <div class="form-check mb-2">
+                    <input class="form-check-input" type="checkbox" id="pagoGenerarFactura" />
+                    <label class="form-check-label" for="pagoGenerarFactura">
+                        <strong>Generar Factura (CFDI)</strong> - Se generará una factura de ingreso por este pago
+                    </label>
+                </div>
+                
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="pagoGenerarComplemento" />
+                    <label class="form-check-label" for="pagoGenerarComplemento">
+                        <strong>Generar Complemento de Pago</strong> - Se generará un CFDI de complemento de pago
+                    </label>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i>
+                    <strong>Nota:</strong> Si el pago liquida completamente la venta, podrá generar la factura. 
+                    Si es un pago parcial, se recomienda generar un complemento de pago.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnConfirmarPago">
+                    <i class="fas fa-check"></i> Registrar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 @section scripts {
     <!-- Referencia al JS específico para esta vista -->
-    <script src="~/Scripts/Views/Credito.js"></script>
+    <script src="~/Scripts/Views/Credito.js?v=20241208001"></script>
+    
+    <script type="text/javascript">
+        function verDetalleVenta(ventaId) {
+            $("#modalDetalleVenta").modal("show");
+            
+            // Cargar detalle de la venta
+            $.get("/Venta/ObtenerDetalleVenta", { ventaId: ventaId }, function (response) {
+                if (response.success && response.data) {
+                    var venta = response.data;
+                    
+                    document.getElementById("modalDetalleVentaLabel").innerHTML =
+                        "Detalle de Venta - " + ventaId.substr(0, 8).toUpperCase();
+
+                    document.getElementById("lblDetalleCliente").innerHTML =
+                        venta.RazonSocial || "N/A";
+                    
+                    var timestamp = parseInt(venta.FechaVenta.replace(/\/Date\((\d+)\)\//, '$1'));
+                    var fecha = new Date(timestamp);
+
+                    document.getElementById("lblDetalleFecha").innerHTML =
+                        fecha.toLocaleDateString();
+
+                    document.getElementById("lblDetalleTotal").innerHTML =
+                        "$" + venta.Total.toFixed(2);
+
+                    document.getElementById("lblDetalleSaldo").innerHTML =
+                        "$" + venta.SaldoPendiente.toFixed(2);
+                    
+                    var tbody = document.querySelector("#tblDetalleVenta tbody");
+                    var filasHTML = "";
+                    
+                    if (venta.Detalle && venta.Detalle.length > 0) {
+                        for (var i = 0; i < venta.Detalle.length; i++) {
+                            var item = venta.Detalle[i];
+                            var subtotal = item.Cantidad * item.PrecioVenta;
+
+                            filasHTML += "<tr>" +
+                                "<td>" + item.Producto + "</td>" +
+                                "<td>" + item.Cantidad + "</td>" +
+                                "<td>$" + item.PrecioVenta.toFixed(2) + "</td>" +
+                                "<td>$" + subtotal.toFixed(2) + "</td>" +
+                                "</tr>";
+                        }
+                    } else {
+                        filasHTML = '<tr><td colspan="4" class="text-center">Sin productos</td></tr>';
+                    }
+                    
+                    tbody.innerHTML = filasHTML;
+                    
+                    // Mostrar estatus de pago
+                    var lblEstatus = document.getElementById("lblEstatusPago");
+                    if (venta.SaldoPendiente <= 0) {
+                        lblEstatus.className = "badge badge-success";
+                        lblEstatus.innerHTML = "PAGADO";
+                    } else if (venta.TotalPagado > 0) {
+                        lblEstatus.className = "badge badge-warning";
+                        lblEstatus.innerHTML = "PARCIAL";
+                    } else {
+                        lblEstatus.className = "badge badge-danger";
+                        lblEstatus.innerHTML = "PENDIENTE";
+                    }
+
+                } else {
+                    $("#modalDetalleVenta").modal("hide");
+                    alert("No se pudo cargar el detalle de la venta");
+                }
+            }).fail(function() {
+                $("#modalDetalleVenta").modal("hide");
+                alert("Error al obtener el detalle de la venta");
+            });
+            
+            // Cargar historial de pagos
+            cargarHistorialPagos(ventaId);
+        }
+        
+        function cargarHistorialPagos(ventaId) {
+            var tbodyPagos = document.querySelector("#tblHistorialPagos tbody");
+            tbodyPagos.innerHTML = '<tr><td colspan="5" class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando...</td></tr>';
+            
+            $.get("/Venta/ObtenerHistorialPagos", { ventaId: ventaId }, function (response) {
+                if (response.success && response.data) {
+                    var pagos = response.data;
+                    var filasHTML = "";
+                    var totalPagado = 0;
+                    
+                    if (pagos.length > 0) {
+                        for (var i = 0; i < pagos.length; i++) {
+                            var pago = pagos[i];
+                            totalPagado += pago.Monto;
+                            
+                            var fechaPago = "";
+                            if (pago.FechaPago) {
+                                var timestamp = parseInt(pago.FechaPago.replace(/\/Date\((\d+)\)\//, '$1'));
+                                fechaPago = new Date(timestamp).toLocaleDateString() + " " + new Date(timestamp).toLocaleTimeString();
+                            }
+                            
+                            filasHTML += "<tr>" +
+                                "<td>" + fechaPago + "</td>" +
+                                "<td class='text-success font-weight-bold'>$" + pago.Monto.toFixed(2) + "</td>" +
+                                "<td>" + obtenerDescripcionFormaPago(pago.FormaPago) + "</td>" +
+                                "<td>" + (pago.Referencia || "-") + "</td>" +
+                                "<td>" + (pago.Comentario || "-") + "</td>" +
+                                "</tr>";
+                        }
+                    } else {
+                        filasHTML = '<tr><td colspan="5" class="text-center text-muted">No se han registrado pagos</td></tr>';
+                    }
+                    
+                    tbodyPagos.innerHTML = filasHTML;
+                    document.getElementById("lblTotalPagado").innerHTML = "$" + totalPagado.toFixed(2);
+                    
+                } else {
+                    tbodyPagos.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error al cargar pagos</td></tr>';
+                }
+            }).fail(function() {
+                tbodyPagos.innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error de conexion</td></tr>';
+            });
+        }
+        
+        function obtenerDescripcionFormaPago(clave) {
+            var formas = {
+                '01': 'Efectivo',
+                '02': 'Cheque nominativo',
+                '03': 'Transferencia electronica',
+                '04': 'Tarjeta de credito',
+                '28': 'Tarjeta de debito',
+                '99': 'Por definir'
+            };
+            return formas[clave] || clave || 'No especificado';
+        }
+    </script>
 }

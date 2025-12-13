@@ -101,7 +101,7 @@ function finalizarCompra() {
         data: JSON.stringify(compra)
     }).done(res => {
         if (res.resultado) {
-            mostrarToast(res.mensaje || "Compra registrada con éxito", "success");
+            mostrarToast(res.mensaje || "Compra registrada con Ã©xito", "success");
             carrito = [];
             actualizarCarrito();
             proveedorActual = null;
@@ -120,7 +120,7 @@ function actualizarPrecioVenta(i, val) { carrito[i].PrecioVenta = parseFloat(val
 function eliminarItem(i) { carrito.splice(i, 1); actualizarCarrito(); }
 
 function mostrarToast(mensaje, tipo = "info") {
-    $("#toastTitulo").text(tipo === "success" ? "Éxito" : "Error");
+    $("#toastTitulo").text(tipo === "success" ? "Ã‰xito" : "Error");
     $("#toastMensaje").text(mensaje);
     $("#liveToast").removeClass().addClass(`toast bg-${tipo === "success" ? "success" : tipo === "danger" ? "danger" : "warning"} text-white`);
     new bootstrap.Toast(document.getElementById('liveToast')).show();

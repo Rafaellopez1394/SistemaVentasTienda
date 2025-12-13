@@ -76,8 +76,8 @@ namespace VentasWeb.Controllers
                     return Json(new { resultado, mensaje }, JsonRequestBehavior.AllowGet);
                 }
 
-                // 2. GUARDAR TIPOS DE CRÉDITO ASIGNADOS
-                if (payload.tiposCreditoIDs != null && payload.tiposCreditoIDs.Count > 0)
+                // 2. GUARDAR TIPOS DE CRÉDITO ASIGNADOS CON LÍMITES
+                if (payload.creditosConLimites != null && payload.creditosConLimites.Count > 0)
                 {
                     // Primero, eliminar créditos anteriores
                     using (var cnx = new System.Data.SqlClient.SqlConnection(Conexion.CN))
@@ -89,10 +89,16 @@ namespace VentasWeb.Controllers
                         cmdDelete.ExecuteNonQuery();
                     }
 
-                    // Luego, insertar los nuevos
-                    foreach (var tipoCreditoID in payload.tiposCreditoIDs)
+                    // Luego, insertar los nuevos con sus límites
+                    foreach (var credito in payload.creditosConLimites)
                     {
-                        CD_TipoCredito.Instancia.AsignarCreditoCliente(objeto.ClienteID, tipoCreditoID);
+                        CD_TipoCredito.Instancia.AsignarCreditoCliente(
+                            objeto.ClienteID, 
+                            credito.tipoCreditoID,
+                            credito.limiteDinero,
+                            credito.limiteProducto,
+                            credito.plazoDias
+                        );
                     }
                 }
 

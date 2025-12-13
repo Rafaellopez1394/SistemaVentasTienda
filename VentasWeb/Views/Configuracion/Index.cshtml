@@ -1,0 +1,262 @@
+@{
+    ViewBag.Title = "Configuracion del Sistema";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+@section estilos {
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" rel="stylesheet" />
+}
+
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="fas fa-cogs"></i> Configuracion del Sistema</h2>
+    
+    <div class="row">
+        <!-- Menu de Opciones -->
+        <div class="col-md-3">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <i class="fas fa-list"></i> Opciones
+                </div>
+                <div class="list-group list-group-flush" id="menuConfiguracion">
+                    <a href="#" class="list-group-item list-group-item-action active" data-seccion="general">
+                        <i class="fas fa-store"></i> Datos del Negocio
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" data-seccion="impresoras">
+                        <i class="fas fa-print"></i> Impresoras
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" data-seccion="usuarios">
+                        <i class="fas fa-users"></i> Usuarios
+                    </a>
+                    <a href="#" class="list-group-item list-group-item-action" data-seccion="tickets">
+                        <i class="fas fa-receipt"></i> Tickets
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Contenido -->
+        <div class="col-md-9">
+            <!-- Seccion: Datos del Negocio -->
+            <div id="seccionGeneral" class="seccion-config">
+                <div class="card shadow">
+                    <div class="card-header bg-info text-white">
+                        <i class="fas fa-store"></i> Datos del Negocio
+                    </div>
+                    <div class="card-body">
+                        <form id="formDatosNegocio">
+                            <input type="hidden" id="configID" value="0" />
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label><i class="fas fa-building"></i> Nombre del Negocio</label>
+                                        <input type="text" class="form-control" id="txtNombreNegocio" maxlength="200" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label><i class="fas fa-id-card"></i> RFC</label>
+                                        <input type="text" class="form-control" id="txtRFC" maxlength="20" />
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label><i class="fas fa-map-marker-alt"></i> Direccion</label>
+                                <textarea class="form-control" id="txtDireccion" rows="2" maxlength="500"></textarea>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label><i class="fas fa-phone"></i> Telefono</label>
+                                        <input type="text" class="form-control" id="txtTelefono" maxlength="50" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label><i class="fas fa-envelope"></i> Email</label>
+                                        <input type="email" class="form-control" id="txtEmail" maxlength="100" />
+                                    </div>
+                                </div>
+                            </div>
+                            <hr />
+                            <button type="button" class="btn btn-success" onclick="guardarDatosNegocio()">
+                                <i class="fas fa-save"></i> Guardar Cambios
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Seccion: Impresoras -->
+            <div id="seccionImpresoras" class="seccion-config d-none">
+                <div class="card shadow">
+                    <div class="card-header bg-warning">
+                        <i class="fas fa-print"></i> Configuracion de Impresoras
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i> Configure las impresoras para cada tipo de documento.
+                        </div>
+                        
+                        <!-- Impresora de Tickets -->
+                        <div class="card mb-3">
+                            <div class="card-header">
+                                <i class="fas fa-receipt"></i> Impresora de Tickets
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Impresora</label>
+                                            <select class="form-control" id="cboImpresoraTicket">
+                                                <option value="">-- Seleccione --</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>Ancho de Papel</label>
+                                            <select class="form-control" id="cboAnchoTicket">
+                                                <option value="58" selected>58mm (JP58H)</option>
+                                                <option value="80">80mm</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group">
+                                            <label>&nbsp;</label>
+                                            <button type="button" class="btn btn-success btn-block" onclick="guardarImpresoraTicket()">
+                                                <i class="fas fa-save"></i> Guardar
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Botones de prueba -->
+                        <div class="text-center">
+                            <button type="button" class="btn btn-outline-primary" onclick="imprimirTicketPrueba()">
+                                <i class="fas fa-print"></i> Imprimir Ticket de Prueba
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary ml-2" onclick="cargarImpresoras()">
+                                <i class="fas fa-sync"></i> Actualizar Lista
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Seccion: Usuarios -->
+            <div id="seccionUsuarios" class="seccion-config d-none">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <i class="fas fa-users"></i> Administracion de Usuarios
+                        <button type="button" class="btn btn-light btn-sm float-right" onclick="mostrarModalUsuario()">
+                            <i class="fas fa-plus"></i> Nuevo Usuario
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <table class="table table-bordered table-hover" id="tblUsuarios">
+                            <thead class="thead-dark">
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Nombre</th>
+                                    <th>Rol</th>
+                                    <th>Estado</th>
+                                    <th>Ultimo Acceso</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Cargado por JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Seccion: Tickets -->
+            <div id="seccionTickets" class="seccion-config d-none">
+                <div class="card shadow">
+                    <div class="card-header bg-secondary text-white">
+                        <i class="fas fa-receipt"></i> Configuracion de Tickets
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label><i class="fas fa-comment"></i> Mensaje al pie del ticket</label>
+                            <textarea class="form-control" id="txtMensajeTicket" rows="3" maxlength="500" 
+                                      placeholder="Ejemplo: Gracias por su compra. Vuelva pronto!"></textarea>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="chkImprimirAuto" />
+                            <label class="form-check-label" for="chkImprimirAuto">
+                                <strong>Imprimir ticket automaticamente al finalizar venta</strong>
+                            </label>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="chkMostrarLogo" />
+                            <label class="form-check-label" for="chkMostrarLogo">
+                                <strong>Mostrar logo en el ticket</strong>
+                            </label>
+                        </div>
+                        <hr />
+                        <button type="button" class="btn btn-success" onclick="guardarConfigTickets()">
+                            <i class="fas fa-save"></i> Guardar Configuracion
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Usuario -->
+<div class="modal fade" id="modalUsuario" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="modalUsuarioTitle">Nuevo Usuario</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="usuarioID" value="0" />
+                <div class="form-group">
+                    <label>Correo Electronico <span class="text-danger">*</span></label>
+                    <input type="email" class="form-control" id="txtUsuario" maxlength="100" placeholder="ejemplo@correo.com" />
+                </div>
+                <div class="form-group">
+                    <label>Nombre Completo <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control" id="txtNombreCompleto" maxlength="100" placeholder="Nombres Apellidos" />
+                </div>
+                <div class="form-group">
+                    <label>Contrasena <span class="text-danger" id="lblPassReq">*</span></label>
+                    <input type="password" class="form-control" id="txtPassword" maxlength="50" />
+                    <small class="text-muted" id="txtPassHelp">Minimo 6 caracteres</small>
+                </div>
+                <div class="form-group">
+                    <label>Rol <span class="text-danger">*</span></label>
+                    <select class="form-control" id="cboRol">
+                        <option value="">-- Seleccione --</option>
+                    </select>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" id="chkUsuarioActivo" checked />
+                    <label class="form-check-label" for="chkUsuarioActivo">Usuario Activo</label>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="guardarUsuario()">
+                    <i class="fas fa-save"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="~/Scripts/Views/Configuracion.js"></script>
+}

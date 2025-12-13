@@ -286,6 +286,30 @@ namespace CapaDatos
 
         }
 
+        // Cambiar estado de usuario (activo/inactivo)
+        public bool CambiarEstadoUsuario(int UsuarioID, bool activo)
+        {
+            bool respuesta = false;
+            using (SqlConnection oConexion = new SqlConnection(Conexion.CN))
+            {
+                try
+                {
+                    string query = "UPDATE Usuarios SET Activo = @Activo WHERE UsuarioID = @UsuarioID";
+                    SqlCommand cmd = new SqlCommand(query, oConexion);
+                    cmd.Parameters.AddWithValue("@Activo", activo);
+                    cmd.Parameters.AddWithValue("@UsuarioID", UsuarioID);
+                    
+                    oConexion.Open();
+                    respuesta = cmd.ExecuteNonQuery() > 0;
+                }
+                catch (Exception)
+                {
+                    respuesta = false;
+                }
+            }
+            return respuesta;
+        }
+
 
 
     }

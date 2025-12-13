@@ -1,4 +1,4 @@
-﻿let tabla;
+let tabla;
 let lotesActuales = [];
 
 $(document).ready(function () {
@@ -43,7 +43,6 @@ function inicializarTabla() {
             { data: 'UnidadSAT' },
             { data: 'TasaIVA', render: d => d + '%' },
             { data: 'TasaIEPS', render: d => d > 0 ? d + '%' : '-' },
-            { data: 'Exento', render: d => d ? 'Sí' : 'No' },
             { data: 'Estatus', render: d => d ? '<span class="badge badge-success">Activo</span>' : '<span class="badge badge-secondary">Inactivo</span>' },
             {
                 data: null, orderable: false, render: function (data) {
@@ -85,7 +84,6 @@ function abrirModal(id = 0) {
             $('#cboUnidadSAT').val(p.ClaveUnidadSAT);
             $('#cboTasaIVA').val(p.TasaIVAID);
             $('#cboTasaIEPS').val(p.TasaIEPSID || '');
-            $('#chkExento').prop('checked', p.Exento);
             $('#modalTitulo').text('Editar Producto - ' + p.Nombre);
 
             $.get('/Producto/ObtenerLotes', { productoId: id })
@@ -222,8 +220,7 @@ function Guardar() {
         ClaveProdServSATID: $('#cboClaveSAT').val(),
         ClaveUnidadSAT: $('#cboUnidadSAT').val(),
         TasaIVAID: parseInt($('#cboTasaIVA').val()),
-        TasaIEPSID: $('#cboTasaIEPS').val() ? parseInt($('#cboTasaIEPS').val()) : null,
-        Exento: $('#chkExento').is(':checked')
+        TasaIEPSID: $('#cboTasaIEPS').val() ? parseInt($('#cboTasaIEPS').val()) : null
     };
 
     $.post('/Producto/Guardar', producto)

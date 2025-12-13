@@ -46,6 +46,6 @@ C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\UnitTestProject1\bin\Debug\M
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\UnitTestProject1\bin\Debug\Microsoft.VisualStudio.TestPlatform.TestFramework.Extensions.xml
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\UnitTestProject1\obj\Debug\UnitTestProject1.csproj.AssemblyReference.cache
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\UnitTestProject1\obj\Debug\UnitTestProject1.csproj.CoreCompileInputs.cache
-C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\UnitTestProject1\obj\Debug\UnitTest.40E657F8.Up2Date
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\UnitTestProject1\obj\Debug\UnitTestProject1.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\UnitTestProject1\obj\Debug\UnitTestProject1.pdb
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\UnitTestProject1\obj\Debug\UnitTest.40E657F8.Up2Date

@@ -62,6 +62,8 @@
     <Compile Include="CD_TipoPrecio.cs" />
     <Compile Include="CD_Usuario.cs" />
     <Compile Include="CD_Venta.cs" />
+    <Compile Include="CD_VentaPOS.cs" />
+    <Compile Include="CD_Configuracion.cs" />
     <Compile Include="Conexion.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

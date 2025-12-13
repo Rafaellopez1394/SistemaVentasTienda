@@ -1,0 +1,205 @@
+@{
+    ViewBag.Title = "Punto de Venta (POS)";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .pos-container { height: calc(100vh - 120px); overflow: hidden; }
+    .pos-left { height: 100%; overflow-y: auto; border-right: 2px solid #dee2e6; }
+    .pos-right { height: 100%; overflow-y: auto; }
+    .producto-item { cursor: pointer; transition: all 0.2s; }
+    .producto-item:hover { background-color: #f8f9fa; border-left: 3px solid #007bff; }
+    .carrito-item { border-bottom: 1px solid #dee2e6; padding: 10px 0; }
+    .carrito-total { background: #f8f9fa; padding: 15px; border-radius: 8px; margin-top: 20px; }
+    .cliente-info { background: #e3f2fd; padding: 15px; border-radius: 8px; margin-bottom: 15px; }
+    .credito-warning { background: #fff3cd; padding: 10px; border-radius: 5px; border-left: 4px solid #ffc107; }
+    .credito-success { background: #d4edda; padding: 10px; border-radius: 5px; border-left: 4px solid #28a745; }
+    .btn-finalizar { font-size: 1.2rem; padding: 15px; font-weight: bold; }
+    .cantidad-input { width: 60px; text-align: center; }
+    .search-result-item { padding: 10px; cursor: pointer; border-bottom: 1px solid #eee; }
+    .search-result-item:hover { background: #f8f9fa; }
+</style>
+
+<div class="container-fluid pos-container">
+    <div class="row h-100">
+        <!-- PANEL IZQUIERDO: PRODUCTOS Y CARRITO -->
+        <div class="col-md-7 pos-left">
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-shopping-cart"></i> Buscar Productos</h5>
+                </div>
+                <div class="card-body">
+                    <div class="input-group input-group-lg">
+                        <span class="input-group-text"><i class="fas fa-barcode"></i></span>
+                        <input type="text" class="form-control" id="txtBuscarProducto" placeholder="Buscar por nombre o Código..." autofocus />
+                        <button class="btn btn-primary" onclick="buscarProducto()">
+                            <i class="fas fa-search"></i> Buscar
+                        </button>
+                    </div>
+                    <div id="resultadosBusqueda" class="mt-2" style="max-height: 200px; overflow-y: auto;"></div>
+                </div>
+            </div>
+
+            <!-- CARRITO DE COMPRA -->
+            <div class="card shadow-sm">
+                <div class="card-header bg-success text-white d-flex justify-content-between">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Carrito de Compra</h5>
+                    <button class="btn btn-sm btn-light" onclick="limpiarCarrito()">
+                        <i class="fas fa-trash"></i> Limpiar
+                    </button>
+                </div>
+                <div class="card-body" style="max-height: 300px; overflow-y: auto;">
+                    <div id="carritoItems">
+                        <p class="text-center text-muted">El carrito está vacío</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TOTALES -->
+            <div class="carrito-total">
+                <div class="row">
+                    <div class="col-6">
+                        <h6>Subtotal:</h6>
+                        <h6>IVA:</h6>
+                        <h4 class="text-primary fw-bold">TOTAL:</h4>
+                    </div>
+                    <div class="col-6 text-end">
+                        <h6 id="lblSubtotal">$0.00</h6>
+                        <h6 id="lblIVA">$0.00</h6>
+                        <h4 class="text-primary fw-bold" id="lblTotal">$0.00</h4>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PANEL DERECHO: CLIENTE, PAGO Y FACTURACIÓN -->
+        <div class="col-md-5 pos-right">
+            <!-- CLIENTE -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="fas fa-user"></i> Cliente</h5>
+                </div>
+                <div class="card-body">
+                    <div class="input-group mb-2">
+                        <input type="text" class="form-control" id="txtBuscarCliente" placeholder="Buscar cliente por RFC o nombre..." />
+                        <button class="btn btn-info" onclick="buscarCliente()">
+                            <i class="fas fa-search"></i>
+                        </button>
+                    </div>
+                    <div id="resultadosCliente" style="max-height: 150px; overflow-y: auto;"></div>
+                    
+                    <input type="hidden" id="clienteID" value="00000000-0000-0000-0000-000000000000" />
+                    
+                    <div id="clienteInfo" class="cliente-info" style="display:none;">
+                        <h6 id="clienteNombre" class="mb-1"></h6>
+                        <small id="clienteRFC" class="text-muted"></small>
+                        <div id="clienteCredito" class="mt-2"></div>
+                    </div>
+                    
+                    <div id="clienteGeneral" class="alert alert-secondary">
+                        <i class="fas fa-user-circle"></i> <strong>Cliente General</strong>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TIPO DE VENTA -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-warning">
+                    <h5 class="mb-0"><i class="fas fa-cash-register"></i> Tipo de Venta</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="tipoVenta" id="rdContado" value="CONTADO" checked onchange="cambiarTipoVenta()" />
+                        <label class="form-check-label" for="rdContado">
+                            <i class="fas fa-money-bill-wave"></i> Contado
+                        </label>
+                    </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="tipoVenta" id="rdCredito" value="CREDITO" onchange="cambiarTipoVenta()" disabled />
+                        <label class="form-check-label" for="rdCredito">
+                            <i class="fas fa-credit-card"></i> Crédito
+                        </label>
+                    </div>
+                    <div class="mt-2">
+                        <small class="text-muted"><i class="fas fa-info-circle"></i> Las ventas a crédito no pueden facturarse hasta liquidar el saldo</small>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FORMA DE PAGO (Solo para CONTADO) -->
+            <div class="card shadow-sm mb-3" id="panelFormaPago">
+                <div class="card-header bg-secondary text-white">
+                    <h5 class="mb-0"><i class="fas fa-wallet"></i> Forma de Pago</h5>
+                </div>
+                <div class="card-body">
+                    <select class="form-select form-select-lg mb-3" id="cboFormaPago" onchange="cambiarFormaPago()">
+                        <option value="">Seleccionar forma de pago...</option>
+                    </select>
+
+                    <div id="panelEfectivo" style="display:none;">
+                        <label class="form-label fw-bold">Total a pagar:</label>
+                        <h3 class="text-success" id="lblTotalPagar">$0.00</h3>
+                        
+                        <label class="form-label fw-bold mt-3">Efectivo recibido:</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="txtEfectivoRecibido" placeholder="0.00" step="0.01" onkeyup="calcularCambio()" />
+                        </div>
+                        
+                        <div class="alert alert-info mt-3" id="panelCambio" style="display:none;">
+                            <h5 class="mb-0">Cambio: <span id="lblCambio" class="fw-bold text-success">$0.00</span></h5>
+                        </div>
+                    </div>
+
+                    <select class="form-select mt-3" id="cboMetodoPago">
+                        <option value="">Método de pago...</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- FACTURACIÓN -->
+            <div class="card shadow-sm mb-3" id="panelFacturacion" style="display:none;">
+                <div class="card-header bg-dark text-white">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="chkRequiereFactura" onchange="toggleFacturacion()" />
+                        <label class="form-check-label fw-bold" for="chkRequiereFactura">
+                            <i class="fas fa-file-invoice"></i> Requiere Factura
+                        </label>
+                    </div>
+                </div>
+                <div class="card-body" id="datosFacturacion" style="display:none;">
+                    <div class="mb-2">
+                        <label class="form-label">RFC:</label>
+                        <input type="text" class="form-control" id="txtFacturaRFC" readonly />
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Uso CFDI:</label>
+                        <select class="form-select" id="cboUsoCFDI">
+                            <option value="">Seleccionar...</option>
+                        </select>
+                    </div>
+                    <div class="mb-2">
+                        <label class="form-label">Correo:</label>
+                        <input type="email" class="form-control" id="txtCorreoFactura" placeholder="correo@ejemplo.com" />
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTONES DE ACCIÓN -->
+            <div class="d-grid gap-2">
+                <button class="btn btn-success btn-finalizar" onclick="finalizarVenta()">
+                    <i class="fas fa-check-circle"></i> FINALIZAR VENTA
+                </button>
+                <button class="btn btn-danger btn-lg" onclick="cancelarVenta()">
+                    <i class="fas fa-times-circle"></i> Cancelar Venta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="~/Scripts/Views/VentaPOS.js?v=@DateTime.Now.Ticks"></script>
+}

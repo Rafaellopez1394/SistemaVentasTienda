@@ -31,6 +31,29 @@ namespace VentasWeb.Controllers
             return Json(clientes, JsonRequestBehavior.AllowGet);
         }
 
+        // Obtener detalle de una venta específica
+        [HttpGet]
+        public JsonResult ObtenerDetalleVenta(Guid ventaId)
+        {
+            var venta = CD_Venta.Instancia.ObtenerDetalle(ventaId);
+            return Json(new { success = true, data = venta }, JsonRequestBehavior.AllowGet);
+        }
+
+        // Obtener historial de pagos de una venta
+        [HttpGet]
+        public JsonResult ObtenerHistorialPagos(Guid ventaId)
+        {
+            try
+            {
+                var pagos = CD_Venta.Instancia.ObtenerPagosVenta(ventaId);
+                return Json(new { success = true, data = pagos }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
         // Obtener tipos de crédito del cliente
         [HttpGet]
         public JsonResult ObtenerCreditosCliente(Guid clienteId)
@@ -102,8 +125,113 @@ namespace VentasWeb.Controllers
         public JsonResult RegistrarPago(PagoCliente pago)
         {
             pago.Usuario = User.Identity.Name ?? "system";
-            bool resultado = CD_Venta.Instancia.RegistrarPago(pago);
-            return Json(new { resultado }, JsonRequestBehavior.AllowGet);
+            pago.FechaPago = DateTime.Now;
+            
+            try
+            {
+                string mensajeDetallado;
+                bool resultado = CD_Venta.Instancia.RegistrarPago(pago, out mensajeDetallado);
+                
+                if (resultado)
+                {
+                    return Json(new { success = true, mensaje = mensajeDetallado });
+                }
+                else
+                {
+                    return Json(new { success = false, mensaje = "Error al registrar el pago" });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = ex.Message });
+            }
+        }
+
+        // Registrar pago total - liquida todas las ventas pendientes del cliente
+        [HttpPost]
+        public JsonResult RegistrarPagoTotal(PagoCliente pago)
+        {
+            pago.Usuario = User.Identity.Name ?? "system";
+            pago.FechaPago = DateTime.Now;
+            
+            try
+            {
+                // Obtener todas las ventas pendientes del cliente
+                var ventas = CD_Venta.Instancia.ObtenerVentasCliente(pago.ClienteID)
+                    .Where(v => v.SaldoPendiente > 0)
+                    .OrderBy(v => v.FechaVenta)
+                    .ToList();
+                
+                if (ventas.Count == 0)
+                {
+                    return Json(new { success = false, mensaje = "No hay ventas pendientes para este cliente" });
+                }
+
+                decimal montoTotal = pago.Monto;
+                decimal montoRestante = montoTotal;
+                int ventasPagadas = 0;
+                string errores = "";
+                
+                // Procesar pago para cada venta pendiente
+                foreach (var venta in ventas)
+                {
+                    if (montoRestante <= 0) break;
+                    
+                    decimal montoPagoVenta = Math.Min(montoRestante, venta.SaldoPendiente);
+                    
+                    var pagoVenta = new PagoCliente
+                    {
+                        VentaID = venta.VentaID,
+                        ClienteID = pago.ClienteID,
+                        Monto = montoPagoVenta,
+                        FormaPago = pago.FormaPago,
+                        Referencia = pago.Referencia,
+                        Comentario = pago.Comentario + $" (Venta {venta.VentaID.ToString().Substring(0, 8)})",
+                        GenerarFactura = pago.GenerarFactura,
+                        GenerarComplemento = pago.GenerarComplemento,
+                        Usuario = pago.Usuario,
+                        FechaPago = pago.FechaPago
+                    };
+                    
+                    try
+                    {
+                        string mensajeDetallado;
+                        bool resultado = CD_Venta.Instancia.RegistrarPago(pagoVenta, out mensajeDetallado);
+                        
+                        if (resultado)
+                        {
+                            montoRestante -= montoPagoVenta;
+                            ventasPagadas++;
+                        }
+                        else
+                        {
+                            errores += $"Venta {venta.VentaID.ToString().Substring(0, 8)}: {mensajeDetallado}. ";
+                        }
+                    }
+                    catch (Exception exVenta)
+                    {
+                        errores += $"Venta {venta.VentaID.ToString().Substring(0, 8)}: {exVenta.Message}. ";
+                    }
+                }
+                
+                if (ventasPagadas > 0)
+                {
+                    string mensaje = $"Pago total registrado. Se liquidaron {ventasPagadas} venta(s) por ${(montoTotal - montoRestante):F2}";
+                    if (!string.IsNullOrEmpty(errores))
+                    {
+                        mensaje += ". Advertencias: " + errores;
+                    }
+                    return Json(new { success = true, mensaje = mensaje });
+                }
+                else
+                {
+                    return Json(new { success = false, mensaje = "No se pudo procesar ningún pago. " + errores });
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = "Error al procesar el pago total: " + ex.Message });
+            }
         }
 
         // Obtener catálogo de productos para autocompletado

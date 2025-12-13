@@ -125,6 +125,7 @@
     <Compile Include="Controllers\CategoriaController.cs" />
     <Compile Include="Controllers\ClienteController.cs" />
     <Compile Include="Controllers\CompraController.cs" />
+    <Compile Include="Controllers\ConfiguracionController.cs" />
     <Compile Include="Controllers\CreditoController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\LoginController.cs" />
@@ -136,6 +137,7 @@
     <Compile Include="Controllers\SucursalController.cs" />
     <Compile Include="Controllers\UsuarioController.cs" />
     <Compile Include="Controllers\VentaController.cs" />
+    <Compile Include="Controllers\VentaPOSController.cs" />
     <Compile Include="Filters\VerificarSession.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -2026,6 +2028,7 @@
     <Content Include="Scripts\Views\Usuario_Crear.js" />
     <Content Include="Scripts\Views\Rol_Crear.js" />
     <Content Include="Scripts\Views\Venta.js" />
+    <Content Include="Scripts\Views\VentaPOS.js" />
     <Content Include="Scripts\Views\Venta_Consultar.js" />
     <Content Include="Scripts\Views\Venta_Crear.js" />
     <Content Include="Web.config">
@@ -2071,6 +2074,7 @@
     <Content Include="Views\Venta\Documento.cshtml" />
     <Content Include="Views\Cliente\Index.cshtml" />
     <Content Include="Views\Venta\Index.cshtml" />
+    <Content Include="Views\VentaPOS\Index.cshtml" />
     <Content Include="Views\Compra\Compra.cshtml" />
     <Content Include="Views\Producto\Create.cshtml" />
     <Content Include="Views\Producto\Lotes.cshtml" />
@@ -2083,6 +2087,8 @@
     <Content Include="Views\Producto\EditarLote.cshtml" />
     <Content Include="Views\Compra\Crear - Copia.cshtml" />
     <Content Include="Views\Credito\Index.cshtml" />
+    <Content Include="Views\Configuracion\Index.cshtml" />
+    <Content Include="Scripts\Views\Configuracion.js" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

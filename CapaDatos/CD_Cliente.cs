@@ -240,7 +240,8 @@ namespace CapaDatos
             {
                 string query = @"
                     SELECT TOP(30) 
-                        ClienteID, RFC, RazonSocial, CorreoElectronico, Telefono
+                        ClienteID, RFC, RazonSocial, RegimenFiscalID, CodigoPostal, UsoCFDIID,
+                        CorreoElectronico, Telefono
                     FROM Clientes
                     WHERE Estatus = 1
                       AND (RFC LIKE @texto OR RazonSocial LIKE @texto)
@@ -259,6 +260,9 @@ namespace CapaDatos
                             ClienteID = Guid.Parse(dr["ClienteID"].ToString()),
                             RFC = dr["RFC"].ToString(),
                             RazonSocial = dr["RazonSocial"].ToString(),
+                            RegimenFiscalID = dr["RegimenFiscalID"] == DBNull.Value ? null : dr["RegimenFiscalID"].ToString(),
+                            CodigoPostal = dr["CodigoPostal"] == DBNull.Value ? null : dr["CodigoPostal"].ToString(),
+                            UsoCFDIID = dr["UsoCFDIID"] == DBNull.Value ? null : dr["UsoCFDIID"].ToString(),
                             CorreoElectronico = dr["CorreoElectronico"] == DBNull.Value ? null : dr["CorreoElectronico"].ToString(),
                             Telefono = dr["Telefono"] == DBNull.Value ? null : dr["Telefono"].ToString(),
                             Estatus = true
@@ -278,7 +282,8 @@ namespace CapaDatos
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
                 SqlCommand cmd = new SqlCommand(@"
-                    SELECT ClienteID, RFC, RazonSocial, CorreoElectronico, Telefono, Estatus
+                    SELECT ClienteID, RFC, RazonSocial, RegimenFiscalID, CodigoPostal, UsoCFDIID, 
+                           CorreoElectronico, Telefono, Estatus, FechaAlta, Usuario, UltimaAct
                     FROM Clientes WHERE ClienteID = @id", cnx);
                 cmd.Parameters.AddWithValue("@id", clienteId);
                 cnx.Open();
@@ -291,9 +296,15 @@ namespace CapaDatos
                             ClienteID = Guid.Parse(dr["ClienteID"].ToString()),
                             RFC = dr["RFC"].ToString(),
                             RazonSocial = dr["RazonSocial"].ToString(),
+                            RegimenFiscalID = dr["RegimenFiscalID"] == DBNull.Value ? null : dr["RegimenFiscalID"].ToString(),
+                            CodigoPostal = dr["CodigoPostal"] == DBNull.Value ? null : dr["CodigoPostal"].ToString(),
+                            UsoCFDIID = dr["UsoCFDIID"] == DBNull.Value ? null : dr["UsoCFDIID"].ToString(),
                             CorreoElectronico = dr["CorreoElectronico"] == DBNull.Value ? null : dr["CorreoElectronico"].ToString(),
                             Telefono = dr["Telefono"] == DBNull.Value ? null : dr["Telefono"].ToString(),
-                            Estatus = Convert.ToBoolean(dr["Estatus"])
+                            Estatus = Convert.ToBoolean(dr["Estatus"]),
+                            FechaAlta = Convert.ToDateTime(dr["FechaAlta"]),
+                            Usuario = dr["Usuario"] == DBNull.Value ? null : dr["Usuario"].ToString(),
+                            UltimaAct = Convert.ToDateTime(dr["UltimaAct"])
                         };
                     }
                 }

@@ -14,7 +14,7 @@
                     @if (TempData["Success"] != null)
                     {
                         <div class="alert alert-success alert-dismissible fade show" role="alert">
-                            <strong>…xito!</strong> @TempData["Success"]
+                            <strong>√âxito!</strong> @TempData["Success"]
                             <button type="button" class="close" data-dismiss="alert" aria-label="Cerrar">
                                 <span aria-hidden="true">&times;</span>
                             </button>
@@ -23,7 +23,7 @@
 
                     <div class="alert alert-info">
                         <h5><i class="fas fa-box"></i> Producto: <strong>@ViewBag.ProductoNombre</strong></h5>
-                        <p class="mb-0">Est·s ingresando un nuevo lote para este producto.</p>
+                        <p class="mb-0">Est√°s ingresando un nuevo lote para este producto.</p>
                     </div>
 
                     @using (Html.BeginForm("CrearLote", "Producto", FormMethod.Post, new { @class = "needs-validation", novalidate = "novalidate" }))
@@ -39,7 +39,7 @@
                             <div class="col-md-4">
                                 <label class="form-label fw-bold">Cantidad Total *</label>
                                 <input type="number" name="CantidadTotal" value="@Model.CantidadTotal" class="form-control form-control-lg text-center" min="1" step="1" required />
-                                <div class="invalid-feedback">Ingresa una cantidad v·lida mayor a 0.</div>
+                                <div class="invalid-feedback">Ingresa una cantidad v√°lida mayor a 0.</div>
                             </div>
 
                             <div class="col-md-4">
@@ -48,7 +48,7 @@
                                     <span class="input-group-text">$</span>
                                     <input type="number" name="PrecioCompra" value="@Model.PrecioCompra" class="form-control form-control-lg" step="0.01" min="0" required />
                                 </div>
-                                <div class="invalid-feedback">Ingresa un precio v·lido.</div>
+                                <div class="invalid-feedback">Ingresa un precio v√°lido.</div>
                             </div>
 
                             <div class="col-md-4">
@@ -57,7 +57,7 @@
                                     <span class="input-group-text">$</span>
                                     <input type="number" name="PrecioVenta" value="@Model.PrecioVenta" class="form-control form-control-lg" step="0.01" min="0" required />
                                 </div>
-                                <div class="invalid-feedback">Ingresa un precio v·lido.</div>
+                                <div class="invalid-feedback">Ingresa un precio v√°lido.</div>
                             </div>
 
                             <div class="col-md-6">
@@ -68,13 +68,13 @@
                             <div class="col-md-6">
                                 <label class="form-label">Fecha de Caducidad (opcional)</label>
                                 <input type="date" name="FechaCaducidad" value="@(Model.FechaCaducidad?.ToString("yyyy-MM-dd"))" class="form-control" />
-                                <small class="text-muted">DÈjalo vacÌo si no tiene caducidad</small>
+                                <small class="text-muted">D√©jalo vac√≠o si no tiene caducidad</small>
                             </div>
 
                             <div class="col-12 mt-4">
                                 <hr />
                                 <div class="d-flex justify-content-between">
-                                    <a href="@Url.Action("Index")" class="btn btn-secondary btn-lg"><i class="fas fa-arrow-left"></i> Regresar al Cat·logo</a>
+                                    <a href="@Url.Action("Index")" class="btn btn-secondary btn-lg"><i class="fas fa-arrow-left"></i> Regresar al Cat√°logo</a>
                                     <button type="submit" class="btn btn-success btn-lg px-5"><i class="fas fa-save"></i> Guardar Lote</button>
                                 </div>
                             </div>
@@ -128,8 +128,8 @@
                     $('button[type="submit"]').before(`
                             <div id="gananciaInfo" class="alert alert-success mt-3">
                                 <strong>Ganancia estimada:</strong><br>
-                                ï Por unidad: $${gananciaUnitaria.toFixed(2)}<br>
-                                ï Total del lote: <strong>$${gananciaTotal.toFixed(2)}</strong>
+                                ‚Ä¢ Por unidad: $${gananciaUnitaria.toFixed(2)}<br>
+                                ‚Ä¢ Total del lote: <strong>$${gananciaTotal.toFixed(2)}</strong>
                             </div>
                         `);
                 }

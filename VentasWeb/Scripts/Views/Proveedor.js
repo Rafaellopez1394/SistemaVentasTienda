@@ -1,4 +1,4 @@
-﻿// Scripts/Views/vProveedor.js
+// Scripts/Views/vProveedor.js
 let tabla;
 
 $(document).ready(function () {

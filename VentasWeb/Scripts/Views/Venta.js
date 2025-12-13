@@ -19,8 +19,8 @@ $(document).ready(function () {
             $.get("/Venta/ObtenerProductos", { termino: request.term }, function (data) {
                 response(data.map(item => ({
                     label: item.Nombre, // Texto que se muestra en la lista de sugerencias
-                    value: item.Nombre, // Valor que se pondría en el input (aunque lo prevenimos)
-                    datos: item       // Objeto completo del producto para usarlo en la función 'select'
+                    value: item.Nombre, // Valor que se pondrX­a en el input (aunque lo prevenimos)
+                    datos: item       // Objeto completo del producto para usarlo en la funciX³n 'select'
                 })));
             });
         },
@@ -28,7 +28,7 @@ $(document).ready(function () {
         select: function (event, ui) {
             // Al seleccionar un producto, llamamos a agregarProducto con el objeto completo
             agregarProducto(ui.item.datos);
-            $(this).val(''); // Limpiamos el input de búsqueda después de seleccionar
+            $(this).val(''); // Limpiamos el input de bXºsqueda despuX©s de seleccionar
             return false;    // Prevenimos que el 'value' (nombre del producto) se quede en el input
         }
     });
@@ -40,7 +40,7 @@ function mostrarInfoCliente() {
     $.get("/Venta/ObtenerCreditosCliente", { clienteId: clienteActual.ClienteID })
         .done(creditos => {
             const limite = creditos.reduce((a, c) => a + (c.LimiteDinero || 0), 0);
-            $("#lblCredito").text(`L�mite de cr�dito: $${limite.toFixed(2)}`);
+            $("#lblCredito").text(`Lñ¯Â¿Â½mite de crñ¯Â¿Â½dito: $${limite.toFixed(2)}`);
         });
     $("#infoCliente").removeClass("d-none");
 }
@@ -144,7 +144,7 @@ function actualizarCantidad(i, cant) {
     const item = carrito[i];
     const nuevaCantidad = parseInt(cant) || 1;
 
-    // Esta validacion dependera de que 'item.Stock' se añada en 'agregarProducto'
+    // Esta validacion dependera de que 'item.Stock' se aX±ada en 'agregarProducto'
     if (item.Stock && nuevaCantidad > item.Stock) {
         alert('La cantidad no puede ser mayor al stock disponible (' + item.Stock + ').');
         item.Cantidad = item.Stock; // Se ajusta al maximo disponible

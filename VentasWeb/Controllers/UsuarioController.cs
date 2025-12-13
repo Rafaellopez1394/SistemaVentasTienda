@@ -23,6 +23,37 @@ namespace VentasWeb.Controllers
             return Json(new { data = oListaUsuario }, JsonRequestBehavior.AllowGet);
         }
 
+        // GET: Usuario/Listar - Para el modulo de configuracion
+        [HttpGet]
+        public JsonResult Listar()
+        {
+            List<Usuario> oListaUsuario = CD_Usuario.Instancia.ObtenerUsuarios();
+            return Json(oListaUsuario, JsonRequestBehavior.AllowGet);
+        }
+
+        // GET: Usuario/Obtener?id=X - Obtener un usuario por ID
+        [HttpGet]
+        public JsonResult Obtener(int id)
+        {
+            var usuario = CD_Usuario.Instancia.ObtenerUsuarios().FirstOrDefault(u => u.UsuarioID == id);
+            return Json(usuario, JsonRequestBehavior.AllowGet);
+        }
+
+        // POST: Usuario/CambiarEstado
+        [HttpPost]
+        public JsonResult CambiarEstado(int id, bool activo)
+        {
+            try
+            {
+                bool resultado = CD_Usuario.Instancia.CambiarEstadoUsuario(id, !activo);
+                return Json(new { valor = resultado, msg = resultado ? "Estado actualizado" : "Error al actualizar" });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { valor = false, msg = ex.Message });
+            }
+        }
+
         [HttpPost]
         public JsonResult Guardar(Usuario objeto)
         {

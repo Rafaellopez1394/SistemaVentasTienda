@@ -224,18 +224,148 @@ namespace CapaDatos
             return lista;
         }
 
-        public bool RegistrarPago(PagoCliente pago)
+        public VentaCliente ObtenerDetalle(Guid ventaId)
         {
+            VentaCliente venta = null;
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                // Obtener encabezado de venta
+                SqlCommand cmdVenta = new SqlCommand("sp_ConsultarVentasCliente", cnx) { CommandType = CommandType.StoredProcedure };
+                cmdVenta.Parameters.AddWithValue("@ClienteID", Guid.Empty); // Dummy para estructura
+                
+                // Mejor usar una consulta directa para obtener una venta específica
+                cmdVenta = new SqlCommand(@"
+                    SELECT V.VentaID, V.ClienteID, C.RazonSocial, V.FechaVenta, V.Total, V.Estatus, V.FechaVencimiento,
+                           ISNULL(SUM(P.Monto), 0) AS TotalPagado,
+                           V.Total - ISNULL(SUM(P.Monto), 0) AS SaldoPendiente
+                    FROM VentasClientes V
+                    INNER JOIN Clientes C ON V.ClienteID = C.ClienteID
+                    LEFT JOIN PagosClientes P ON V.VentaID = P.VentaID
+                    WHERE V.VentaID = @VentaID
+                    GROUP BY V.VentaID, V.ClienteID, C.RazonSocial, V.FechaVenta, V.Total, V.Estatus, V.FechaVencimiento
+                ", cnx);
+                cmdVenta.Parameters.AddWithValue("@VentaID", ventaId);
+
+                cnx.Open();
+                using (SqlDataReader dr = cmdVenta.ExecuteReader())
+                {
+                    if (dr.Read())
+                    {
+                        venta = new VentaCliente
+                        {
+                            VentaID = Guid.Parse(dr["VentaID"].ToString()),
+                            ClienteID = Guid.Parse(dr["ClienteID"].ToString()),
+                            RazonSocial = dr["RazonSocial"].ToString(),
+                            FechaVenta = Convert.ToDateTime(dr["FechaVenta"]),
+                            Total = Convert.ToDecimal(dr["Total"]),
+                            Estatus = dr["Estatus"].ToString(),
+                            FechaVencimiento = dr["FechaVencimiento"] == DBNull.Value ? null : (DateTime?)Convert.ToDateTime(dr["FechaVencimiento"]),
+                            TotalPagado = Convert.ToDecimal(dr["TotalPagado"]),
+                            SaldoPendiente = Convert.ToDecimal(dr["SaldoPendiente"])
+                        };
+                    }
+                }
+
+                // Obtener detalle de productos
+                if (venta != null)
+                {
+                    SqlCommand cmdDetalle = new SqlCommand("sp_ConsultarDetalleVenta", cnx) { CommandType = CommandType.StoredProcedure };
+                    cmdDetalle.Parameters.AddWithValue("@VentaID", ventaId);
+                    
+                    using (SqlDataReader dr = cmdDetalle.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            venta.Detalle.Add(new VentaDetalleCliente
+                            {
+                                ProductoID = Convert.ToInt32(dr["ProductoID"]),
+                                Producto = dr["Producto"].ToString(),
+                                LoteID = Convert.ToInt32(dr["LoteID"]),
+                                Cantidad = Convert.ToInt32(dr["Cantidad"]),
+                                PrecioVenta = Convert.ToDecimal(dr["PrecioVenta"]),
+                                PrecioCompra = Convert.ToDecimal(dr["PrecioCompra"])
+                            });
+                        }
+                    }
+                }
+            }
+            return venta;
+        }
+
+        public bool RegistrarPago(PagoCliente pago, out string mensajeDetallado)
+        {
+            mensajeDetallado = string.Empty;
+            
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
                 SqlCommand cmd = new SqlCommand("sp_RegistrarPagoCliente", cnx) { CommandType = CommandType.StoredProcedure };
                 cmd.Parameters.AddWithValue("@VentaID", pago.VentaID);
-                cmd.Parameters.AddWithValue("@Importe", pago.Importe);
+                cmd.Parameters.AddWithValue("@ClienteID", pago.ClienteID);
+                cmd.Parameters.AddWithValue("@Monto", pago.Monto);
+                cmd.Parameters.AddWithValue("@FormaPago", pago.FormaPago);
+                cmd.Parameters.AddWithValue("@Referencia", (object)pago.Referencia ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Comentario", (object)pago.Comentario ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@GenerarFactura", pago.GenerarFactura);
+                cmd.Parameters.AddWithValue("@GenerarComplemento", pago.GenerarComplemento);
                 cmd.Parameters.AddWithValue("@Usuario", pago.Usuario ?? "system");
-                try { cnx.Open(); cmd.ExecuteNonQuery(); return true; }
-                catch { return false; }
+                
+                cnx.Open();
+                
+                // Ejecutar y leer el resultado
+                using (SqlDataReader reader = cmd.ExecuteReader())
+                {
+                    if (reader.Read())
+                    {
+                        mensajeDetallado = reader["Mensaje"].ToString();
+                    }
+                }
+                
+                return true;
             }
         }
+
+        public List<PagoCliente> ObtenerPagosVenta(Guid ventaId)
+        {
+            var lista = new List<PagoCliente>();
+            
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                string query = @"
+                    SELECT PagoID, VentaID, ClienteID, Monto, FechaPago, FormaPago, 
+                           Referencia, Comentario, GenerarFactura, GenerarComplemento, Usuario
+                    FROM PagosClientes 
+                    WHERE VentaID = @VentaID
+                    ORDER BY FechaPago DESC";
+                
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@VentaID", ventaId);
+                
+                cnx.Open();
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(new PagoCliente
+                        {
+                            PagoID = Guid.Parse(dr["PagoID"].ToString()),
+                            VentaID = Guid.Parse(dr["VentaID"].ToString()),
+                            ClienteID = Guid.Parse(dr["ClienteID"].ToString()),
+                            Monto = Convert.ToDecimal(dr["Monto"]),
+                            FechaPago = Convert.ToDateTime(dr["FechaPago"]),
+                            FormaPago = dr["FormaPago"].ToString(),
+                            Referencia = dr["Referencia"] == DBNull.Value ? null : dr["Referencia"].ToString(),
+                            Comentario = dr["Comentario"] == DBNull.Value ? null : dr["Comentario"].ToString(),
+                            GenerarFactura = dr["GenerarFactura"] != DBNull.Value && Convert.ToBoolean(dr["GenerarFactura"]),
+                            GenerarComplemento = dr["GenerarComplemento"] != DBNull.Value && Convert.ToBoolean(dr["GenerarComplemento"]),
+                            Usuario = dr["Usuario"].ToString()
+                        });
+                    }
+                }
+            }
+            
+            return lista;
+        }
+
         public decimal ObtenerSaldoPendiente(Guid clienteId)
         {
             decimal saldo = 0;
@@ -243,7 +373,7 @@ namespace CapaDatos
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
                 string query = @"
-            SELECT ISNULL(SUM(Total - ISNULL((SELECT SUM(Importe) 
+            SELECT ISNULL(SUM(Total - ISNULL((SELECT SUM(Monto) 
                                              FROM PagosClientes 
                                              WHERE VentaID = v.VentaID), 0)), 0) AS SaldoPendiente
             FROM Ventas v

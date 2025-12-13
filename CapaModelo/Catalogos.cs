@@ -19,8 +19,8 @@ namespace CapaModelo
         public decimal? Porcentaje { get; set; }
         public string Descripcion { get; set; }
 
-        // Propiedad calculada para mostrar en el dropdown
-        public string TextoCombo => $"{Descripcion} ({Porcentaje?.ToString("0.##") ?? "0"}%)";
+        // Propiedad calculada para mostrar en el dropdown (solo descripción, ya incluye el porcentaje)
+        public string TextoCombo => Descripcion;
     }
 
     public class TasaIEPS

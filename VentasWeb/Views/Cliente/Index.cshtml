@@ -1,4 +1,4 @@
-﻿@{
+@{
     ViewBag.Title = "Clientes";
     Layout = "~/Views/Shared/_Layout.cshtml";
 }
@@ -104,6 +104,40 @@
                             <div id="divTiposDeCredito" class="mt-2 p-3 bg-light rounded border">
                                 <!-- Los checkboxes de tipos de crédito se cargarán aquí dinámicamente -->
                                 <span class="text-muted">Cargando tipos de crédito...</span>
+                            </div>
+
+                            <!-- CAMPOS DE LÍMITE DE CRÉDITO DINÁMICOS -->
+                            <div id="divLimiteCredito_1" class="mt-3 row" style="display:none;">
+                                <div class="col-md-6">
+                                    <label class="font-weight-bold text-primary">Límite de Crédito (Dinero)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="fas fa-dollar-sign text-success"></i></span>
+                                        <input type="number" class="form-control" id="txtLimiteDinero" placeholder="0.00" step="0.01" min="0" />
+                                    </div>
+                                    <small class="text-muted">Monto máximo de crédito en dinero</small>
+                                </div>
+                            </div>
+
+                            <div id="divLimiteCredito_2" class="mt-3 row" style="display:none;">
+                                <div class="col-md-6">
+                                    <label class="font-weight-bold text-primary">Límite de Producto (Cajas)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="fas fa-box text-warning"></i></span>
+                                        <input type="number" class="form-control" id="txtLimiteProducto" placeholder="0" min="0" />
+                                    </div>
+                                    <small class="text-muted">Cantidad máxima de cajas a crédito</small>
+                                </div>
+                            </div>
+
+                            <div id="divLimiteCredito_3" class="mt-3 row" style="display:none;">
+                                <div class="col-md-6">
+                                    <label class="font-weight-bold text-primary">Plazo de Crédito (Días)</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text bg-light"><i class="fas fa-calendar-alt text-info"></i></span>
+                                        <input type="number" class="form-control" id="txtPlazoDias" placeholder="0" min="0" />
+                                    </div>
+                                    <small class="text-muted">Días de plazo para pagar</small>
+                                </div>
                             </div>
                         </div>
                     </div>

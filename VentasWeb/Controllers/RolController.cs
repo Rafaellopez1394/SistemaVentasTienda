@@ -24,6 +24,14 @@ namespace VentasWeb.Controllers
             return Json(new { data = olista }, JsonRequestBehavior.AllowGet);
         }
 
+        // GET: Rol/Listar - Para el modulo de configuracion
+        [HttpGet]
+        public JsonResult Listar()
+        {
+            List<Rol> olista = CD_Rol.Instancia.ObtenerRol();
+            return Json(olista, JsonRequestBehavior.AllowGet);
+        }
+
 
         [HttpPost]
         public JsonResult Guardar(Rol objeto)
