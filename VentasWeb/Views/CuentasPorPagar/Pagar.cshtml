@@ -1,0 +1,283 @@
+@{
+    ViewBag.Title = "Registrar Pago";
+}
+
+<div class="container-fluid">
+    <h2><i class="fas fa-dollar-sign"></i> Registrar Pago a Proveedor</h2>
+    <hr />
+
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5>Seleccionar Cuenta por Pagar</h5>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label>Proveedor:</label>
+                        <select id="ddlProveedor" class="form-control" onchange="cargarCuentasProveedor()">
+                            <option value="">Seleccione un proveedor</option>
+                        </select>
+                    </div>
+
+                    <div id="cuentasContainer" style="display:none;">
+                        <table id="tbCuentasProveedor" class="table table-sm table-bordered">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Seleccionar</th>
+                                    <th>Compra #</th>
+                                    <th>Folio</th>
+                                    <th>Vencimiento</th>
+                                    <th class="text-right">Saldo</th>
+                                    <th>Estado</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <br />
+
+            <div class="card" id="formPagoCard" style="display:none;">
+                <div class="card-header bg-success text-white">
+                    <h5>Datos del Pago</h5>
+                </div>
+                <div class="card-body">
+                    <input type="hidden" id="hdnCuentaPorPagarID" />
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Monto a Pagar: <span class="text-danger">*</span></label>
+                                <input type="number" id="txtMontoPagar" class="form-control" step="0.01" min="0" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Forma de Pago: <span class="text-danger">*</span></label>
+                                <select id="ddlFormaPago" class="form-control">
+                                    <option value="EFECTIVO">Efectivo</option>
+                                    <option value="TRANSFERENCIA">Transferencia Bancaria</option>
+                                    <option value="CHEQUE">Cheque</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Referencia (Cheque/Transferencia):</label>
+                                <input type="text" id="txtReferencia" class="form-control" placeholder="Número de cheque o referencia" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Cuenta Bancaria:</label>
+                                <input type="text" id="txtCuentaBancaria" class="form-control" placeholder="Cuenta de donde sale el pago" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Observaciones:</label>
+                        <textarea id="txtObservaciones" class="form-control" rows="2"></textarea>
+                    </div>
+
+                    <div class="text-right">
+                        <button class="btn btn-secondary" onclick="cancelar()">
+                            <i class="fas fa-times"></i> Cancelar
+                        </button>
+                        <button class="btn btn-success" onclick="registrarPago()">
+                            <i class="fas fa-check"></i> Registrar Pago
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-4">
+            <div class="card" id="resumenCard" style="display:none;">
+                <div class="card-header bg-info text-white">
+                    <h5>Resumen</h5>
+                </div>
+                <div class="card-body">
+                    <p><strong>Proveedor:</strong><br /><span id="resumenProveedor"></span></p>
+                    <p><strong>Compra:</strong> #<span id="resumenCompra"></span></p>
+                    <p><strong>Folio:</strong> <span id="resumenFolio"></span></p>
+                    <hr />
+                    <p><strong>Monto Total:</strong><br />$<span id="resumenTotal"></span></p>
+                    <p><strong>Saldo Pendiente:</strong><br /><span class="h4 text-danger">$<span id="resumenSaldo"></span></span></p>
+                    <hr />
+                    <p class="text-muted small">Se generará automáticamente la póliza contable de egreso</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        var cuentaSeleccionada = null;
+
+        $(document).ready(function () {
+            cargarProveedores();
+
+            // Si viene ID en query string, cargar directamente
+            var urlParams = new URLSearchParams(window.location.search);
+            var cuentaId = urlParams.get('id');
+            if (cuentaId) {
+                // TODO: Cargar cuenta específica
+            }
+        });
+
+        function cargarProveedores() {
+            $.ajax({
+                url: '@Url.Action("ObtenerProveedores", "CuentasPorPagar")',
+                type: 'GET',
+                success: function (response) {
+                    if (response.success) {
+                        var ddl = $("#ddlProveedor");
+                        response.data.forEach(function (p) {
+                            ddl.append(`<option value="${p.ProveedorID}">${p.Display}</option>`);
+                        });
+                    }
+                }
+            });
+        }
+
+        function cargarCuentasProveedor() {
+            var proveedorId = $("#ddlProveedor").val();
+            if (!proveedorId) {
+                $("#cuentasContainer").hide();
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("ObtenerPorProveedor", "CuentasPorPagar")',
+                type: 'GET',
+                data: { proveedorId: proveedorId },
+                success: function (response) {
+                    if (response.success) {
+                        mostrarCuentasProveedor(response.data);
+                    }
+                }
+            });
+        }
+
+        function mostrarCuentasProveedor(cuentas) {
+            var tbody = $("#tbCuentasProveedor tbody");
+            tbody.empty();
+
+            var cuentasPendientes = cuentas.filter(c => c.Estado !== 'PAGADA');
+            
+            if (cuentasPendientes.length === 0) {
+                tbody.append('<tr><td colspan="6" class="text-center">Este proveedor no tiene cuentas pendientes</td></tr>');
+                $("#cuentasContainer").show();
+                return;
+            }
+
+            cuentasPendientes.forEach(function (c) {
+                var estadoBadge = c.Estado === 'VENCIDA' 
+                    ? '<span class="badge badge-danger">VENCIDA</span>'
+                    : '<span class="badge badge-warning">PENDIENTE</span>';
+
+                tbody.append(`<tr>
+                    <td><input type="radio" name="cuentaSeleccionada" value="${c.CuentaPorPagarID}" 
+                        data-compra="${c.CompraID}" 
+                        data-folio="${c.FolioFactura || 'N/A'}" 
+                        data-total="${c.MontoTotal}" 
+                        data-saldo="${c.SaldoPendiente}"
+                        data-proveedor="${c.Proveedor}"
+                        onchange="seleccionarCuenta(this)" /></td>
+                    <td>${c.CompraID}</td>
+                    <td>${c.FolioFactura || '-'}</td>
+                    <td>${c.FechaVencimiento}</td>
+                    <td class="text-right font-weight-bold">$${c.SaldoPendiente}</td>
+                    <td>${estadoBadge}</td>
+                </tr>`);
+            });
+
+            $("#cuentasContainer").show();
+        }
+
+        function seleccionarCuenta(radio) {
+            cuentaSeleccionada = {
+                id: radio.value,
+                compra: radio.dataset.compra,
+                folio: radio.dataset.folio,
+                total: radio.dataset.total,
+                saldo: radio.dataset.saldo,
+                proveedor: radio.dataset.proveedor
+            };
+
+            $("#resumenProveedor").text(cuentaSeleccionada.proveedor);
+            $("#resumenCompra").text(cuentaSeleccionada.compra);
+            $("#resumenFolio").text(cuentaSeleccionada.folio);
+            $("#resumenTotal").text(cuentaSeleccionada.total);
+            $("#resumenSaldo").text(cuentaSeleccionada.saldo);
+
+            $("#hdnCuentaPorPagarID").val(cuentaSeleccionada.id);
+            $("#txtMontoPagar").attr("max", parseFloat(cuentaSeleccionada.saldo.replace(/,/g, '')));
+
+            $("#formPagoCard").show();
+            $("#resumenCard").show();
+        }
+
+        function registrarPago() {
+            if (!cuentaSeleccionada) {
+                toastr.warning("Seleccione una cuenta por pagar", "Atención");
+                return;
+            }
+
+            var montoPagar = parseFloat($("#txtMontoPagar").val());
+            if (!montoPagar || montoPagar <= 0) {
+                toastr.warning("Ingrese el monto a pagar", "Atención");
+                return;
+            }
+
+            var saldoMax = parseFloat(cuentaSeleccionada.saldo.replace(/,/g, ''));
+            if (montoPagar > saldoMax) {
+                toastr.error(`El monto no puede exceder el saldo pendiente ($${saldoMax.toFixed(2)})`, "Error");
+                return;
+            }
+
+            var request = {
+                CuentaPorPagarID: cuentaSeleccionada.id,
+                MontoPagado: montoPagar,
+                FormaPago: $("#ddlFormaPago").val(),
+                Referencia: $("#txtReferencia").val(),
+                CuentaBancaria: $("#txtCuentaBancaria").val(),
+                Observaciones: $("#txtObservaciones").val()
+            };
+
+            $.ajax({
+                url: '@Url.Action("RegistrarPago", "CuentasPorPagar")',
+                type: 'POST',
+                data: request,
+                beforeSend: function () {
+                    toastr.info("Registrando pago y generando póliza...", "Procesando");
+                },
+                success: function (response) {
+                    if (response.success) {
+                        toastr.success(response.mensaje, "Éxito");
+                        setTimeout(function () {
+                            window.location.href = '@Url.Action("Index", "CuentasPorPagar")';
+                        }, 1500);
+                    } else {
+                        toastr.error(response.mensaje, "Error");
+                    }
+                },
+                error: function () {
+                    toastr.error("Error al registrar el pago", "Error");
+                }
+            });
+        }
+
+        function cancelar() {
+            window.location.href = '@Url.Action("Index", "CuentasPorPagar")';
+        }
+    </script>
+}

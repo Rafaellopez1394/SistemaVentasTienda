@@ -1,0 +1,320 @@
+@model CapaModelo.NominaDetalle
+@{
+    ViewBag.Title = "Recibo de Nómina";
+    var percepciones = ViewBag.Percepciones as List<CapaModelo.NominaPercepcion>;
+    var deducciones = ViewBag.Deducciones as List<CapaModelo.NominaDeduccion>;
+}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewBag.Title</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    <style>
+        body { background-color: #f4f6f9; }
+        .recibo-container { max-width: 900px; margin: 20px auto; background: white; padding: 30px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
+        .logo-header { border-bottom: 3px solid #007bff; padding-bottom: 15px; margin-bottom: 20px; }
+        .empleado-info { background-color: #f8f9fa; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+        .periodo-info { background-color: #e9ecef; padding: 10px; border-radius: 5px; margin-bottom: 20px; text-align: center; }
+        .tabla-conceptos { margin-bottom: 20px; }
+        .totales { background-color: #007bff; color: white; padding: 15px; border-radius: 5px; text-align: center; }
+        .totales h3 { margin: 0; font-size: 28px; }
+        .cfdi-info { border: 2px dashed #28a745; padding: 15px; margin-top: 20px; background-color: #f1f9f1; }
+        @@media print {
+            .no-print { display: none; }
+            body { background-color: white; }
+            .recibo-container { box-shadow: none; }
+        }
+    </style>
+</head>
+<body>
+    <div class="recibo-container">
+        <!-- Botones de Acción -->
+        <div class="text-right mb-3 no-print">
+            @if (string.IsNullOrEmpty(Model.UUID))
+            {
+                <button id="btnTimbrar" class="btn btn-primary" onclick="timbrarRecibo()">
+                    <i class="fas fa-certificate"></i> Timbrar CFDI
+                </button>
+            }
+            else
+            {
+                <button class="btn btn-info" onclick="descargarXML()">
+                    <i class="fas fa-file-code"></i> Descargar XML
+                </button>
+            }
+            <button class="btn btn-success" onclick="window.print()">
+                <i class="fas fa-print"></i> Imprimir
+            </button>
+            <button class="btn btn-danger" onclick="exportarPDF()">
+                <i class="fas fa-file-pdf"></i> Descargar PDF
+            </button>
+            <button class="btn btn-secondary" onclick="window.close()">
+                <i class="fas fa-times"></i> Cerrar
+            </button>
+        </div>
+
+        <!-- Encabezado -->
+        <div class="logo-header">
+            <div class="row">
+                <div class="col-8">
+                    <h2><strong>RECIBO DE NÓMINA</strong></h2>
+                    <p class="mb-0">Sistema de Ventas - Tienda</p>
+                </div>
+                <div class="col-4 text-right">
+                    <h4 class="text-primary">@Model.Nomina.Folio</h4>
+                    <small class="text-muted">Folio de Nómina</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Información del Empleado -->
+        <div class="empleado-info">
+            <div class="row">
+                <div class="col-md-8">
+                    <h4><i class="fas fa-user-circle"></i> @Model.Empleado.NombreCompleto</h4>
+                    <div class="row mt-3">
+                        <div class="col-6">
+                            <strong>No. Empleado:</strong> @Model.EmpleadoID<br />
+                            <strong>RFC:</strong> @Model.Empleado.RFC<br />
+                            <strong>CURP:</strong> @Model.Empleado.CURP
+                        </div>
+                        <div class="col-6">
+                            <strong>NSS:</strong> @Model.Empleado.NSS<br />
+                            <strong>Puesto:</strong> @Model.Empleado.Puesto<br />
+                            <strong>Departamento:</strong> @Model.Empleado.Departamento
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4 text-center">
+                    <i class="fas fa-user-circle fa-5x text-secondary"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Periodo e Información de Pago -->
+        <div class="periodo-info">
+            <div class="row">
+                <div class="col-md-3">
+                    <strong>Periodo</strong><br />
+                    <span class="badge badge-info">@Model.Nomina.Periodo</span>
+                </div>
+                <div class="col-md-3">
+                    <strong>Del</strong><br />
+                    @Model.Nomina.FechaInicio.ToString("dd/MM/yyyy")
+                </div>
+                <div class="col-md-3">
+                    <strong>Al</strong><br />
+                    @Model.Nomina.FechaFin.ToString("dd/MM/yyyy")
+                </div>
+                <div class="col-md-3">
+                    <strong>Fecha Pago</strong><br />
+                    @Model.Nomina.FechaPago.ToString("dd/MM/yyyy")
+                </div>
+            </div>
+            <hr />
+            <div class="row">
+                <div class="col-md-4">
+                    <strong>Días Trabajados:</strong> @Model.DiasTrabajados
+                </div>
+                <div class="col-md-4">
+                    <strong>Salario Diario:</strong> @Model.SalarioDiario.ToString("C")
+                </div>
+                <div class="col-md-4">
+                    <strong>Salario Base:</strong> @Model.SalarioBase.ToString("C")
+                </div>
+            </div>
+        </div>
+
+        <!-- Percepciones -->
+        <div class="tabla-conceptos">
+            <h5 class="bg-success text-white p-2"><i class="fas fa-plus-circle"></i> PERCEPCIONES</h5>
+            <table class="table table-sm table-bordered">
+                <thead class="thead-light">
+                    <tr>
+                        <th width="15%">Clave</th>
+                        <th>Concepto</th>
+                        <th width="18%" class="text-right">Gravado</th>
+                        <th width="18%" class="text-right">Exento</th>
+                        <th width="18%" class="text-right">Total</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (percepciones != null && percepciones.Any())
+                    {
+                        foreach (var percepcion in percepciones)
+                        {
+                            <tr>
+                                <td>@percepcion.ClavePercepcion</td>
+                                <td>@percepcion.Concepto</td>
+                                <td class="text-right">@percepcion.ImporteGravado.ToString("C")</td>
+                                <td class="text-right">@percepcion.ImporteExento.ToString("C")</td>
+                                <td class="text-right"><strong>@percepcion.ImporteTotal.ToString("C")</strong></td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">No hay percepciones registradas</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="bg-light">
+                    <tr>
+                        <th colspan="4" class="text-right">TOTAL PERCEPCIONES:</th>
+                        <th class="text-right text-success">@Model.TotalPercepciones.ToString("C")</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Deducciones -->
+        <div class="tabla-conceptos">
+            <h5 class="bg-danger text-white p-2"><i class="fas fa-minus-circle"></i> DEDUCCIONES</h5>
+            <table class="table table-sm table-bordered">
+                <thead class="thead-light">
+                    <tr>
+                        <th width="15%">Clave</th>
+                        <th>Concepto</th>
+                        <th width="25%" class="text-right">Importe</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (deducciones != null && deducciones.Any())
+                    {
+                        foreach (var deduccion in deducciones)
+                        {
+                            <tr>
+                                <td>@deduccion.ClaveDeduccion</td>
+                                <td>@deduccion.Concepto</td>
+                                <td class="text-right"><strong>@deduccion.Importe.ToString("C")</strong></td>
+                            </tr>
+                        }
+                    }
+                    else
+                    {
+                        <tr>
+                            <td colspan="3" class="text-center text-muted">No hay deducciones registradas</td>
+                        </tr>
+                    }
+                </tbody>
+                <tfoot class="bg-light">
+                    <tr>
+                        <th colspan="2" class="text-right">TOTAL DEDUCCIONES:</th>
+                        <th class="text-right text-danger">@Model.TotalDeducciones.ToString("C")</th>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+
+        <!-- Total Neto -->
+        <div class="totales">
+            <h5>NETO A PAGAR</h5>
+            <h3><strong>@Model.NetoPagar.ToString("C")</strong></h3>
+        </div>
+
+        <!-- Información CFDI -->
+        @if (!string.IsNullOrEmpty(Model.UUID))
+        {
+            <div class="cfdi-info">
+                <h5 class="text-success"><i class="fas fa-certificate"></i> COMPROBANTE FISCAL DIGITAL (CFDI)</h5>
+                <div class="row mt-3">
+                    <div class="col-md-8">
+                        <strong>UUID:</strong><br />
+                        <small>@Model.UUID</small>
+                    </div>
+                    <div class="col-md-4">
+                        <strong>Fecha Timbrado:</strong><br />
+                        @(Model.FechaTimbrado?.ToString("dd/MM/yyyy HH:mm:ss") ?? "")
+                    </div>
+                </div>
+                @if (!string.IsNullOrEmpty(Model.SelloCFD))
+                {
+                    <hr />
+                    <div class="mt-2">
+                        <strong>Sello Digital CFD:</strong><br />
+                        <small style="word-break: break-all;">@Model.SelloCFD</small>
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(Model.SelloSAT))
+                {
+                    <div class="mt-2">
+                        <strong>Sello Digital SAT:</strong><br />
+                        <small style="word-break: break-all;">@Model.SelloSAT</small>
+                    </div>
+                }
+            </div>
+        }
+
+        <!-- Pie de Página -->
+        <div class="text-center mt-4">
+            <small class="text-muted">
+                Este documento es una representación impresa de un CFDI<br />
+                Generado: @DateTime.Now.ToString("dd/MM/yyyy HH:mm:ss")
+            </small>
+        </div>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        var reciboId = @Model.NominaDetalleID;
+
+        function timbrarRecibo() {
+            Swal.fire({
+                title: '¿Timbrar Recibo de Nómina?',
+                html: '<p>Se generará un CFDI 4.0 con Complemento de Nómina 1.2</p>' +
+                      '<p class="text-muted"><small>Este proceso es <strong>irreversible</strong> y se consumirá un timbre fiscal.</small></p>',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, timbrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#007bff',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: () => !Swal.isLoading(),
+                preConfirm: () => {
+                    return $.ajax({
+                        url: '/Nomina/TimbrarRecibo',
+                        type: 'POST',
+                        data: { reciboId: reciboId },
+                        dataType: 'json'
+                    }).then(response => {
+                        if (!response.success) {
+                            throw new Error(response.message || 'Error al timbrar');
+                        }
+                        return response;
+                    }).catch(error => {
+                        Swal.showValidationMessage('Error: ' + (error.message || 'Error de conexión'));
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: '¡Timbrado Exitoso!',
+                        html: '<p><strong>UUID:</strong></p>' +
+                              '<p style="word-break: break-all; font-size: 11px;">' + result.value.uuid + '</p>' +
+                              '<p class="mt-3"><strong>Fecha:</strong> ' + result.value.fechaTimbrado + '</p>',
+                        icon: 'success',
+                        confirmButtonText: 'Recargar página'
+                    }).then(() => {
+                        location.reload();
+                    });
+                }
+            });
+        }
+
+        function descargarXML() {
+            window.open('/Nomina/DescargarXMLRecibo?reciboId=' + reciboId, '_blank');
+        }
+
+        function exportarPDF() {
+            window.open('/Nomina/DescargarPDFRecibo?reciboId=' + reciboId, '_blank');
+        }
+    </script>
+</body>
+</html>

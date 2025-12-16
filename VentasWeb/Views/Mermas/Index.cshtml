@@ -1,0 +1,217 @@
+@{
+    ViewBag.Title = "Mermas y Ajustes de Inventario";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <h1>
+            Mermas y Ajustes de Inventario
+            <small>Historial de movimientos</small>
+        </h1>
+    </section>
+
+    <section class="content">
+        <!-- Botones de acción -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="btn-group">
+                    <a href="@Url.Action("RegistrarMerma", "Mermas")" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Registrar Merma
+                    </a>
+                    <a href="@Url.Action("RegistrarAjuste", "Mermas")" class="btn btn-warning">
+                        <i class="fas fa-balance-scale"></i> Registrar Ajuste
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="row mb-3">
+            <div class="col-md-12">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">Filtros</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Producto</label>
+                                    <select id="filtroProducto" class="form-control">
+                                        <option value="">Todos los productos</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Fecha Inicio</label>
+                                    <input type="date" id="filtroFechaInicio" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Fecha Fin</label>
+                                    <input type="date" id="filtroFechaFin" class="form-control">
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>&nbsp;</label><br>
+                                    <button id="btnFiltrar" class="btn btn-primary btn-block">
+                                        <i class="fas fa-search"></i> Filtrar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de movimientos -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="box box-info">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">Historial de Mermas y Ajustes</h3>
+                    </div>
+                    <div class="box-body">
+                        <table id="tablaMermasAjustes" class="table table-bordered table-striped table-hover" style="width:100%">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Tipo</th>
+                                    <th>Lote ID</th>
+                                    <th>Producto ID</th>
+                                    <th>Cantidad</th>
+                                    <th>Costo Unit.</th>
+                                    <th>Monto Total</th>
+                                    <th>Usuario</th>
+                                    <th>Comentarios</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                            <tfoot>
+                                <tr>
+                                    <th colspan="6" style="text-align:right">Total:</th>
+                                    <th id="totalMonto">$0.00</th>
+                                    <th colspan="2"></th>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section scripts {
+    <script>
+        var tablaMovimientos;
+
+        $(document).ready(function () {
+            cargarProductos();
+            inicializarTabla();
+
+            $('#btnFiltrar').click(function () {
+                tablaMovimientos.ajax.reload();
+            });
+        });
+
+        function cargarProductos() {
+            $.get('@Url.Action("ObtenerProductos", "Mermas")', function (data) {
+                $('#filtroProducto').append('<option value="">Todos los productos</option>');
+                $.each(data, function (i, item) {
+                    $('#filtroProducto').append($('<option>', {
+                        value: item.value,
+                        text: item.text
+                    }));
+                });
+            });
+        }
+
+        function inicializarTabla() {
+            tablaMovimientos = $('#tablaMermasAjustes').DataTable({
+                ajax: {
+                    url: '@Url.Action("ObtenerMovimientos", "Mermas")',
+                    type: 'GET',
+                    data: function (d) {
+                        return {
+                            productoId: $('#filtroProducto').val() || null,
+                            fechaInicio: $('#filtroFechaInicio').val() || null,
+                            fechaFin: $('#filtroFechaFin').val() || null
+                        };
+                    },
+                    dataSrc: function (json) {
+                        if (json.success) {
+                            calcularTotales(json.data);
+                            return json.data;
+                        }
+                        toastr.error(json.message || 'Error al cargar movimientos');
+                        return [];
+                    }
+                },
+                columns: [
+                    { data: 'fecha' },
+                    {
+                        data: 'tipoMovimiento',
+                        render: function (data, type, row) {
+                            if (data === 'MERMA') {
+                                return '<span class="badge badge-danger">MERMA</span>';
+                            } else if (data === 'AJUSTE_ENTRADA' || data.includes('POSITIVO')) {
+                                return '<span class="badge badge-success">AJUSTE +</span>';
+                            } else if (data === 'AJUSTE_SALIDA' || data.includes('NEGATIVO')) {
+                                return '<span class="badge badge-warning">AJUSTE -</span>';
+                            }
+                            return '<span class="badge badge-default">' + data + '</span>';
+                        }
+                    },
+                    { data: 'loteID' },
+                    { data: 'productoID' },
+                    { data: 'cantidad' },
+                    { data: 'costoUnitario' },
+                    { data: 'montoTotal' },
+                    { data: 'usuario' },
+                    { data: 'comentarios' }
+                ],
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+                },
+                pageLength: 25,
+                order: [[0, 'desc']],
+                responsive: true,
+                dom: 'Bfrtip',
+                buttons: [
+                    {
+                        extend: 'excel',
+                        text: '<i class="fas fa-file-excel"></i> Exportar Excel',
+                        className: 'btn btn-success btn-sm',
+                        filename: 'Mermas_Ajustes_' + new Date().toISOString().slice(0, 10)
+                    },
+                    {
+                        extend: 'pdf',
+                        text: '<i class="fas fa-file-pdf"></i> Exportar PDF',
+                        className: 'btn btn-danger btn-sm',
+                        filename: 'Mermas_Ajustes_' + new Date().toISOString().slice(0, 10)
+                    },
+                    {
+                        extend: 'print',
+                        text: '<i class="fas fa-print"></i> Imprimir',
+                        className: 'btn btn-info btn-sm'
+                    }
+                ]
+            });
+        }
+
+        function calcularTotales(data) {
+            var total = 0;
+            $.each(data, function (i, item) {
+                var monto = parseFloat(item.montoTotal.replace(/,/g, '')) || 0;
+                total += monto;
+            });
+            $('#totalMonto').text('$' + total.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+        }
+    </script>
+}

@@ -4,149 +4,634 @@
     <meta charset="utf-8">
     <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Sucursal Online</title>
+    <title>Sistema POS - Supermercado Profesional</title>
 
     <!-- Bootstrap 4.6 CSS -->
-    @Styles.Render("~/Content/bootstrap")
+    <link href="~/Content/bootstrap.min.css" rel="stylesheet" />
 
-    <!-- CSS principal del sitio -->
-    @Styles.Render("~/Content/css")
+    <!-- Custom Styles (ORDEN CRÍTICO) -->
+    <link href="~/Content/custom-supermarket.css" rel="stylesheet" />
+    <link href="~/Content/components.css" rel="stylesheet" />
+    <link href="~/Content/Site.css" rel="stylesheet" />
 
     <!-- Plugins CSS -->
-    @Styles.Render("~/Content/PluginsCSS")
+    <link href="~/Content/Plugins/datatables/css/jquery.dataTables.min.css" rel="stylesheet" />
+    <link href="~/Content/Plugins/sweetalert2/css/sweetalert.css" rel="stylesheet" />
+    <link href="~/Content/Plugins/select2.min.css" rel="stylesheet" />
 
     <!-- FontAwesome (nube) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
-    <!-- Select2 CSS (CDN fallback) -->
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/css/select2.min.css" rel="stylesheet" />
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/select2-bootstrap-css/1.4.6/select2-bootstrap.min.css" rel="stylesheet" />
+    <!-- Toastr CSS -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.css" rel="stylesheet" />
+
+    <!-- ESTILOS CRÍTICOS INLINE -->
+    <style>
+        /* Forzar estilos del sidebar */
+        .sidebar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            width: 260px;
+            background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%) !important;
+            color: #ffffff !important;
+            z-index: 1000;
+            overflow-y: auto;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .sidebar-header {
+            padding: 1.25rem 1rem;
+            background: #0f172a !important;
+            border-bottom: 3px solid #f97316 !important;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .sidebar-header .logo {
+            max-width: 100px !important;
+            height: auto;
+            margin: 0 auto;
+            display: block;
+            filter: drop-shadow(0 2px 8px rgba(249, 115, 22, 0.3));
+        }
+
+        .sidebar-header h3 {
+            color: #ffffff !important;
+            font-size: 1.1rem;
+            margin: 0.75rem 0 0 0;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-nav {
+            padding: 1rem 0;
+            list-style: none;
+            margin: 0;
+        }
+
+        .sidebar-nav-item {
+            margin-bottom: 0.15rem;
+        }
+
+        .sidebar-nav-link {
+            display: flex !important;
+            align-items: center;
+            padding: 0.875rem 1.25rem !important;
+            color: rgba(255, 255, 255, 0.8) !important;
+            text-decoration: none !important;
+            transition: all 0.3s ease;
+            position: relative;
+            font-size: 0.95rem;
+        }
+
+        .sidebar-nav-link:hover {
+            background: rgba(249, 115, 22, 0.1) !important;
+            color: #ffffff !important;
+            text-decoration: none !important;
+            padding-left: 1.5rem !important;
+        }
+
+        .sidebar-nav-link:hover::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #f97316;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .sidebar-nav-link.active {
+            background: rgba(249, 115, 22, 0.15) !important;
+            color: #ffffff !important;
+            font-weight: 600;
+            padding-left: 1.5rem !important;
+        }
+
+        .sidebar-nav-link.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+            background: #f97316;
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 10px rgba(249, 115, 22, 0.5);
+        }
+
+        .sidebar-nav-link i {
+            font-size: 1.15rem;
+            width: 28px;
+            margin-right: 0.875rem;
+            color: #f97316;
+        }
+
+        .main-content {
+            margin-left: 260px;
+            padding: 2rem;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        }
+
+        .top-header {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
+            padding: 1.5rem 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .top-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #f97316 0%, #fb923c 50%, #f97316 100%);
+            background-size: 200% 100%;
+            animation: gradientShift 3s ease infinite;
+        }
+
+        @@keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .page-title {
+            font-size: 1.75rem;
+            font-weight: 700;
+            color: #1e293b;
+            margin: 0;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .user-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 1.3rem;
+            box-shadow: 0 4px 15px rgba(249, 115, 22, 0.4);
+            border: 3px solid #ffffff;
+        }
+
+        .user-name {
+            color: #1e293b;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .btn-logout {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: #ffffff !important;
+            border: none;
+            padding: 0.625rem 1.25rem;
+            border-radius: 8px;
+            transition: all 0.3s;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            text-decoration: none !important;
+        }
+
+        .btn-logout:hover {
+            background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
+            color: #ffffff !important;
+        }
+
+        .btn-logout i {
+            margin-right: 0.5rem;
+        }
+
+        .sidebar-dropdown {
+            list-style: none;
+            padding-left: 0;
+            margin: 0;
+            background: rgba(15, 23, 42, 0.3);
+        }
+
+        .sidebar-dropdown-item {
+            padding-left: 3rem;
+        }
+
+        .sidebar-dropdown-item .sidebar-nav-link {
+            padding: 0.75rem 1.25rem !important;
+            font-size: 0.9rem;
+        }
+
+        .sidebar-dropdown-item .sidebar-nav-link i {
+            font-size: 1rem;
+            width: 24px;
+        }
+
+        /* Mejorar cards del dashboard */
+        .dashboard-card,
+        .stat-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+            border-radius: 16px;
+            padding: 1.75rem;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .dashboard-card::before,
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: linear-gradient(90deg, #f97316 0%, #fb923c 100%);
+        }
+
+        .dashboard-card:hover,
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(249, 115, 22, 0.15);
+        }
+
+        /* Mejorar scrollbar */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: #f97316;
+            border-radius: 4px;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb:hover {
+            background: #fb923c;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            font-size: 14px;
+            line-height: 1.6;
+            margin: 0;
+            padding: 0;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        /* Botones de acción rápida */
+        .btn-primary {
+            background: linear-gradient(135deg, #f97316 0%, #fb923c 100%) !important;
+            border: none !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+            transition: all 0.3s;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(249, 115, 22, 0.4);
+        }
+
+        /* Mejorar badges */
+        .badge {
+            padding: 0.5rem 0.875rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.875rem;
+        }
+
+        /* Animaciones suaves */
+        @@keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .content-wrapper,
+        .main-content > * {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
 
     @RenderSection("estilos", required: false)
 </head>
 
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-info fw-bold">
-        <div class="container-fluid">
-
-            <a class="navbar-brand" href="@Url.Action("Index","Home")">
-                <img src="~/Imagenes/tiendalogo.png" width="110" height="45" alt="logo">
-            </a>
-
-            <button class="navbar-toggler" type="button" data-toggle="collapse"
-                    data-target="#navbarSupportedContent">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-
-            <div class="collapse navbar-collapse" id="navbarSupportedContent">
-                <ul class="navbar-nav me-auto">
-
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Home" ? "active" : "")"
-                           href="@Url.Action("Index", "Home")">
-                            <i class="fas fa-home"></i> Inicio
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Cliente" ? "active" : "")"
-                           href="@Url.Action("Index", "Cliente")">
-                            <i class="fas fa-users"></i> Clientes
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Credito" ? "active" : "")"
-                           href="@Url.Action("Index", "Credito")">
-                            <i class="fas fa-credit-card"></i> Créditos
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Producto" ? "active" : "")"
-                           href="@Url.Action("Index", "Producto")">
-                            <i class="fas fa-box"></i> Productos
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "VentaPOS" ? "active" : "")"
-                           href="@Url.Action("Index", "VentaPOS")">
-                            <i class="fas fa-shopping-cart"></i> Punto de Venta (POS)
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Compra" ? "active" : "")"
-                           href="@Url.Action("Index", "Compra")">
-                            <i class="fas fa-shopping-cart"></i> Compras
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Reporte" ? "active" : "")"
-                           href="@Url.Action("Index", "Reporte")">
-                            <i class="fas fa-chart-bar"></i> Reportes
-                        </a>
-                    </li>
-
-                    <li class="nav-item">
-                        <a class="nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Configuracion" ? "active" : "")"
-                           href="@Url.Action("Index", "Configuracion")">
-                            <i class="fas fa-cog"></i> Configuracion
-                        </a>
-                    </li>
-
-                    @if (User.IsInRole("Administrador"))
-                    {
-                        <li class="nav-item dropdown">
-                            <a class="nav-link dropdown-toggle" href="#" data-toggle="dropdown">
-                                <i class="fas fa-cogs"></i> Administración
-                            </a>
-                            <ul class="dropdown-menu">
-                                <li><a class="dropdown-item" href="@Url.Action("Index","Usuario")">Usuarios</a></li>
-                                <li><a class="dropdown-item" href="@Url.Action("Index","Rol")">Roles</a></li>
-                                <li><a class="dropdown-item" href="@Url.Action("Index","Sucursal")">Sucursales</a></li>
-                                <li><a class="dropdown-item" href="@Url.Action("Index","Proveedor")">Proveedores</a></li>
-                                <li><hr class="dropdown-divider"></li>
-                                <li><a class="dropdown-item" href="@Url.Action("Index","Configuracion")"><i class="fas fa-sliders-h"></i> Configuracion</a></li>
-                            </ul>
-                        </li>
-                    }
-                </ul>
-
-                <ul class="navbar-nav ms-auto">
-                    <li class="nav-item">
-                        <a class="nav-link text-white" href="@Url.Action("Salir", "Home")">
-                            <i class="fas fa-sign-out-alt"></i>
-                            <strong>Salir (@User.Identity.Name)</strong>
-                        </a>
-                    </li>
-                </ul>
-
-            </div>
+    <!-- SIDEBAR NAVIGATION -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <img src="~/Imagenes/tiendalogo.png" alt="Logo" class="logo">
+            <h3>SuperMarket POS</h3>
         </div>
+
+        <ul class="sidebar-nav">
+            <li class="sidebar-nav-item">
+                <a href="@Url.Action("Index", "Home")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Home" ? "active" : "")">
+                    <i class="fas fa-home"></i>
+                    <span>Dashboard</span>
+                </a>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="@Url.Action("Index", "VentaPOS")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "VentaPOS" ? "active" : "")">
+                    <i class="fas fa-cash-register"></i>
+                    <span>Punto de Venta</span>
+                </a>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#ventasDropdown">
+                    <i class="fas fa-file-invoice-dollar"></i>
+                    <span>Ventas</span>
+                </a>
+                <ul class="sidebar-dropdown collapse" id="ventasDropdown">
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Consultar","Venta")" class="sidebar-nav-link">
+                            <i class="fas fa-list"></i>
+                            <span>Historial</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Index","Factura")" class="sidebar-nav-link">
+                            <i class="fas fa-file-invoice"></i>
+                            <span>Facturación CFDI</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="@Url.Action("Index", "Cliente")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Cliente" ? "active" : "")">
+                    <i class="fas fa-users"></i>
+                    <span>Clientes</span>
+                </a>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="@Url.Action("Index", "Credito")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Credito" ? "active" : "")">
+                    <i class="fas fa-credit-card"></i>
+                    <span>Créditos</span>
+                </a>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="@Url.Action("Index", "Producto")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Producto" ? "active" : "")">
+                    <i class="fas fa-box"></i>
+                    <span>Productos</span>
+                </a>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#inventarioDropdown">
+                    <i class="fas fa-boxes"></i>
+                    <span>Inventario</span>
+                </a>
+                <ul class="sidebar-dropdown collapse" id="inventarioDropdown">
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Index","Mermas")" class="sidebar-nav-link">
+                            <i class="fas fa-list"></i>
+                            <span>Historial</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("RegistrarMerma","Mermas")" class="sidebar-nav-link">
+                            <i class="fas fa-trash-alt"></i>
+                            <span>Registrar Merma</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("RegistrarAjuste","Mermas")" class="sidebar-nav-link">
+                            <i class="fas fa-balance-scale"></i>
+                            <span>Ajuste Inventario</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#comprasDropdown">
+                    <i class="fas fa-shopping-cart"></i>
+                    <span>Compras</span>
+                </a>
+                <ul class="sidebar-dropdown collapse" id="comprasDropdown">
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Index","Compra")" class="sidebar-nav-link">
+                            <i class="fas fa-file-invoice"></i>
+                            <span>Registrar Compra</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Index","Proveedor")" class="sidebar-nav-link">
+                            <i class="fas fa-truck"></i>
+                            <span>Proveedores</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Index","CuentasPorPagar")" class="sidebar-nav-link">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                            <span>Cuentas por Pagar</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#contabilidadDropdown">
+                    <i class="fas fa-calculator"></i>
+                    <span>Contabilidad</span>
+                </a>
+                <ul class="sidebar-dropdown collapse" id="contabilidadDropdown">
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Balanza","Contabilidad")" class="sidebar-nav-link">
+                            <i class="fas fa-balance-scale"></i>
+                            <span>Balanza</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("EstadoResultados","Contabilidad")" class="sidebar-nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Estado Resultados</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("LibroDiario","Contabilidad")" class="sidebar-nav-link">
+                            <i class="fas fa-book"></i>
+                            <span>Libro Diario</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("ReporteIVA","Contabilidad")" class="sidebar-nav-link">
+                            <i class="fas fa-percentage"></i>
+                            <span>Reporte IVA</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="@Url.Action("Consultar", "Poliza")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Poliza" ? "active" : "")">
+                    <i class="fas fa-book"></i>
+                    <span>Pólizas</span>
+                </a>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="@Url.Action("Index", "Reporte")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Reporte" ? "active" : "")">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reportes</span>
+                </a>
+            </li>
+
+            @if (User.IsInRole("Administrador"))
+            {
+                <li class="sidebar-nav-item">
+                    <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#adminDropdown">
+                        <i class="fas fa-cogs"></i>
+                        <span>Administración</span>
+                    </a>
+                    <ul class="sidebar-dropdown collapse" id="adminDropdown">
+                        <li class="sidebar-nav-item sidebar-dropdown-item">
+                            <a href="@Url.Action("Index","Usuario")" class="sidebar-nav-link">
+                                <i class="fas fa-user-shield"></i>
+                                <span>Usuarios</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-nav-item sidebar-dropdown-item">
+                            <a href="@Url.Action("Index","Rol")" class="sidebar-nav-link">
+                                <i class="fas fa-user-tag"></i>
+                                <span>Roles</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-nav-item sidebar-dropdown-item">
+                            <a href="@Url.Action("Index","Sucursal")" class="sidebar-nav-link">
+                                <i class="fas fa-store"></i>
+                                <span>Sucursales</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-nav-item sidebar-dropdown-item">
+                            <a href="@Url.Action("Index","Configuracion")" class="sidebar-nav-link">
+                                <i class="fas fa-sliders-h"></i>
+                                <span>Configuración</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
+            }
+        </ul>
     </nav>
 
-    <div class="container-fluid mt-4">
-        @RenderBody()
-        <hr />
-        <footer class="text-center text-muted">
-            <p>© @DateTime.Now.Year - Mi Sucursal Online</p>
+    <!-- MAIN CONTENT AREA -->
+    <div class="main-content">
+        <!-- TOP HEADER -->
+        <div class="top-header">
+            <div>
+                <button class="btn btn-sm btn-outline-secondary d-lg-none" id="sidebarToggle">
+                    <i class="fas fa-bars"></i>
+                </button>
+                <h2 class="page-title d-inline-block ml-2">@ViewBag.Title</h2>
+            </div>
+            <div class="user-info">
+                <div class="user-avatar">
+                    @if (!string.IsNullOrEmpty(User.Identity.Name))
+                    {
+                        @User.Identity.Name.Substring(0, 1).ToUpper()
+                    }
+                    else
+                    {
+                        <text>U</text>
+                    }
+                </div>
+                <span class="user-name d-none d-md-inline">@(User.Identity.Name ?? "Usuario")</span>
+                <a href="@Url.Action("Salir", "Home")" class="btn btn-logout btn-sm">
+                    <i class="fas fa-sign-out-alt"></i> Salir
+                </a>
+            </div>
+        </div>
+
+        <!-- CONTENT -->
+        <div class="content-wrapper fade-in">
+            @RenderBody()
+        </div>
+
+        <!-- FOOTER -->
+        <footer class="text-center text-muted mt-5 py-3">
+            <p class="mb-0">© @DateTime.Now.Year - Sistema POS Profesional para Supermercado</p>
+            <small>Versión 2.0 - Diseño Profesional</small>
         </footer>
     </div>
 
     <!-- jQuery DESDE BUNDLE -->
-    @Scripts.Render("~/bundles/jquery")
+    <script src="~/Scripts/jquery-3.3.1.min.js"></script>
 
-    <!-- Bootstrap 4.6 JS DESDE BUNDLE -->
-    @Scripts.Render("~/bundles/bootstrap")
+    <!-- Bootstrap 4.6 JS -->
+    <script src="~/Scripts/bootstrap.bundle.min.js"></script>
 
     <!-- Plugins JS -->
-    @Scripts.Render("~/Content/PluginsJS")
+    <script src="~/Content/Plugins/datatables/js/jquery.dataTables.min.js"></script>
+    <script src="~/Content/Plugins/sweetalert2/js/sweetalert.js"></script>
+    <script src="~/Content/Plugins/select2.min.js"></script>
 
     <!-- Select2 JS (CDN fallback) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/select2/4.0.13/js/select2.min.js"></script>
+
+    <!-- Toastr JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js"></script>
+
+    <script>
+        // Configuración global de toastr
+        toastr.options = {
+            "closeButton": true,
+            "debug": false,
+            "newestOnTop": true,
+            "progressBar": true,
+            "positionClass": "toast-top-right",
+            "preventDuplicates": false,
+            "onclick": null,
+            "showDuration": "300",
+            "hideDuration": "1000",
+            "timeOut": "5000",
+            "extendedTimeOut": "1000",
+            "showEasing": "swing",
+            "hideEasing": "linear",
+            "showMethod": "fadeIn",
+            "hideMethod": "fadeOut"
+        };
+    </script>
 
     <script>
         $.extend({ MisUrls: { url: {}, urls: function (a) { $.extend($.MisUrls.url, a); } } });
@@ -156,7 +641,26 @@
             _GuardarCliente: '@Url.Action("Guardar", "Cliente")',
             _EliminarCliente: '@Url.Action("Eliminar", "Cliente")',
             _ObtenerCatalogosCliente: '@Url.Action("ObtenerCatalogos", "Cliente")',
+            _ObtenerProveedores: '@Url.Action("Obtener", "Proveedor")',
+            _ObtenerSucursales: '@Url.Action("Obtener", "Sucursal")',
+            _ObtenerProductosPorSucursal: '@Url.Action("ObtenerPorSucursal", "Producto")',
+            _ObtenerProductos: '@Url.Action("Obtener", "Producto")',
+            _GuardarCompra: '@Url.Action("RegistrarCompra", "Compra")',
             Url_datatable_spanish: '@Url.Content("~/Content/Plugins/datatables/js/datatable_spanish.json")'
+        });
+
+        // Sidebar toggle para móviles
+        $(document).ready(function() {
+            $('#sidebarToggle').on('click', function() {
+                $('#sidebar').toggleClass('show');
+            });
+
+            // Cerrar sidebar al hacer clic fuera en móvil
+            $(document).on('click', function(e) {
+                if (!$(e.target).closest('#sidebar, #sidebarToggle').length) {
+                    $('#sidebar').removeClass('show');
+                }
+            });
         });
     </script>
 

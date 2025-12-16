@@ -110,7 +110,8 @@ namespace CapaDatos
                         TipoPoliza = "VENTA",
                         FechaPoliza = DateTime.Now,
                         Concepto = $"Venta - Cliente: {venta.ClienteID}",
-                        ReferenciaTipo = "VENTA"
+                        Referencia = $"VENTA-{venta.VentaID}",
+                        Usuario = venta.Usuario
                     };
 
                     // 1. DÉBITO: Cliente/Caja (monto total con IVA)
@@ -224,6 +225,90 @@ namespace CapaDatos
             return lista;
         }
 
+        public List<dynamic> ObtenerTodasVentas(string fechaInicio = null, string fechaFin = null, string codigoVenta = null, string documentoCliente = null, string nombreCliente = null)
+        {
+            var lista = new List<dynamic>();
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                var query = @"
+                    SELECT 
+                        V.VentaID,
+                        'VENTA' AS TipoDocumento,
+                        V.VentaID AS CodigoDocumento,
+                        V.FechaVenta AS FechaCreacion,
+                        C.RFC AS DocumentoCliente,
+                        C.RazonSocial AS NombreCliente,
+                        V.Total AS TotalVenta,
+                        V.Estatus,
+                        ISNULL(SUM(P.Monto), 0) AS TotalPagado,
+                        V.Total - ISNULL(SUM(P.Monto), 0) AS SaldoPendiente,
+                        CASE WHEN V.EstaFacturada = 1 THEN 'Facturada' ELSE 'Sin Facturar' END AS EstadoFactura
+                    FROM VentasClientes V
+                    INNER JOIN Clientes C ON V.ClienteID = C.ClienteID
+                    LEFT JOIN PagosClientes P ON V.VentaID = P.VentaID
+                    WHERE 1=1";
+
+                if (!string.IsNullOrEmpty(fechaInicio))
+                    query += " AND CAST(V.FechaVenta AS DATE) >= @FechaInicio";
+                
+                if (!string.IsNullOrEmpty(fechaFin))
+                    query += " AND CAST(V.FechaVenta AS DATE) <= @FechaFin";
+                
+                if (!string.IsNullOrEmpty(codigoVenta))
+                    query += " AND CAST(V.VentaID AS VARCHAR(50)) LIKE '%' + @CodigoVenta + '%'";
+                
+                if (!string.IsNullOrEmpty(documentoCliente))
+                    query += " AND C.RFC LIKE '%' + @DocumentoCliente + '%'";
+                
+                if (!string.IsNullOrEmpty(nombreCliente))
+                    query += " AND C.RazonSocial LIKE '%' + @NombreCliente + '%'";
+
+                query += @"
+                    GROUP BY V.VentaID, V.FechaVenta, C.RFC, C.RazonSocial, V.Total, V.Estatus, V.EstaFacturada
+                    ORDER BY V.FechaVenta DESC";
+
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                
+                if (!string.IsNullOrEmpty(fechaInicio))
+                    cmd.Parameters.AddWithValue("@FechaInicio", DateTime.Parse(fechaInicio));
+                
+                if (!string.IsNullOrEmpty(fechaFin))
+                    cmd.Parameters.AddWithValue("@FechaFin", DateTime.Parse(fechaFin));
+                
+                if (!string.IsNullOrEmpty(codigoVenta))
+                    cmd.Parameters.AddWithValue("@CodigoVenta", codigoVenta);
+                
+                if (!string.IsNullOrEmpty(documentoCliente))
+                    cmd.Parameters.AddWithValue("@DocumentoCliente", documentoCliente);
+                
+                if (!string.IsNullOrEmpty(nombreCliente))
+                    cmd.Parameters.AddWithValue("@NombreCliente", nombreCliente);
+
+                cnx.Open();
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(new
+                        {
+                            VentaID = dr["VentaID"].ToString(),
+                            TipoDocumento = dr["TipoDocumento"].ToString(),
+                            CodigoDocumento = dr["CodigoDocumento"].ToString(),
+                            FechaCreacion = Convert.ToDateTime(dr["FechaCreacion"]).ToString("dd/MM/yyyy HH:mm"),
+                            DocumentoCliente = dr["DocumentoCliente"].ToString(),
+                            NombreCliente = dr["NombreCliente"].ToString(),
+                            TotalVenta = Convert.ToDecimal(dr["TotalVenta"]),
+                            Estatus = dr["Estatus"].ToString(),
+                            TotalPagado = Convert.ToDecimal(dr["TotalPagado"]),
+                            SaldoPendiente = Convert.ToDecimal(dr["SaldoPendiente"]),
+                            EstadoFactura = dr["EstadoFactura"].ToString()
+                        });
+                    }
+                }
+            }
+            return lista;
+        }
+
         public VentaCliente ObtenerDetalle(Guid ventaId)
         {
             VentaCliente venta = null;
@@ -290,6 +375,26 @@ namespace CapaDatos
                 }
             }
             return venta;
+        }
+
+        // Actualizar estado de facturación de una venta
+        public bool ActualizarEstadoFactura(Guid ventaId, Guid facturaId)
+        {
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                var query = @"
+                    UPDATE VentasClientes 
+                    SET EstaFacturada = 1, FacturaID = @FacturaID
+                    WHERE VentaID = @VentaID";
+
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@VentaID", ventaId);
+                cmd.Parameters.AddWithValue("@FacturaID", facturaId);
+
+                cnx.Open();
+                int rows = cmd.ExecuteNonQuery();
+                return rows > 0;
+            }
         }
 
         public bool RegistrarPago(PagoCliente pago, out string mensajeDetallado)

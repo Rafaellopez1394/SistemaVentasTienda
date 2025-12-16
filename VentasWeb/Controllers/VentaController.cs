@@ -15,6 +15,27 @@ namespace VentasWeb.Controllers
             return View();
         }
 
+        // Vista para consultar historial de ventas
+        public ActionResult Consultar()
+        {
+            return View();
+        }
+
+        // Obtener todas las ventas (para reporte/historial)
+        [HttpGet]
+        public JsonResult ObtenerTodasVentas(string fechaInicio = null, string fechaFin = null, string codigoVenta = null, string documentoCliente = null, string nombreCliente = null)
+        {
+            try
+            {
+                var ventas = CD_Venta.Instancia.ObtenerTodasVentas(fechaInicio, fechaFin, codigoVenta, documentoCliente, nombreCliente);
+                return Json(new { data = ventas }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { data = new List<object>(), error = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
         // Obtener ventas del cliente (para cuentas por cobrar)
         [HttpGet]
         public JsonResult ObtenerVentasCliente(Guid clienteId)

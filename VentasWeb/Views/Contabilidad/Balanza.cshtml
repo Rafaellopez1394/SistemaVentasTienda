@@ -1,0 +1,179 @@
+@{
+    ViewBag.Title = "Balanza de Comprobación";
+}
+
+<div class="container-fluid">
+    <h2><i class="fas fa-balance-scale"></i> Balanza de Comprobación</h2>
+    <hr />
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Fecha Inicio:</label>
+                    <input type="date" id="txtFechaInicio" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label>Fecha Fin:</label>
+                    <input type="date" id="txtFechaFin" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" onclick="generarBalanza()">
+                        <i class="fas fa-file-alt"></i> Generar
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-success btn-block" onclick="exportarExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="tbBalanza" class="table table-bordered table-hover table-sm">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Código</th>
+                            <th>Cuenta</th>
+                            <th>Tipo</th>
+                            <th>Naturaleza</th>
+                            <th class="text-right">Saldo Inicial</th>
+                            <th class="text-right">Debe</th>
+                            <th class="text-right">Haber</th>
+                            <th class="text-right">Saldo Final</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                    <tfoot>
+                        <tr class="font-weight-bold bg-light">
+                            <td colspan="4" class="text-right">TOTALES:</td>
+                            <td id="totalSaldoInicial" class="text-right">0.00</td>
+                            <td id="totalDebe" class="text-right">0.00</td>
+                            <td id="totalHaber" class="text-right">0.00</td>
+                            <td id="totalSaldoFinal" class="text-right">0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            // Inicializar fechas (mes actual)
+            var hoy = new Date();
+            var primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+            var ultimoDia = new Date(hoy.getFullYear(), hoy.getMonth() + 1, 0);
+
+            $("#txtFechaInicio").val(primerDia.toISOString().split('T')[0]);
+            $("#txtFechaFin").val(ultimoDia.toISOString().split('T')[0]);
+        });
+
+        function generarBalanza() {
+            var fechaInicio = $("#txtFechaInicio").val();
+            var fechaFin = $("#txtFechaFin").val();
+
+            if (!fechaInicio || !fechaFin) {
+                toastr.warning("Seleccione el rango de fechas", "Atención");
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GenerarBalanza", "Contabilidad")',
+                type: 'POST',
+                data: {
+                    fechaInicio: fechaInicio,
+                    fechaFin: fechaFin
+                },
+                beforeSend: function () {
+                    $("#tbBalanza tbody").html('<tr><td colspan="8" class="text-center"><i class="fas fa-spinner fa-spin"></i> Generando balanza...</td></tr>');
+                },
+                success: function (response) {
+                    if (response.success) {
+                        mostrarBalanza(response.data);
+                        toastr.success("Balanza generada correctamente", "Éxito");
+                    } else {
+                        toastr.error(response.mensaje, "Error");
+                    }
+                },
+                error: function () {
+                    toastr.error("Error al generar la balanza", "Error");
+                }
+            });
+        }
+
+        function mostrarBalanza(data) {
+            var tbody = $("#tbBalanza tbody");
+            tbody.empty();
+
+            var totalSaldoInicial = 0;
+            var totalDebe = 0;
+            var totalHaber = 0;
+            var totalSaldoFinal = 0;
+
+            data.forEach(function (item) {
+                var saldoInicial = parseFloat(item.SaldoInicial.replace(/,/g, ''));
+                var debe = parseFloat(item.Debe.replace(/,/g, ''));
+                var haber = parseFloat(item.Haber.replace(/,/g, ''));
+                var saldoFinal = parseFloat(item.SaldoFinal.replace(/,/g, ''));
+
+                totalSaldoInicial += saldoInicial;
+                totalDebe += debe;
+                totalHaber += haber;
+                totalSaldoFinal += saldoFinal;
+
+                var fila = `<tr>
+                    <td>${item.CodigoCuenta}</td>
+                    <td>${item.NombreCuenta}</td>
+                    <td><span class="badge badge-info">${item.Tipo}</span></td>
+                    <td><span class="badge ${item.Naturaleza === 'DEUDORA' ? 'badge-primary' : 'badge-success'}">${item.Naturaleza}</span></td>
+                    <td class="text-right">$${item.SaldoInicial}</td>
+                    <td class="text-right">$${item.Debe}</td>
+                    <td class="text-right">$${item.Haber}</td>
+                    <td class="text-right ${saldoFinal < 0 ? 'text-danger' : ''}">$${item.SaldoFinal}</td>
+                </tr>`;
+                tbody.append(fila);
+            });
+
+            $("#totalSaldoInicial").text("$" + totalSaldoInicial.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalDebe").text("$" + totalDebe.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalHaber").text("$" + totalHaber.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalSaldoFinal").text("$" + totalSaldoFinal.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+        }
+
+        function exportarExcel() {
+            var fechaInicio = $("#txtFechaInicio").val();
+            var fechaFin = $("#txtFechaFin").val();
+
+            if ($("#tbBalanza tbody tr").length === 0) {
+                toastr.warning("Primero genere la balanza", "Atención");
+                return;
+            }
+
+            // Exportar tabla a Excel
+            var tabla = $("#tbBalanza").clone();
+            var html = tabla[0].outerHTML;
+            
+            var uri = 'data:application/vnd.ms-excel;base64,';
+            var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Balanza</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--><meta http-equiv="content-type" content="text/plain; charset=UTF-8"/></head><body>{table}</body></html>';
+            var base64 = function (s) { return window.btoa(unescape(encodeURIComponent(s))) };
+            var format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) };
+
+            var ctx = { table: html };
+            var link = document.createElement("a");
+            link.download = "Balanza_" + fechaInicio + "_" + fechaFin + ".xls";
+            link.href = uri + base64(format(template, ctx));
+            link.click();
+        }
+    </script>
+}

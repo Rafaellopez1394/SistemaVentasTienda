@@ -1,0 +1,191 @@
+@{
+    ViewBag.Title = "Certificados Digitales";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <h2>
+                <i class="fas fa-certificate"></i> Certificados Digitales
+            </h2>
+            <p class="text-muted">Gestión de certificados CSD y FIEL para facturación electrónica</p>
+        </div>
+    </div>
+
+    <!-- Botón para subir certificado -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#modalSubirCertificado">
+                <i class="fas fa-upload"></i> Subir Certificado
+            </button>
+        </div>
+    </div>
+
+    <!-- Alerta de vencimiento próximo -->
+    <div id="alertaVencimiento" class="alert alert-warning" style="display: none;">
+        <i class="fas fa-exclamation-triangle"></i>
+        <span id="mensajeVencimiento"></span>
+    </div>
+
+    <!-- Tabla de certificados -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="fas fa-list"></i> Certificados Registrados</h5>
+                </div>
+                <div class="card-body">
+                    <table id="tablaCertificados" class="table table-striped table-bordered" style="width:100%">
+                        <thead>
+                            <tr>
+                                <th>Tipo</th>
+                                <th>Nombre</th>
+                                <th>No. Certificado</th>
+                                <th>RFC</th>
+                                <th>Razón Social</th>
+                                <th>Vencimiento</th>
+                                <th>Uso</th>
+                                <th>Estado</th>
+                                <th>Vigencia</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Subir Certificado -->
+<div class="modal fade" id="modalSubirCertificado" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-upload"></i> Subir Certificado Digital</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <form id="formSubirCertificado" enctype="multipart/form-data">
+                <div class="modal-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Importante:</strong> El certificado debe estar vigente. Debe proporcionar ambos archivos (.CER y .KEY) junto con la contraseña.
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Tipo de Certificado <span class="text-danger">*</span></label>
+                                <select class="form-control" id="tipoCertificado" name="TipoCertificado" required>
+                                    <option value="CSD">CSD (Facturación)</option>
+                                    <option value="FIEL">FIEL (Firma Electrónica)</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Nombre del Certificado <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="nombreCertificado" name="NombreCertificado" 
+                                       placeholder="Ej: Certificado 2024" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Archivo .CER <span class="text-danger">*</span></label>
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="archivoCER" name="archivoCER" 
+                                           accept=".cer" required>
+                                    <label class="custom-file-label" for="archivoCER">Seleccionar archivo .CER</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Archivo .KEY <span class="text-danger">*</span></label>
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="archivoKEY" name="archivoKEY" 
+                                           accept=".key" required>
+                                    <label class="custom-file-label" for="archivoKEY">Seleccionar archivo .KEY</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label>Contraseña del Archivo .KEY <span class="text-danger">*</span></label>
+                                <input type="password" class="form-control" id="passwordKEY" name="PasswordKEY" 
+                                       placeholder="Contraseña privada del archivo .KEY" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <label><strong>Usar Para:</strong></label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="usarParaFacturas" 
+                                       name="UsarParaFacturas" checked>
+                                <label class="form-check-label" for="usarParaFacturas">
+                                    Facturación (CFDI 4.0)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="usarParaNomina" 
+                                       name="UsarParaNomina">
+                                <label class="form-check-label" for="usarParaNomina">
+                                    Nómina (Recibos de Pago)
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="usarParaCancelaciones" 
+                                       name="UsarParaCancelaciones" checked>
+                                <label class="form-check-label" for="usarParaCancelaciones">
+                                    Cancelaciones de CFDI
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row mt-3">
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="esPredeterminado" 
+                                       name="EsPredeterminado">
+                                <label class="form-check-label" for="esPredeterminado">
+                                    <strong>Establecer como certificado predeterminado</strong>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-save"></i> Guardar Certificado
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/Scripts/Contador/Certificados.js"></script>
+    <script>
+        // Actualizar label de input file al seleccionar
+        $('.custom-file-input').on('change', function () {
+            var fileName = $(this).val().split('\\').pop();
+            $(this).siblings('.custom-file-label').addClass('selected').html(fileName);
+        });
+    </script>
+}

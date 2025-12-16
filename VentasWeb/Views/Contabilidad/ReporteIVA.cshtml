@@ -1,0 +1,199 @@
+@{
+    ViewBag.Title = "Reporte IVA";
+}
+
+<div class="container-fluid">
+    <h2><i class="fas fa-percentage"></i> Reporte de IVA</h2>
+    <hr />
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Mes:</label>
+                    <select id="ddlMes" class="form-control">
+                        <option value="1">Enero</option>
+                        <option value="2">Febrero</option>
+                        <option value="3">Marzo</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Mayo</option>
+                        <option value="6">Junio</option>
+                        <option value="7">Julio</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Año:</label>
+                    <input type="number" id="txtAño" class="form-control" value="2024" />
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" onclick="generarReporte()">
+                        <i class="fas fa-file-alt"></i> Generar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div id="reporteContainer" style="display:none;">
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card bg-success text-white">
+                    <div class="card-body">
+                        <h5>IVA TRASLADADO (Ventas)</h5>
+                        <h3 id="totalTrasladado">$0.00</h3>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h5>IVA ACREDITABLE (Compras)</h5>
+                        <h3 id="totalAcreditable">$0.00</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <br />
+
+        <div class="card">
+            <div class="card-body">
+                <h4 id="saldoTitulo">SALDO A PAGAR</h4>
+                <h2 id="saldoMonto" class="text-danger">$0.00</h2>
+            </div>
+        </div>
+
+        <br />
+
+        <ul class="nav nav-tabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" data-toggle="tab" href="#ventas">IVA Trasladado</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-toggle="tab" href="#compras">IVA Acreditable</a>
+            </li>
+        </ul>
+
+        <div class="tab-content">
+            <div id="ventas" class="container tab-pane active">
+                <br />
+                <table id="tbVentas" class="table table-bordered table-sm">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>RFC</th>
+                            <th>Cliente</th>
+                            <th>Documento</th>
+                            <th class="text-right">Base</th>
+                            <th class="text-right">IVA</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+
+            <div id="compras" class="container tab-pane fade">
+                <br />
+                <table id="tbCompras" class="table table-bordered table-sm">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>RFC</th>
+                            <th>Proveedor</th>
+                            <th>Documento</th>
+                            <th class="text-right">Base</th>
+                            <th class="text-right">IVA</th>
+                            <th class="text-right">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            var mesActual = new Date().getMonth() + 1;
+            $("#ddlMes").val(mesActual);
+        });
+
+        function generarReporte() {
+            var mes = $("#ddlMes").val();
+            var año = $("#txtAño").val();
+
+            $.ajax({
+                url: '@Url.Action("GenerarReporteIVA", "Contabilidad")',
+                type: 'POST',
+                data: { mes: mes, año: año },
+                success: function (response) {
+                    if (response.success) {
+                        mostrarReporte(response.data);
+                        toastr.success("Reporte generado", "Éxito");
+                    } else {
+                        toastr.error(response.mensaje, "Error");
+                    }
+                }
+            });
+        }
+
+        function mostrarReporte(data) {
+            $("#totalTrasladado").text("$" + data.TotalIVATrasladado);
+            $("#totalAcreditable").text("$" + data.TotalIVAAcreditable);
+
+            var saldoFavor = parseFloat(data.SaldoFavor.replace(/,/g, ''));
+            var saldoAFavor = parseFloat(data.SaldoAFavor.replace(/,/g, ''));
+
+            if (saldoFavor > 0) {
+                $("#saldoTitulo").text("SALDO A PAGAR AL SAT");
+                $("#saldoMonto").removeClass("text-success").addClass("text-danger").text("$" + data.SaldoFavor);
+            } else {
+                $("#saldoTitulo").text("SALDO A FAVOR DEL CONTRIBUYENTE");
+                $("#saldoMonto").removeClass("text-danger").addClass("text-success").text("$" + data.SaldoAFavor);
+            }
+
+            // Llenar tabla ventas
+            var tbodyVentas = $("#tbVentas tbody");
+            tbodyVentas.empty();
+            data.DetalleVentas.forEach(function (v) {
+                tbodyVentas.append(`<tr>
+                    <td>${v.Fecha}</td>
+                    <td>${v.RFC}</td>
+                    <td>${v.Nombre}</td>
+                    <td>${v.Documento}</td>
+                    <td class="text-right">$${v.Base}</td>
+                    <td class="text-right">$${v.IVA}</td>
+                    <td class="text-right">$${v.Total}</td>
+                </tr>`);
+            });
+
+            // Llenar tabla compras
+            var tbodyCompras = $("#tbCompras tbody");
+            tbodyCompras.empty();
+            data.DetalleCompras.forEach(function (c) {
+                tbodyCompras.append(`<tr>
+                    <td>${c.Fecha}</td>
+                    <td>${c.RFC}</td>
+                    <td>${c.Nombre}</td>
+                    <td>${c.Documento}</td>
+                    <td class="text-right">$${c.Base}</td>
+                    <td class="text-right">$${c.IVA}</td>
+                    <td class="text-right">$${c.Total}</td>
+                </tr>`);
+            });
+
+            $("#reporteContainer").show();
+        }
+    </script>
+}

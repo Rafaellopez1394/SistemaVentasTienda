@@ -145,9 +145,29 @@ namespace VentasWeb.Controllers
                 // Asignar usuario actual
                 payload.Venta.Usuario = User.Identity.Name ?? "system";
 
-                // Asignar caja por defecto (puedes cambiarlo según tu lógica)
+                // Validar que CajaID esté especificado
                 if (payload.Venta.CajaID == 0)
-                    payload.Venta.CajaID = 1;
+                    return Json(new { success = false, mensaje = "Debe especificar una caja para la venta" }, JsonRequestBehavior.AllowGet);
+
+                // ✅ VALIDACIÓN CRÍTICA: Verificar que la caja esté abierta
+                string mensajeValidacion;
+                DateTime? fechaApertura;
+                decimal saldoActual;
+                bool cajaAbierta = CD_VentaPOS.Instancia.ValidarCajaAbierta(
+                    payload.Venta.CajaID, 
+                    out mensajeValidacion, 
+                    out fechaApertura, 
+                    out saldoActual
+                );
+
+                if (!cajaAbierta)
+                {
+                    return Json(new { 
+                        success = false, 
+                        mensaje = "No se puede procesar la venta: " + mensajeValidacion,
+                        requireApertura = true
+                    }, JsonRequestBehavior.AllowGet);
+                }
 
                 // Registrar venta
                 string mensaje;
@@ -208,6 +228,91 @@ namespace VentasWeb.Controllers
                     mensaje = mensaje,
                     saldoFinal = saldoFinal,
                     totalVentas = totalVentas
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // Obtener estado de caja
+        [HttpGet]
+        public JsonResult ObtenerEstadoCaja(int cajaID)
+        {
+            try
+            {
+                var estado = CD_VentaPOS.Instancia.ObtenerEstadoCaja(cajaID);
+                return Json(new { success = true, data = estado }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // Cierre completo con arqueo
+        [HttpPost]
+        public JsonResult CierreCajaCompleto(int cajaID, decimal montoEfectivo, decimal montoTarjeta, decimal montoTransferencia, string observaciones)
+        {
+            try
+            {
+                int corteID;
+                decimal diferencia;
+                string mensaje;
+                
+                bool exito = CD_VentaPOS.Instancia.CierreCajaCompleto(
+                    cajaID, 
+                    User.Identity.Name ?? "system", 
+                    montoEfectivo, 
+                    montoTarjeta, 
+                    montoTransferencia, 
+                    observaciones,
+                    out corteID, 
+                    out diferencia, 
+                    out mensaje
+                );
+
+                return Json(new
+                {
+                    success = exito,
+                    mensaje = mensaje,
+                    corteID = corteID,
+                    diferencia = diferencia
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // ✅ PROCESO CRÍTICO: Cerrar día y generar póliza automática
+        [HttpPost]
+        public JsonResult CerrarDia(string fecha)
+        {
+            try
+            {
+                DateTime fechaCierre;
+                if (!DateTime.TryParse(fecha, out fechaCierre))
+                {
+                    return Json(new { success = false, mensaje = "Fecha inválida" }, JsonRequestBehavior.AllowGet);
+                }
+
+                Guid? polizaID;
+                string mensaje;
+                bool exito = CD_VentaPOS.Instancia.CerrarDia(
+                    fechaCierre, 
+                    User.Identity.Name ?? "system", 
+                    out polizaID, 
+                    out mensaje
+                );
+
+                return Json(new
+                {
+                    success = exito,
+                    mensaje = mensaje,
+                    polizaID = polizaID?.ToString()
                 }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)

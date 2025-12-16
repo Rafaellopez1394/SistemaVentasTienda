@@ -47,14 +47,23 @@
     <Compile Include="CD_Categoria.cs" />
     <Compile Include="CD_CatalogoContable.cs" />
     <Compile Include="CD_Cliente.cs" />
+    <Compile Include="CD_ComplementoPago.cs" />
     <Compile Include="CD_Compra.cs" />
+    <Compile Include="CD_Configuracion.cs" />
+    <Compile Include="CD_ConfiguracionContador.cs" />
+    <Compile Include="CD_CuentasPorPagar.cs" />
+    <Compile Include="CD_EmailLog.cs" />
+    <Compile Include="CD_Empleado.cs" />
+    <Compile Include="CD_Factura.cs" />
     <Compile Include="CD_MapeoIVA.cs" />
+    <Compile Include="CD_Nomina.cs" />
     <Compile Include="CD_Permisos.cs" />
     <Compile Include="CD_Poliza.cs" />
     <Compile Include="CD_Producto.cs" />
     <Compile Include="CD_ProductoSucursal.cs" />
     <Compile Include="CD_Proveedor.cs" />
     <Compile Include="CD_Reportes.cs" />
+    <Compile Include="CD_ReportesContables.cs" />
     <Compile Include="CD_Rol.cs" />
     <Compile Include="CD_Sucursal.cs" />
     <Compile Include="CD_TipoCredito.cs" />
@@ -63,9 +72,14 @@
     <Compile Include="CD_Usuario.cs" />
     <Compile Include="CD_Venta.cs" />
     <Compile Include="CD_VentaPOS.cs" />
-    <Compile Include="CD_Configuracion.cs" />
     <Compile Include="Conexion.cs" />
+    <Compile Include="PAC\CFDI40XMLGenerator.cs" />
+    <Compile Include="PAC\CFDINomina12XMLGenerator.cs" />
+    <Compile Include="PAC\ComplementoPago20XMLGenerator.cs" />
+    <Compile Include="PAC\IProveedorPAC.cs" />
+    <Compile Include="PAC\FinkokPAC.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Utilidades\CertificadoHelper.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\CapaModelo\CapaModelo.csproj">

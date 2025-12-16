@@ -1,0 +1,345 @@
+@{
+    ViewBag.Title = "Registrar Merma";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <h1>
+            Registrar Merma
+            <small>Pérdida de inventario por caducidad, deterioro o daño</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="@Url.Action("Index", "Mermas")"><i class="fas fa-trash-alt"></i> Mermas</a></li>
+            <li class="active">Registrar</li>
+        </ol>
+    </section>
+
+    <section class="content">
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <div class="box box-danger">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">
+                            <i class="fas fa-exclamation-triangle"></i> Formulario de Merma
+                        </h3>
+                    </div>
+                    <form id="formMerma">
+                        <div class="box-body">
+                            <div class="callout callout-info">
+                                <h4><i class="icon fas fa-info"></i> Información</h4>
+                                <p>
+                                    Al registrar una merma, el sistema automáticamente:
+                                </p>
+                                <ul>
+                                    <li>Reducirá el inventario del lote seleccionado</li>
+                                    <li>Generará una póliza contable (DEBE: Pérdida por Merma / HABER: Inventario)</li>
+                                    <li>Registrará el movimiento en el historial</li>
+                                </ul>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="codigoBarras">
+                                    <i class="fas fa-barcode"></i> Código del Producto
+                                    <small class="text-muted">(Escanee o escriba el código)</small>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fas fa-barcode"></i></span>
+                                    <input type="text" id="codigoBarras" class="form-control" 
+                                           placeholder="Escanee el código de barras o escriba el código interno..." 
+                                           autocomplete="off">
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-info" id="btnBuscarCodigo">
+                                            <i class="fas fa-search"></i> Buscar
+                                        </button>
+                                    </span>
+                                </div>
+                                <small class="help-block">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Puede escanear el código de barras (será comparado con el Código Interno) o seleccionar manualmente el producto
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="productoSelect">Producto <span class="text-danger">*</span></label>
+                                <select id="productoSelect" class="form-control" required>
+                                    <option value="">Seleccione un producto...</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="loteSelect">Lote <span class="text-danger">*</span></label>
+                                <select id="loteSelect" class="form-control" required disabled>
+                                    <option value="">Primero seleccione un producto</option>
+                                </select>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="cantidad">Cantidad <span class="text-danger">*</span></label>
+                                        <input type="number" id="cantidad" class="form-control" min="1" required>
+                                        <small class="help-block">Disponible: <span id="stockDisponible">-</span></small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="costoUnitario">Costo Unitario</label>
+                                        <input type="text" id="costoUnitario" class="form-control" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="motivo">Motivo de la Merma <span class="text-danger">*</span></label>
+                                <select id="motivo" class="form-control" required>
+                                    <option value="">Seleccione...</option>
+                                    <option value="CADUCIDAD">Producto Caducado</option>
+                                    <option value="DETERIORO">Deterioro / Mal Estado</option>
+                                    <option value="DAÑO">Daño Físico</option>
+                                    <option value="ROBO">Robo</option>
+                                    <option value="OTRO">Otro</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="comentarios">Comentarios / Observaciones</label>
+                                <textarea id="comentarios" class="form-control" rows="3" 
+                                          placeholder="Descripción detallada del motivo de la merma..."></textarea>
+                            </div>
+
+                            <div class="box box-solid">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title">Resumen</h3>
+                                </div>
+                                <div class="box-body">
+                                    <table class="table table-bordered">
+                                        <tr>
+                                            <td><strong>Producto:</strong></td>
+                                            <td id="resumenProducto">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Lote:</strong></td>
+                                            <td id="resumenLote">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Cantidad:</strong></td>
+                                            <td id="resumenCantidad">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Monto Total:</strong></td>
+                                            <td id="resumenMonto" class="text-danger"><strong>$0.00</strong></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="box-footer">
+                            <a href="@Url.Action("Index", "Mermas")" class="btn btn-default">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-danger pull-right">
+                                <i class="fas fa-save"></i> Registrar Merma
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            cargarProductos();
+
+            // Manejar búsqueda por código de barras
+            $('#codigoBarras').keypress(function (e) {
+                if (e.which === 13) { // Enter key
+                    e.preventDefault();
+                    buscarPorCodigoBarras();
+                }
+            });
+
+            $('#btnBuscarCodigo').click(function () {
+                buscarPorCodigoBarras();
+            });
+
+            // Auto-focus en código de barras al cargar
+            $('#codigoBarras').focus();
+
+            $('#productoSelect').change(function () {
+                var productoId = $(this).val();
+                if (productoId) {
+                    cargarLotes(productoId);
+                    $('#resumenProducto').text($('#productoSelect option:selected').text());
+                } else {
+                    $('#loteSelect').html('<option value="">Primero seleccione un producto</option>').prop('disabled', true);
+                    limpiarResumen();
+                }
+            });
+
+            $('#loteSelect').change(function () {
+                var loteId = $(this).val();
+                if (loteId) {
+                    var loteText = $('#loteSelect option:selected').text();
+                    var disponible = $('#loteSelect option:selected').data('disponible');
+                    var costo = $('#loteSelect option:selected').data('costo');
+                    
+                    $('#stockDisponible').text(disponible + ' unidades');
+                    $('#costoUnitario').val('$' + parseFloat(costo).toFixed(2));
+                    $('#cantidad').attr('max', disponible);
+                    $('#resumenLote').text(loteText);
+                    actualizarResumen();
+                } else {
+                    $('#stockDisponible').text('-');
+                    $('#costoUnitario').val('');
+                    $('#resumenLote').text('-');
+                }
+            });
+
+            $('#cantidad').on('input', function () {
+                actualizarResumen();
+            });
+
+            $('#formMerma').submit(function (e) {
+                e.preventDefault();
+                registrarMerma();
+            });
+        });
+
+        function buscarPorCodigoBarras() {
+            var codigo = $('#codigoBarras').val().trim();
+            if (!codigo) {
+                toastr.warning('Por favor ingrese un código de barras');
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("BuscarProductoPorCodigo", "Mermas")',
+                type: 'GET',
+                data: { codigo: codigo },
+                success: function (response) {
+                    if (response.success) {
+                        // Seleccionar el producto en el combo
+                        $('#productoSelect').val(response.productoId).trigger('change');
+                        
+                        toastr.success('Producto encontrado: ' + response.nombreProducto);
+                        
+                        // Limpiar el campo de código de barras
+                        $('#codigoBarras').val('').focus();
+                    } else {
+                        toastr.error(response.message || 'Producto no encontrado');
+                        $('#codigoBarras').select();
+                    }
+                },
+                error: function () {
+                    toastr.error('Error al buscar el producto');
+                }
+            });
+        }
+
+        function cargarProductos() {
+            $.get('@Url.Action("ObtenerProductos", "Mermas")', function (data) {
+                $('#productoSelect').append('<option value="">Seleccione un producto...</option>');
+                $.each(data, function (i, item) {
+                    $('#productoSelect').append($('<option>', {
+                        value: item.value,
+                        text: item.text
+                    }));
+                });
+            });
+        }
+
+        function cargarLotes(productoId) {
+            $.get('@Url.Action("ObtenerLotesPorProducto", "Mermas")', { productoId: productoId }, function (response) {
+                if (response.success) {
+                    $('#loteSelect').html('<option value="">Seleccione un lote...</option>').prop('disabled', false);
+                    
+                    if (response.lotes.length === 0) {
+                        toastr.warning('El producto seleccionado no tiene lotes con stock disponible');
+                        return;
+                    }
+
+                    $.each(response.lotes, function (i, lote) {
+                        $('#loteSelect').append($('<option>', {
+                            value: lote.value,
+                            text: lote.text,
+                            'data-disponible': lote.cantidadDisponible,
+                            'data-costo': lote.precioCompra
+                        }));
+                    });
+                } else {
+                    toastr.error(response.message || 'Error al cargar lotes');
+                }
+            });
+        }
+
+        function actualizarResumen() {
+            var cantidad = parseInt($('#cantidad').val()) || 0;
+            var costo = parseFloat($('#costoUnitario').val().replace('$', '').replace(',', '')) || 0;
+            var total = cantidad * costo;
+
+            $('#resumenCantidad').text(cantidad + ' unidades');
+            $('#resumenMonto').html('<strong>$' + total.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,') + '</strong>');
+        }
+
+        function limpiarResumen() {
+            $('#resumenProducto').text('-');
+            $('#resumenLote').text('-');
+            $('#resumenCantidad').text('-');
+            $('#resumenMonto').html('<strong>$0.00</strong>');
+            $('#stockDisponible').text('-');
+            $('#costoUnitario').val('');
+        }
+
+        function registrarMerma() {
+            var loteId = parseInt($('#loteSelect').val());
+            var cantidad = parseInt($('#cantidad').val());
+            var comentarios = $('#motivo').val() + (($('#comentarios').val()) ? ': ' + $('#comentarios').val() : '');
+
+            if (!loteId || !cantidad || cantidad <= 0) {
+                toastr.error('Complete todos los campos requeridos');
+                return;
+            }
+
+            var disponible = parseInt($('#loteSelect option:selected').data('disponible'));
+            if (cantidad > disponible) {
+                toastr.error('La cantidad excede el stock disponible (' + disponible + ')');
+                return;
+            }
+
+            Swal.fire({
+                title: '¿Confirmar Merma?',
+                html: 'Se registrará una merma de <strong>' + cantidad + ' unidades</strong><br>' +
+                      'Monto: <strong>' + $('#resumenMonto').text() + '</strong><br><br>' +
+                      '<i class="fas fa-info-circle"></i> Se generará automáticamente una póliza contable.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, registrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#d33'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('@Url.Action("GuardarMerma", "Mermas")', {
+                        loteId: loteId,
+                        cantidad: cantidad,
+                        comentarios: comentarios
+                    }, function (response) {
+                        if (response.success) {
+                            Swal.fire('Éxito', response.message, 'success').then(() => {
+                                window.location.href = '@Url.Action("Index", "Mermas")';
+                            });
+                        } else {
+                            toastr.error(response.message);
+                        }
+                    }).fail(function () {
+                        toastr.error('Error de comunicación con el servidor');
+                    });
+                }
+            });
+        }
+    </script>
+}

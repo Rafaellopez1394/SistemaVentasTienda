@@ -1,0 +1,162 @@
+@{
+    ViewBag.Title = "Auxiliar de Cuenta";
+}
+
+<div class="container-fluid">
+    <h2><i class="fas fa-clipboard-list"></i> Auxiliar de Cuenta (Libro Mayor)</h2>
+    <hr />
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <label>Cuenta:</label>
+                    <select id="ddlCuenta" class="form-control">
+                        <option value="">Seleccione una cuenta</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <label>Fecha Inicio:</label>
+                    <input type="date" id="txtFechaInicio" class="form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label>Fecha Fin:</label>
+                    <input type="date" id="txtFechaFin" class="form-control" />
+                </div>
+                <div class="col-md-2">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" onclick="generarAuxiliar()">
+                        <i class="fas fa-file-alt"></i> Generar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div id="auxiliarContainer" style="display:none;">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 id="tituloCuenta"></h5>
+            </div>
+            <div class="card-body">
+                <div class="row mb-3">
+                    <div class="col-md-3">
+                        <strong>Saldo Inicial:</strong>
+                        <h4 id="saldoInicial">$0.00</h4>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Total Cargos:</strong>
+                        <h4 id="totalCargos" class="text-success">$0.00</h4>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Total Abonos:</strong>
+                        <h4 id="totalAbonos" class="text-danger">$0.00</h4>
+                    </div>
+                    <div class="col-md-3">
+                        <strong>Saldo Final:</strong>
+                        <h4 id="saldoFinal">$0.00</h4>
+                    </div>
+                </div>
+
+                <table id="tbMovimientos" class="table table-bordered table-sm">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Tipo</th>
+                            <th>Concepto</th>
+                            <th>Referencia</th>
+                            <th class="text-right">Cargo</th>
+                            <th class="text-right">Abono</th>
+                            <th class="text-right">Saldo</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            cargarCatalogo();
+
+            var hoy = new Date();
+            var primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+            $("#txtFechaInicio").val(primerDia.toISOString().split('T')[0]);
+            $("#txtFechaFin").val(hoy.toISOString().split('T')[0]);
+        });
+
+        function cargarCatalogo() {
+            $.ajax({
+                url: '@Url.Action("ObtenerCatalogoCuentas", "Contabilidad")',
+                type: 'GET',
+                success: function (response) {
+                    if (response.success) {
+                        var ddl = $("#ddlCuenta");
+                        response.data.forEach(function (cuenta) {
+                            ddl.append(`<option value="${cuenta.CuentaID}">${cuenta.Display}</option>`);
+                        });
+                    }
+                }
+            });
+        }
+
+        function generarAuxiliar() {
+            var cuentaId = $("#ddlCuenta").val();
+            var fechaInicio = $("#txtFechaInicio").val();
+            var fechaFin = $("#txtFechaFin").val();
+
+            if (!cuentaId) {
+                toastr.warning("Seleccione una cuenta", "Atención");
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GenerarAuxiliarCuenta", "Contabilidad")',
+                type: 'POST',
+                data: {
+                    cuentaId: cuentaId,
+                    fechaInicio: fechaInicio,
+                    fechaFin: fechaFin
+                },
+                success: function (response) {
+                    if (response.success) {
+                        mostrarAuxiliar(response.data);
+                        toastr.success("Auxiliar generado", "Éxito");
+                    } else {
+                        toastr.error(response.mensaje, "Error");
+                    }
+                }
+            });
+        }
+
+        function mostrarAuxiliar(data) {
+            $("#tituloCuenta").text(data.CodigoCuenta + " - " + data.NombreCuenta);
+            $("#saldoInicial").text("$" + data.SaldoInicial);
+            $("#totalCargos").text("$" + data.TotalCargos);
+            $("#totalAbonos").text("$" + data.TotalAbonos);
+            $("#saldoFinal").text("$" + data.SaldoFinal);
+
+            var tbody = $("#tbMovimientos tbody");
+            tbody.empty();
+
+            data.Movimientos.forEach(function (m) {
+                tbody.append(`<tr>
+                    <td>${m.Fecha}</td>
+                    <td><span class="badge badge-info">${m.TipoPoliza}</span></td>
+                    <td>${m.Concepto}</td>
+                    <td>${m.Referencia || ''}</td>
+                    <td class="text-right text-success">${m.Cargo !== "0.00" ? '$' + m.Cargo : ''}</td>
+                    <td class="text-right text-danger">${m.Abono !== "0.00" ? '$' + m.Abono : ''}</td>
+                    <td class="text-right font-weight-bold">$${m.Saldo}</td>
+                </tr>`);
+            });
+
+            $("#auxiliarContainer").show();
+        }
+    </script>
+}

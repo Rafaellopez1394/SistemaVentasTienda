@@ -17,7 +17,37 @@ namespace CapaDatos
             var lista = new List<Proveedor>();
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
-                SqlCommand cmd = new SqlCommand("ConsultarProveedoresTodos", cnx) { CommandType = CommandType.StoredProcedure };
+                string query = @"
+                    SELECT 
+                        p.ProveedorID,
+                        p.RFC,
+                        p.RazonSocial,
+                        p.RegimenFiscalID,
+                        ISNULL(rf.Descripcion, '') AS RegimenFiscal,
+                        p.CodigoPostal,
+                        p.ContactoNombre,
+                        p.ContactoCorreo,
+                        p.ContactoTelefono,
+                        p.BancoID,
+                        ISNULL(b.Nombre, '') AS Banco,
+                        p.Cuenta,
+                        p.CLABE,
+                        p.TitularCuenta,
+                        p.TipoProveedorID,
+                        ISNULL(tp.Descripcion, '') AS TipoProveedor,
+                        p.DiasCredito,
+                        p.Condiciones,
+                        CAST(1 AS BIT) AS Estatus,
+                        p.FechaAlta,
+                        p.Usuario,
+                        p.UltimaAct
+                    FROM Proveedores p
+                    LEFT JOIN CatRegimenFiscal rf ON p.RegimenFiscalID = rf.RegimenFiscalID
+                    LEFT JOIN CatBancos b ON p.BancoID = b.BancoID
+                    LEFT JOIN CatTipoProveedor tp ON p.TipoProveedorID = tp.TipoProveedorID
+                    ORDER BY p.RazonSocial";
+
+                SqlCommand cmd = new SqlCommand(query, cnx);
                 cnx.Open();
                 using (SqlDataReader dr = cmd.ExecuteReader())
                 {

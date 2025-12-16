@@ -1,0 +1,132 @@
+<!-- ============================================== -->
+<!-- CONFIGURACIÓN SMTP PARA ENVÍO DE EMAILS -->
+<!-- ============================================== -->
+<!--
+Este archivo contiene las configuraciones necesarias para el envío de emails
+con facturas electrónicas (CFDI) en formato PDF y XML.
+
+INSTRUCCIONES DE USO:
+1. Copie estas líneas dentro de la sección <appSettings> de su Web.config
+2. Reemplace los valores de ejemplo con sus credenciales SMTP reales
+3. IMPORTANTE: NO suba este archivo con credenciales reales a repositorios públicos
+
+Para usar Gmail:
+- Habilite "Verificación en 2 pasos" en su cuenta de Google
+- Genere una "Contraseña de aplicación": https://myaccount.google.com/apppasswords
+- Use la contraseña de aplicación generada en SMTP_Password
+
+Para usar Outlook/Hotmail:
+- SMTP_Host: smtp-mail.outlook.com
+- SMTP_Port: 587
+- Use su email y contraseña normales
+
+Para usar otros proveedores:
+- Consulte la documentación de su proveedor de email
+-->
+
+<appSettings>
+  <!-- Configuración SMTP -->
+  
+  <!-- Servidor SMTP (Gmail, Outlook, etc.) -->
+  <add key="SMTP_Host" value="smtp.gmail.com" />
+  
+  <!-- Puerto SMTP (587 para TLS, 465 para SSL, 25 para sin cifrado) -->
+  <add key="SMTP_Port" value="587" />
+  
+  <!-- Usuario SMTP (generalmente su email completo) -->
+  <add key="SMTP_Username" value="tu_email@gmail.com" />
+  
+  <!-- Contraseña SMTP (para Gmail use contraseña de aplicación) -->
+  <add key="SMTP_Password" value="tu_contraseña_o_app_password" />
+  
+  <!-- Usar SSL/TLS (true para la mayoría de proveedores) -->
+  <add key="SMTP_SSL" value="true" />
+  
+  <!-- Email remitente (aparecerá como "De:") -->
+  <add key="SMTP_FromEmail" value="tu_email@gmail.com" />
+  
+  <!-- Nombre del remitente (nombre de tu empresa) -->
+  <add key="SMTP_FromName" value="Mi Empresa SA de CV" />
+</appSettings>
+
+<!-- ============================================== -->
+<!-- EJEMPLO COMPLETO DE SECCIÓN <appSettings> -->
+<!-- ============================================== -->
+<!--
+<configuration>
+  <appSettings>
+    <add key="webpages:Version" value="3.0.0.0" />
+    <add key="webpages:Enabled" value="false" />
+    <add key="ClientValidationEnabled" value="true" />
+    <add key="UnobtrusiveJavaScriptEnabled" value="true" />
+    
+    <!- Configuración SMTP ->
+    <add key="SMTP_Host" value="smtp.gmail.com" />
+    <add key="SMTP_Port" value="587" />
+    <add key="SMTP_Username" value="facturacion@miempresa.com" />
+    <add key="SMTP_Password" value="abcd efgh ijkl mnop" />
+    <add key="SMTP_SSL" value="true" />
+    <add key="SMTP_FromEmail" value="facturacion@miempresa.com" />
+    <add key="SMTP_FromName" value="Mi Empresa SA de CV" />
+  </appSettings>
+  
+  <system.web>
+    <!- resto de configuración ->
+  </system.web>
+</configuration>
+-->
+
+<!-- ============================================== -->
+<!-- NOTAS DE SEGURIDAD -->
+<!-- ============================================== -->
+<!--
+1. NUNCA incluya credenciales reales en repositorios públicos
+2. Use variables de entorno o Azure Key Vault en producción
+3. Considere usar un email dedicado para facturación
+4. Habilite 2FA en su cuenta de email
+5. Revise regularmente los logs de envío de emails
+6. Para Gmail, las contraseñas de aplicación son más seguras que la contraseña principal
+-->
+
+<!-- ============================================== -->
+<!-- PROVEEDORES SMTP COMUNES -->
+<!-- ============================================== -->
+<!--
+GMAIL:
+  Host: smtp.gmail.com
+  Port: 587 (TLS) o 465 (SSL)
+  SSL: true
+  Requiere: Contraseña de aplicación
+
+OUTLOOK/HOTMAIL:
+  Host: smtp-mail.outlook.com
+  Port: 587
+  SSL: true
+  Requiere: Contraseña normal
+
+OFFICE 365:
+  Host: smtp.office365.com
+  Port: 587
+  SSL: true
+  Requiere: Contraseña normal
+
+YAHOO:
+  Host: smtp.mail.yahoo.com
+  Port: 587
+  SSL: true
+  Requiere: Contraseña de aplicación
+
+SENDGRID (Recomendado para producción):
+  Host: smtp.sendgrid.net
+  Port: 587
+  SSL: true
+  Username: apikey
+  Password: [Tu API Key]
+  
+MAILGUN (Recomendado para producción):
+  Host: smtp.mailgun.org
+  Port: 587
+  SSL: true
+  Username: [postmaster@tu-dominio]
+  Password: [Tu API Key]
+-->

@@ -1,0 +1,410 @@
+@{
+    ViewBag.Title = "Registrar Ajuste de Inventario";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <h1>
+            Registrar Ajuste de Inventario
+            <small>Corrección de inventario (sobrantes o faltantes)</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="@Url.Action("Index", "Mermas")"><i class="fas fa-balance-scale"></i> Mermas y Ajustes</a></li>
+            <li class="active">Registrar Ajuste</li>
+        </ol>
+    </section>
+
+    <section class="content">
+        <div class="row">
+            <div class="col-md-8 col-md-offset-2">
+                <div class="box box-warning">
+                    <div class="box-header with-border">
+                        <h3 class="box-title">
+                            <i class="fas fa-balance-scale"></i> Formulario de Ajuste
+                        </h3>
+                    </div>
+                    <form id="formAjuste">
+                        <div class="box-body">
+                            <div class="callout callout-info">
+                                <h4><i class="icon fas fa-info"></i> Información</h4>
+                                <p>
+                                    Los ajustes de inventario se utilizan para corregir diferencias entre el inventario físico y el sistema.
+                                </p>
+                                <ul>
+                                    <li><strong>Ajuste Positivo (Sobrante):</strong> Se encontró más inventario del registrado</li>
+                                    <li><strong>Ajuste Negativo (Faltante):</strong> Se encontró menos inventario del registrado</li>
+                                </ul>
+                                <p class="text-muted">
+                                    <i class="fas fa-book"></i> Se generará automáticamente una póliza contable.
+                                </p>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="tipoAjuste">Tipo de Ajuste <span class="text-danger">*</span></label>
+                                <select id="tipoAjuste" class="form-control" required>
+                                    <option value="">Seleccione...</option>
+                                    <option value="AJUSTE_POSITIVO">Ajuste Positivo (Sobrante)</option>
+                                    <option value="AJUSTE_NEGATIVO">Ajuste Negativo (Faltante)</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="codigoBarras">
+                                    <i class="fas fa-barcode"></i> Código del Producto
+                                    <small class="text-muted">(Escanee o escriba el código)</small>
+                                </label>
+                                <div class="input-group">
+                                    <span class="input-group-addon"><i class="fas fa-barcode"></i></span>
+                                    <input type="text" id="codigoBarras" class="form-control" 
+                                           placeholder="Escanee el código de barras o escriba el código interno..." 
+                                           autocomplete="off">
+                                    <span class="input-group-btn">
+                                        <button type="button" class="btn btn-info" id="btnBuscarCodigo">
+                                            <i class="fas fa-search"></i> Buscar
+                                        </button>
+                                    </span>
+                                </div>
+                                <small class="help-block">
+                                    <i class="fas fa-info-circle"></i> 
+                                    Puede escanear el código de barras (será comparado con el Código Interno) o seleccionar manualmente el producto
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="productoSelect">Producto <span class="text-danger">*</span></label>
+                                <select id="productoSelect" class="form-control" required>
+                                    <option value="">Seleccione un producto...</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="loteSelect">Lote (opcional)</label>
+                                <select id="loteSelect" class="form-control" disabled>
+                                    <option value="">Sin lote específico (ajuste general)</option>
+                                </select>
+                                <small class="help-block">
+                                    Si no selecciona un lote, el ajuste se registrará a nivel de producto sin afectar lotes específicos.
+                                </small>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="cantidad">Cantidad <span class="text-danger">*</span></label>
+                                        <input type="number" id="cantidad" class="form-control" min="1" step="0.01" required>
+                                        <small class="help-block">Stock actual: <span id="stockDisponible">-</span></small>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label for="costoUnitario">Costo Unitario</label>
+                                        <input type="text" id="costoUnitario" class="form-control" readonly>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="motivo">Motivo del Ajuste <span class="text-danger">*</span></label>
+                                <select id="motivoSelect" class="form-control" required>
+                                    <option value="">Seleccione...</option>
+                                    <option value="Diferencia en conteo físico">Diferencia en conteo físico</option>
+                                    <option value="Error de captura">Error de captura</option>
+                                    <option value="Inventario inicial">Inventario inicial</option>
+                                    <option value="Devolución no registrada">Devolución no registrada</option>
+                                    <option value="Venta no registrada">Venta no registrada</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="observaciones">Observaciones / Detalle</label>
+                                <textarea id="observaciones" class="form-control" rows="3" 
+                                          placeholder="Descripción detallada del ajuste..."></textarea>
+                            </div>
+
+                            <div class="box box-solid" id="boxResumen" style="display:none;">
+                                <div class="box-header with-border">
+                                    <h3 class="box-title">Resumen del Ajuste</h3>
+                                </div>
+                                <div class="box-body">
+                                    <table class="table table-bordered">
+                                        <tr>
+                                            <td><strong>Tipo:</strong></td>
+                                            <td id="resumenTipo">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Producto:</strong></td>
+                                            <td id="resumenProducto">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Lote:</strong></td>
+                                            <td id="resumenLote">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Cantidad:</strong></td>
+                                            <td id="resumenCantidad">-</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>Impacto Contable:</strong></td>
+                                            <td id="resumenMonto" class="text-warning"><strong>$0.00</strong></td>
+                                        </tr>
+                                    </table>
+                                    <div class="alert" id="alertPoliza" style="display:none;">
+                                        <h4><i class="icon fas fa-book"></i> Póliza Contable</h4>
+                                        <p id="polizaDetalle"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="box-footer">
+                            <a href="@Url.Action("Index", "Mermas")" class="btn btn-default">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-warning pull-right">
+                                <i class="fas fa-save"></i> Registrar Ajuste
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            cargarProductos();
+
+            // Manejar búsqueda por código de barras
+            $('#codigoBarras').keypress(function (e) {
+                if (e.which === 13) { // Enter key
+                    e.preventDefault();
+                    buscarPorCodigoBarras();
+                }
+            });
+
+            $('#btnBuscarCodigo').click(function () {
+                buscarPorCodigoBarras();
+            });
+
+            // Auto-focus en código de barras al cargar
+            $('#codigoBarras').focus();
+
+            $('#tipoAjuste').change(function () {
+                actualizarResumen();
+            });
+
+            $('#productoSelect').change(function () {
+                var productoId = $(this).val();
+                if (productoId) {
+                    cargarLotes(productoId);
+                    $('#resumenProducto').text($('#productoSelect option:selected').text());
+                } else {
+                    $('#loteSelect').html('<option value="">Sin lote específico</option>').prop('disabled', true);
+                    limpiarResumen();
+                }
+                actualizarResumen();
+            });
+
+            $('#loteSelect').change(function () {
+                var loteId = $(this).val();
+                if (loteId) {
+                    var loteText = $('#loteSelect option:selected').text();
+                    var disponible = $('#loteSelect option:selected').data('disponible');
+                    var costo = $('#loteSelect option:selected').data('costo');
+                    
+                    $('#stockDisponible').text(disponible + ' unidades');
+                    $('#costoUnitario').val('$' + parseFloat(costo).toFixed(2));
+                    $('#resumenLote').text(loteText);
+                } else {
+                    $('#stockDisponible').text('Información de lote no disponible');
+                    $('#costoUnitario').val('');
+                    $('#resumenLote').text('N/A (Ajuste general)');
+                }
+                actualizarResumen();
+            });
+
+            $('#cantidad').on('input', function () {
+                actualizarResumen();
+            });
+
+            $('#formAjuste').submit(function (e) {
+                e.preventDefault();
+                registrarAjuste();
+            });
+        });
+
+        function buscarPorCodigoBarras() {
+            var codigo = $('#codigoBarras').val().trim();
+            if (!codigo) {
+                toastr.warning('Por favor ingrese un código de barras');
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("BuscarProductoPorCodigo", "Mermas")',
+                type: 'GET',
+                data: { codigo: codigo },
+                success: function (response) {
+                    if (response.success) {
+                        // Seleccionar el producto en el combo
+                        $('#productoSelect').val(response.productoId).trigger('change');
+                        
+                        toastr.success('Producto encontrado: ' + response.nombreProducto);
+                        
+                        // Limpiar el campo de código de barras
+                        $('#codigoBarras').val('').focus();
+                    } else {
+                        toastr.error(response.message || 'Producto no encontrado');
+                        $('#codigoBarras').select();
+                    }
+                },
+                error: function () {
+                    toastr.error('Error al buscar el producto');
+                }
+            });
+        }
+
+        function cargarProductos() {
+            $.get('@Url.Action("ObtenerProductos", "Mermas")', function (data) {
+                $('#productoSelect').append('<option value="">Seleccione un producto...</option>');
+                $.each(data, function (i, item) {
+                    $('#productoSelect').append($('<option>', {
+                        value: item.value,
+                        text: item.text
+                    }));
+                });
+            });
+        }
+
+        function cargarLotes(productoId) {
+            $.get('@Url.Action("ObtenerLotesPorProducto", "Mermas")', { productoId: productoId }, function (response) {
+                if (response.success) {
+                    $('#loteSelect').html('<option value="">Sin lote específico (ajuste general)</option>').prop('disabled', false);
+                    
+                    if (response.lotes.length > 0) {
+                        $.each(response.lotes, function (i, lote) {
+                            $('#loteSelect').append($('<option>', {
+                                value: lote.value,
+                                text: lote.text,
+                                'data-disponible': lote.cantidadDisponible,
+                                'data-costo': lote.precioCompra
+                            }));
+                        });
+                    }
+                }
+            });
+        }
+
+        function actualizarResumen() {
+            var tipo = $('#tipoAjuste').val();
+            var cantidad = parseFloat($('#cantidad').val()) || 0;
+            var costo = parseFloat($('#costoUnitario').val().replace('$', '').replace(',', '')) || 0;
+            var total = cantidad * costo;
+
+            if (tipo && cantidad > 0) {
+                $('#boxResumen').show();
+                
+                var tipoTexto = tipo === 'AJUSTE_POSITIVO' ? 
+                    '<span class="label label-success">Ajuste Positivo (Sobrante)</span>' :
+                    '<span class="label label-danger">Ajuste Negativo (Faltante)</span>';
+                
+                $('#resumenTipo').html(tipoTexto);
+                $('#resumenCantidad').text(cantidad + ' unidades');
+                $('#resumenMonto').html('<strong>$' + total.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,') + '</strong>');
+
+                // Mostrar información de póliza
+                if (total > 0) {
+                    $('#alertPoliza').show();
+                    if (tipo === 'AJUSTE_POSITIVO') {
+                        $('#alertPoliza').removeClass('alert-danger').addClass('alert-success');
+                        $('#polizaDetalle').html(
+                            '<strong>DEBE</strong> 1400 Inventario: $' + total.toFixed(2) + '<br>' +
+                            '<strong>HABER</strong> 4100 Otros Productos: $' + total.toFixed(2)
+                        );
+                    } else {
+                        $('#alertPoliza').removeClass('alert-success').addClass('alert-danger');
+                        $('#polizaDetalle').html(
+                            '<strong>DEBE</strong> 5303 Ajuste de Inventario - Faltante: $' + total.toFixed(2) + '<br>' +
+                            '<strong>HABER</strong> 1400 Inventario: $' + total.toFixed(2)
+                        );
+                    }
+                } else {
+                    $('#alertPoliza').hide();
+                }
+            } else {
+                $('#boxResumen').hide();
+            }
+        }
+
+        function limpiarResumen() {
+            $('#resumenProducto').text('-');
+            $('#resumenLote').text('-');
+            $('#resumenCantidad').text('-');
+            $('#resumenMonto').html('<strong>$0.00</strong>');
+            $('#stockDisponible').text('-');
+            $('#costoUnitario').val('');
+            $('#boxResumen').hide();
+        }
+
+        function registrarAjuste() {
+            var tipo = $('#tipoAjuste').val();
+            var productoId = parseInt($('#productoSelect').val());
+            var loteId = $('#loteSelect').val() ? parseInt($('#loteSelect').val()) : null;
+            var cantidad = parseFloat($('#cantidad').val());
+            var motivo = $('#motivoSelect').val() + (($('#observaciones').val()) ? ': ' + $('#observaciones').val() : '');
+
+            if (!tipo || !productoId || !cantidad || cantidad <= 0) {
+                toastr.error('Complete todos los campos requeridos');
+                return;
+            }
+
+            // Validar stock solo en ajuste negativo con lote
+            if (tipo === 'AJUSTE_NEGATIVO' && loteId) {
+                var disponible = parseInt($('#loteSelect option:selected').data('disponible'));
+                if (cantidad > disponible) {
+                    toastr.error('La cantidad excede el stock disponible (' + disponible + ')');
+                    return;
+                }
+            }
+
+            var tipoTexto = tipo === 'AJUSTE_POSITIVO' ? 'Positivo (Sobrante)' : 'Negativo (Faltante)';
+
+            Swal.fire({
+                title: '¿Confirmar Ajuste?',
+                html: '<strong>Tipo:</strong> ' + tipoTexto + '<br>' +
+                      '<strong>Cantidad:</strong> ' + cantidad + ' unidades<br>' +
+                      '<strong>Impacto:</strong> ' + $('#resumenMonto').text() + '<br><br>' +
+                      '<i class="fas fa-info-circle"></i> Se generará automáticamente una póliza contable.',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, registrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#f39c12'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('@Url.Action("GuardarAjuste", "Mermas")', {
+                        productoId: productoId,
+                        loteId: loteId,
+                        tipo: tipo,
+                        cantidad: cantidad,
+                        motivo: motivo
+                    }, function (response) {
+                        if (response.success) {
+                            Swal.fire('Éxito', response.message, 'success').then(() => {
+                                window.location.href = '@Url.Action("Index", "Mermas")';
+                            });
+                        } else {
+                            toastr.error(response.message);
+                        }
+                    }).fail(function () {
+                        toastr.error('Error de comunicación con el servidor');
+                    });
+                }
+            });
+        }
+    </script>
+}

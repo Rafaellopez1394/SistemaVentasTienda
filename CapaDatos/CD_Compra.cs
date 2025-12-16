@@ -41,7 +41,13 @@ namespace CapaDatos
                     tvp.SqlDbType = SqlDbType.Structured;
                     tvp.TypeName = "dbo.TipoTablaProductosComprados";
 
+                    // Obtener el CompraID generado
+                    SqlParameter outputCompraId = new SqlParameter("@CompraID", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                    cmd.Parameters.Add(outputCompraId);
+
                     cmd.ExecuteNonQuery();
+                    
+                    int compraId = Convert.ToInt32(outputCompraId.Value);
 
                     // ===== GENERAR PÓLIZA CON DESGLOSE DE IVA =====
                     var detallesIVA = new Dictionary<string, IVABreakdown>();
@@ -89,7 +95,8 @@ namespace CapaDatos
                         TipoPoliza = "COMPRA",
                         FechaPoliza = DateTime.Now,
                         Concepto = $"Compra - Proveedor: {compra.ProveedorID} - {compra.FolioFactura}",
-                        ReferenciaTipo = "COMPRA"
+                        Referencia = $"COMPRA-{compra.CompraID}",
+                        Usuario = compra.Usuario
                     };
 
                     // 1. DÉBITO: Inventario (solo base, sin IVA)
@@ -138,6 +145,44 @@ namespace CapaDatos
                     {
                         tran.Rollback();
                         return false;
+                    }
+
+                    // ===== REGISTRAR CUENTA POR PAGAR SI ES A CRÉDITO =====
+                    // Obtener días de crédito del proveedor
+                    var queryProveedor = "SELECT DiasCredito FROM PROVEEDOR WHERE ProveedorID = @ProveedorID";
+                    SqlCommand cmdProv = new SqlCommand(queryProveedor, cnx, tran);
+                    cmdProv.Parameters.AddWithValue("@ProveedorID", compra.ProveedorID);
+                    object diasCreditoObj = cmdProv.ExecuteScalar();
+                    
+                    if (diasCreditoObj != null && diasCreditoObj != DBNull.Value)
+                    {
+                        int diasCredito = Convert.ToInt32(diasCreditoObj);
+                        
+                        // Si tiene días de crédito, registrar cuenta por pagar
+                        if (diasCredito > 0)
+                        {
+                            var cuentaId = Guid.NewGuid();
+                            DateTime fechaVencimiento = DateTime.Now.AddDays(diasCredito);
+
+                            var queryCuenta = @"
+                                INSERT INTO CuentasPorPagar 
+                                    (CuentaPorPagarID, CompraID, ProveedorID, FechaRegistro, FechaVencimiento, 
+                                     MontoTotal, SaldoPendiente, Estado, DiasCredito, FolioFactura, Activo)
+                                VALUES 
+                                    (@CuentaPorPagarID, @CompraID, @ProveedorID, GETDATE(), @FechaVencimiento,
+                                     @MontoTotal, @SaldoPendiente, 'PENDIENTE', @DiasCredito, @FolioFactura, 1)";
+
+                            SqlCommand cmdCuenta = new SqlCommand(queryCuenta, cnx, tran);
+                            cmdCuenta.Parameters.AddWithValue("@CuentaPorPagarID", cuentaId);
+                            cmdCuenta.Parameters.AddWithValue("@CompraID", compraId);
+                            cmdCuenta.Parameters.AddWithValue("@ProveedorID", compra.ProveedorID);
+                            cmdCuenta.Parameters.AddWithValue("@FechaVencimiento", fechaVencimiento);
+                            cmdCuenta.Parameters.AddWithValue("@MontoTotal", totalCompra);
+                            cmdCuenta.Parameters.AddWithValue("@SaldoPendiente", totalCompra);
+                            cmdCuenta.Parameters.AddWithValue("@DiasCredito", diasCredito);
+                            cmdCuenta.Parameters.AddWithValue("@FolioFactura", (object)compra.FolioFactura ?? DBNull.Value);
+                            cmdCuenta.ExecuteNonQuery();
+                        }
                     }
 
                     tran.Commit();

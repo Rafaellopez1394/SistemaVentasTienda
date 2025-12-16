@@ -14,6 +14,12 @@ namespace VentasWeb.Controllers
             return View();
         }
 
+        // GET: Consultar Pólizas
+        public ActionResult Consultar()
+        {
+            return View();
+        }
+
         [HttpPost]
         public JsonResult Crear(Poliza poliza)
         {
@@ -34,6 +40,21 @@ namespace VentasWeb.Controllers
         {
             var lista = CD_Poliza.Instancia.ObtenerUltimas(top);
             return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpGet]
+        public JsonResult ObtenerFiltradas(string fechaInicio = null, string fechaFin = null, string tipoPoliza = "")
+        {
+            var lista = CD_Poliza.Instancia.ObtenerFiltradas(fechaInicio, fechaFin, tipoPoliza);
+            return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpGet]
+        public JsonResult ObtenerDetalle(Guid polizaId)
+        {
+            var poliza = CD_Poliza.Instancia.ObtenerPorId(polizaId);
+            var detalles = CD_Poliza.Instancia.ObtenerDetalles(polizaId);
+            return Json(new { poliza, detalles }, JsonRequestBehavior.AllowGet);
         }
     }
 }

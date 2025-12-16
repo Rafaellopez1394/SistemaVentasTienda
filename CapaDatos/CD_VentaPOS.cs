@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
 
 namespace CapaDatos
 {
@@ -303,6 +304,317 @@ namespace CapaDatos
                     return false;
                 }
             }
+        }
+
+        // Validar si caja está abierta
+        public bool ValidarCajaAbierta(int cajaID, out string mensaje, out DateTime? fechaApertura, out decimal saldoActual)
+        {
+            mensaje = "";
+            fechaApertura = null;
+            saldoActual = 0;
+            
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                SqlCommand cmd = new SqlCommand("ValidarCajaAbierta", cnx) { CommandType = CommandType.StoredProcedure };
+                
+                var pEstaAbierta = new SqlParameter("@EstaAbierta", SqlDbType.Bit) { Direction = ParameterDirection.Output };
+                var pMovAperturaID = new SqlParameter("@MovimientoAperturaID", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                var pFechaApertura = new SqlParameter("@FechaApertura", SqlDbType.DateTime) { Direction = ParameterDirection.Output };
+                var pSaldoActual = new SqlParameter("@SaldoActual", SqlDbType.Decimal) { Direction = ParameterDirection.Output, Precision = 18, Scale = 2 };
+                var pMensaje = new SqlParameter("@Mensaje", SqlDbType.VarChar, 200) { Direction = ParameterDirection.Output };
+                
+                cmd.Parameters.AddWithValue("@CajaID", cajaID);
+                cmd.Parameters.Add(pEstaAbierta);
+                cmd.Parameters.Add(pMovAperturaID);
+                cmd.Parameters.Add(pFechaApertura);
+                cmd.Parameters.Add(pSaldoActual);
+                cmd.Parameters.Add(pMensaje);
+
+                try
+                {
+                    cnx.Open();
+                    cmd.ExecuteNonQuery();
+                    
+                    bool estaAbierta = Convert.ToBoolean(pEstaAbierta.Value);
+                    mensaje = pMensaje.Value.ToString();
+                    
+                    if (pFechaApertura.Value != DBNull.Value)
+                        fechaApertura = Convert.ToDateTime(pFechaApertura.Value);
+                    
+                    if (pSaldoActual.Value != DBNull.Value)
+                        saldoActual = Convert.ToDecimal(pSaldoActual.Value);
+                    
+                    return estaAbierta;
+                }
+                catch (Exception ex)
+                {
+                    mensaje = "Error al validar estado de caja: " + ex.Message;
+                    return false;
+                }
+            }
+        }
+
+        // Obtener estado completo de caja
+        public EstadoCaja ObtenerEstadoCaja(int cajaID)
+        {
+            EstadoCaja estado = null;
+            
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                SqlCommand cmd = new SqlCommand("ObtenerEstadoCaja", cnx) { CommandType = CommandType.StoredProcedure };
+                cmd.Parameters.AddWithValue("@CajaID", cajaID);
+
+                try
+                {
+                    cnx.Open();
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        if (dr.Read())
+                        {
+                            estado = new EstadoCaja
+                            {
+                                CajaID = Convert.ToInt32(dr["CajaID"]),
+                                EstaAbierta = Convert.ToBoolean(dr["EstaAbierta"]),
+                                FechaApertura = dr["FechaApertura"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(dr["FechaApertura"]),
+                                SaldoActual = Convert.ToDecimal(dr["SaldoActual"]),
+                                NumeroVentas = Convert.ToInt32(dr["NumeroVentas"]),
+                                TotalVentas = Convert.ToDecimal(dr["TotalVentas"])
+                            };
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    estado = new EstadoCaja { CajaID = cajaID, EstaAbierta = false };
+                }
+            }
+            
+            return estado ?? new EstadoCaja { CajaID = cajaID, EstaAbierta = false };
+        }
+
+        // Cierre completo con arqueo
+        public bool CierreCajaCompleto(int cajaID, string usuario, decimal montoRealEfectivo, decimal montoRealTarjeta, 
+            decimal montoRealTransferencia, string observaciones, out int corteID, out decimal diferencia, out string mensaje)
+        {
+            corteID = 0;
+            diferencia = 0;
+            decimal saldoFinal = 0;
+            decimal totalVentas = 0;
+            
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                SqlCommand cmd = new SqlCommand("CierreCajaCompleto", cnx) { CommandType = CommandType.StoredProcedure };
+                
+                var pSaldoFinal = new SqlParameter("@SaldoFinal", SqlDbType.Decimal) { Direction = ParameterDirection.Output, Precision = 18, Scale = 2 };
+                var pTotalVentas = new SqlParameter("@TotalVentas", SqlDbType.Decimal) { Direction = ParameterDirection.Output, Precision = 18, Scale = 2 };
+                var pDiferencia = new SqlParameter("@Diferencia", SqlDbType.Decimal) { Direction = ParameterDirection.Output, Precision = 18, Scale = 2 };
+                var pCorteID = new SqlParameter("@CorteID", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                var pMensaje = new SqlParameter("@Mensaje", SqlDbType.VarChar, 200) { Direction = ParameterDirection.Output };
+                
+                cmd.Parameters.AddWithValue("@CajaID", cajaID);
+                cmd.Parameters.AddWithValue("@Usuario", usuario);
+                cmd.Parameters.AddWithValue("@MontoRealEfectivo", montoRealEfectivo);
+                cmd.Parameters.AddWithValue("@MontoRealTarjeta", montoRealTarjeta);
+                cmd.Parameters.AddWithValue("@MontoRealTransferencia", montoRealTransferencia);
+                cmd.Parameters.AddWithValue("@Observaciones", observaciones ?? "");
+                cmd.Parameters.Add(pSaldoFinal);
+                cmd.Parameters.Add(pTotalVentas);
+                cmd.Parameters.Add(pDiferencia);
+                cmd.Parameters.Add(pCorteID);
+                cmd.Parameters.Add(pMensaje);
+
+                try
+                {
+                    cnx.Open();
+                    cmd.ExecuteNonQuery();
+                    
+                    saldoFinal = pSaldoFinal.Value == DBNull.Value ? 0 : Convert.ToDecimal(pSaldoFinal.Value);
+                    totalVentas = pTotalVentas.Value == DBNull.Value ? 0 : Convert.ToDecimal(pTotalVentas.Value);
+                    diferencia = pDiferencia.Value == DBNull.Value ? 0 : Convert.ToDecimal(pDiferencia.Value);
+                    corteID = pCorteID.Value == DBNull.Value ? 0 : Convert.ToInt32(pCorteID.Value);
+                    mensaje = pMensaje.Value.ToString();
+                    return corteID > 0;
+                }
+                catch (Exception ex)
+                {
+                    mensaje = "Error al cerrar caja: " + ex.Message;
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// ✅ PROCESO CRÍTICO: Cerrar día y generar póliza automática de ingresos
+        /// Consolida todas las ventas del día y genera póliza contable con desglose de IVA
+        /// </summary>
+        public bool CerrarDia(DateTime fecha, string usuario, out Guid? polizaID, out string mensaje)
+        {
+            polizaID = null;
+            mensaje = "";
+
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                cnx.Open();
+                SqlTransaction tran = cnx.BeginTransaction();
+
+                try
+                {
+                    // 1. Obtener ventas del día con desglose por tasa de IVA
+                    string queryVentas = @"
+                        SELECT 
+                            COUNT(DISTINCT v.VentaID) AS NumVentas,
+                            SUM(v.Subtotal) AS TotalSubtotal,
+                            SUM(v.IVA) AS TotalIVA,
+                            SUM(v.Total) AS TotalGeneral,
+                            SUM(CASE WHEN v.TasaIVA = 0 THEN v.Subtotal ELSE 0 END) AS Subtotal0,
+                            SUM(CASE WHEN v.TasaIVA = 0.08 THEN v.Subtotal ELSE 0 END) AS Subtotal8,
+                            SUM(CASE WHEN v.TasaIVA = 0.16 THEN v.Subtotal ELSE 0 END) AS Subtotal16,
+                            SUM(CASE WHEN v.TasaIVA = 0 THEN v.IVA ELSE 0 END) AS IVA0,
+                            SUM(CASE WHEN v.TasaIVA = 0.08 THEN v.IVA ELSE 0 END) AS IVA8,
+                            SUM(CASE WHEN v.TasaIVA = 0.16 THEN v.IVA ELSE 0 END) AS IVA16
+                        FROM VentasClientes v
+                        WHERE CAST(v.FechaVenta AS DATE) = @Fecha";
+
+                    SqlCommand cmdVentas = new SqlCommand(queryVentas, cnx, tran);
+                    cmdVentas.Parameters.AddWithValue("@Fecha", fecha.Date);
+
+                    decimal totalSubtotal = 0, totalIVA = 0, totalGeneral = 0;
+                    decimal subtotal0 = 0, subtotal8 = 0, subtotal16 = 0;
+                    decimal iva0 = 0, iva8 = 0, iva16 = 0;
+                    int numVentas = 0;
+
+                    using (SqlDataReader dr = cmdVentas.ExecuteReader())
+                    {
+                        if (dr.Read())
+                        {
+                            numVentas = dr["NumVentas"] == DBNull.Value ? 0 : Convert.ToInt32(dr["NumVentas"]);
+                            totalSubtotal = dr["TotalSubtotal"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["TotalSubtotal"]);
+                            totalIVA = dr["TotalIVA"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["TotalIVA"]);
+                            totalGeneral = dr["TotalGeneral"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["TotalGeneral"]);
+                            subtotal0 = dr["Subtotal0"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Subtotal0"]);
+                            subtotal8 = dr["Subtotal8"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Subtotal8"]);
+                            subtotal16 = dr["Subtotal16"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["Subtotal16"]);
+                            iva0 = dr["IVA0"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["IVA0"]);
+                            iva8 = dr["IVA8"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["IVA8"]);
+                            iva16 = dr["IVA16"] == DBNull.Value ? 0 : Convert.ToDecimal(dr["IVA16"]);
+                        }
+                    }
+
+                    if (numVentas == 0)
+                    {
+                        mensaje = "No hay ventas registradas para el día " + fecha.ToString("dd/MM/yyyy");
+                        tran.Rollback();
+                        return false;
+                    }
+
+                    // 2. Crear póliza de INGRESO
+                    Poliza poliza = new Poliza
+                    {
+                        PolizaID = Guid.NewGuid(),
+                        TipoPoliza = "INGRESO",
+                        FechaPoliza = fecha,
+                        Referencia = $"CIERRE-DIA-{fecha:yyyyMMdd}",
+                        Concepto = $"Ventas del día {fecha:dd/MM/yyyy} - {numVentas} ventas",
+                        TotalDebe = totalGeneral,
+                        TotalHaber = totalGeneral,
+                        Estatus = "VIGENTE",
+                        EsAutomatica = true,
+                        DocumentoOrigen = $"CIERRE_DIA_{fecha:yyyyMMdd}",
+                        PeriodoContable = fecha.ToString("yyyy-MM"),
+                        Detalles = new List<PolizaDetalle>()
+                    };
+
+                    // 3. Movimientos contables
+                    int secuencia = 1;
+
+                    // DEBE: Caja o Clientes (según si son crédito o contado)
+                    // Por simplicidad, usamos CAJA (1010)
+                    poliza.Detalles.Add(new PolizaDetalle
+                    {
+                        CuentaID = ObtenerCuentaID("1010", cnx, tran), // Caja
+                        Debe = totalGeneral,
+                        Haber = 0,
+                        Concepto = $"Ingreso por ventas del día"
+                    });
+
+                    // HABER: Ventas por tasa de IVA (4000)
+                    poliza.Detalles.Add(new PolizaDetalle
+                    {
+                        CuentaID = ObtenerCuentaID("4000", cnx, tran), // Ventas
+                        Debe = 0,
+                        Haber = totalSubtotal,
+                        Concepto = "Ventas sin IVA"
+                    });
+
+                    // HABER: IVA Trasladado por tasa
+                    if (iva0 > 0)
+                    {
+                        poliza.Detalles.Add(new PolizaDetalle
+                        {
+                            CuentaID = ObtenerCuentaID("2100", cnx, tran), // IVA Trasladado 0%
+                            Debe = 0,
+                            Haber = iva0,
+                            Concepto = "IVA Trasladado 0%"
+                        });
+                    }
+
+                    if (iva8 > 0)
+                    {
+                        poliza.Detalles.Add(new PolizaDetalle
+                        {
+                            CuentaID = ObtenerCuentaID("2101", cnx, tran), // IVA Trasladado 8%
+                            Debe = 0,
+                            Haber = iva8,
+                            Concepto = "IVA Trasladado 8%"
+                        });
+                    }
+
+                    if (iva16 > 0)
+                    {
+                        poliza.Detalles.Add(new PolizaDetalle
+                        {
+                            CuentaID = ObtenerCuentaID("2102", cnx, tran), // IVA Trasladado 16%
+                            Debe = 0,
+                            Haber = iva16,
+                            Concepto = "IVA Trasladado 16%"
+                        });
+                    }
+
+                    // 4. Crear póliza usando CD_Poliza
+                    bool exito = CD_Poliza.Instancia.CrearPoliza(poliza, cnx, tran);
+
+                    if (!exito)
+                    {
+                        throw new Exception("Error al crear póliza contable");
+                    }
+
+                    polizaID = poliza.PolizaID;
+                    mensaje = $"Cierre de día exitoso. Póliza #{poliza.PolizaID} generada. Total: ${totalGeneral:N2}";
+
+                    tran.Commit();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    tran.Rollback();
+                    mensaje = "Error al cerrar día: " + ex.Message;
+                    return false;
+                }
+            }
+        }
+
+        // Método auxiliar para obtener CuentaID desde CatalogoContable
+        private int ObtenerCuentaID(string codigoCuenta, SqlConnection cnx, SqlTransaction tran)
+        {
+            string query = "SELECT CuentaID FROM CatalogoContable WHERE CodigoCuenta = @Codigo AND Activo = 1";
+            SqlCommand cmd = new SqlCommand(query, cnx, tran);
+            cmd.Parameters.AddWithValue("@Codigo", codigoCuenta);
+
+            object result = cmd.ExecuteScalar();
+            if (result == null)
+                throw new Exception($"Cuenta contable {codigoCuenta} no encontrada");
+
+            return Convert.ToInt32(result);
         }
     }
 }

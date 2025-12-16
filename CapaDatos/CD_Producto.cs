@@ -179,14 +179,20 @@ namespace CapaDatos
             using (var cnx = new SqlConnection(Conexion.CN))
             {
                 string query = @"
-            SELECT TOP(20) 
-                ProductoID, Nombre, CodigoInterno, ClaveProdServSAT, ClaveUnidadSAT
-            FROM Productos
-            WHERE Estatus = 1
-              AND (Nombre LIKE @termino 
-                   OR CodigoInterno LIKE @termino 
-                   OR ClaveProdServSAT LIKE @termino)
-            ORDER BY Nombre";
+            SELECT TOP(200) 
+                p.ProductoID, 
+                p.Nombre, 
+                p.CodigoInterno AS Codigo, 
+                ISNULL(c.Nombre, 'Sin categoría') AS Categoria,
+                p.ClaveProdServSAT, 
+                p.ClaveUnidadSAT
+            FROM Productos p
+            LEFT JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
+            WHERE p.Estatus = 1
+              AND (p.Nombre LIKE @termino 
+                   OR p.CodigoInterno LIKE @termino 
+                   OR p.ClaveProdServSAT LIKE @termino)
+            ORDER BY p.Nombre";
 
                 var cmd = new SqlCommand(query, cnx);
                 cmd.Parameters.AddWithValue("@termino", string.IsNullOrEmpty(termino) ? "%" : $"%{termino}%");
@@ -200,7 +206,8 @@ namespace CapaDatos
                         {
                             ProductoID = (int)dr["ProductoID"],
                             Nombre = dr["Nombre"].ToString()!,
-                            CodigoInterno = dr["CodigoInterno"] as string,
+                            CodigoInterno = dr["Codigo"] as string,
+                            NombreCategoria = dr["Categoria"].ToString(),
                             ClaveProdServSATID = dr["ClaveProdServSAT"].ToString()!,
                             ClaveUnidadSAT = dr["ClaveUnidadSAT"].ToString()!
                         });
@@ -315,6 +322,34 @@ namespace CapaDatos
 
                 try
                 {
+                    // Obtener información del lote
+                    decimal costoUnitario = 0;
+                    int productoID = 0;
+                    string nombreProducto = "";
+
+                    var cmdInfo = new SqlCommand(@"
+                        SELECT lp.ProductoID, lp.PrecioCompra, p.Nombre
+                        FROM LotesProducto lp
+                        INNER JOIN Productos p ON lp.ProductoID = p.ProductoID
+                        WHERE lp.LoteID = @LoteID", cnx, trx);
+                    cmdInfo.Parameters.AddWithValue("@LoteID", loteID);
+
+                    using (var dr = cmdInfo.ExecuteReader())
+                    {
+                        if (dr.Read())
+                        {
+                            productoID = (int)dr["ProductoID"];
+                            costoUnitario = (decimal)dr["PrecioCompra"];
+                            nombreProducto = dr["Nombre"].ToString();
+                        }
+                        else
+                        {
+                            throw new Exception("Lote no encontrado");
+                        }
+                    }
+
+                    decimal montoTotal = cantidad * costoUnitario;
+
                     // Descontar inventario
                     var cmd1 = new SqlCommand(@"
                 UPDATE LotesProducto
@@ -329,21 +364,62 @@ namespace CapaDatos
                     var cmd2 = new SqlCommand(@"
                 INSERT INTO InventarioMovimientos 
                 (LoteID, ProductoID, TipoMovimiento, Cantidad, CostoUnitario, Usuario, Comentarios)
-                SELECT LoteID, ProductoID, 'MERMA', @Cantidad, PrecioCompra, @Usuario, @Comentarios
-                FROM LotesProducto WHERE LoteID = @LoteID", cnx, trx);
+                VALUES (@LoteID, @ProductoID, 'MERMA', @Cantidad, @CostoUnitario, @Usuario, @Comentarios)", cnx, trx);
 
-                    cmd2.Parameters.AddWithValue("@Cantidad", cantidad);
-                    cmd2.Parameters.AddWithValue("@Usuario", usuario);
-                    cmd2.Parameters.AddWithValue("@Comentarios", comentarios);
                     cmd2.Parameters.AddWithValue("@LoteID", loteID);
+                    cmd2.Parameters.AddWithValue("@ProductoID", productoID);
+                    cmd2.Parameters.AddWithValue("@Cantidad", cantidad);
+                    cmd2.Parameters.AddWithValue("@CostoUnitario", costoUnitario);
+                    cmd2.Parameters.AddWithValue("@Usuario", usuario);
+                    cmd2.Parameters.AddWithValue("@Comentarios", comentarios ?? "");
                     cmd2.ExecuteNonQuery();
+
+                    // Generar póliza contable
+                    var poliza = new Poliza
+                    {
+                        TipoPoliza = "DIARIO",
+                        FechaPoliza = DateTime.Now,
+                        Concepto = $"Merma de Inventario - {nombreProducto} (Lote {loteID})",
+                        Referencia = $"MERMA-{loteID}",
+                        Usuario = usuario,
+                        EsAutomatica = true,
+                        DocumentoOrigen = $"MERMA-{loteID}",
+                        Estatus = "CERRADA",
+                        Observaciones = comentarios,
+                        Detalles = new System.Collections.Generic.List<PolizaDetalle>
+                        {
+                            // DEBE: Pérdida por Merma (disminuye resultado, aumenta gasto)
+                            new PolizaDetalle
+                            {
+                                CuentaID = ObtenerCuentaContable("5302", cnx, trx), // Pérdida por Merma
+                                Debe = montoTotal,
+                                Haber = 0,
+                                Concepto = $"Merma - {nombreProducto} ({cantidad} unidades)"
+                            },
+                            // HABER: Inventario (disminuye activo)
+                            new PolizaDetalle
+                            {
+                                CuentaID = ObtenerCuentaContable("1400", cnx, trx), // Inventario
+                                Debe = 0,
+                                Haber = montoTotal,
+                                Concepto = $"Baja de inventario - {nombreProducto}"
+                            }
+                        }
+                    };
+
+                    bool polizaOk = CD_Poliza.Instancia.CrearPoliza(poliza, cnx, trx);
+                    if (!polizaOk)
+                    {
+                        throw new Exception("Error al crear póliza de merma");
+                    }
 
                     trx.Commit();
                     return true;
                 }
-                catch
+                catch (Exception ex)
                 {
                     trx.Rollback();
+                    System.Diagnostics.Debug.WriteLine($"Error registrando merma: {ex.Message}");
                     return false;
                 }
             }
@@ -450,18 +526,198 @@ namespace CapaDatos
 
         public bool RegistrarAjuste(AjusteInventario ajuste)
         {
-            using (SqlConnection conn = new SqlConnection(/* Cadena de conexión */))
+            using (SqlConnection conn = new SqlConnection(Conexion.CN))
             {
                 conn.Open();
-                using (SqlCommand cmd = new SqlCommand("INSERT INTO AjustesInventario (Fecha, ProductoId, LoteEntradaId, Tipo, Cantidad, Motivo, UsuarioId) VALUES (GETDATE(), @ProductoId, @LoteEntradaId, @Tipo, @Cantidad, @Motivo, @UsuarioId)", conn))
+                SqlTransaction trx = conn.BeginTransaction();
+
+                try
                 {
-                    cmd.Parameters.AddWithValue("@ProductoId", ajuste.ProductoId);
-                    cmd.Parameters.AddWithValue("@LoteEntradaId", ajuste.LoteEntradaId);
-                    cmd.Parameters.AddWithValue("@Tipo", ajuste.Tipo);
-                    cmd.Parameters.AddWithValue("@Cantidad", ajuste.Cantidad);
-                    cmd.Parameters.AddWithValue("@Motivo", ajuste.Motivo);
-                    cmd.Parameters.AddWithValue("@UsuarioId", ajuste.UsuarioId);
-                    return cmd.ExecuteNonQuery() > 0;
+                    // Obtener información del producto y lote
+                    decimal costoUnitario = 0;
+                    string nombreProducto = "";
+                    long loteID = ajuste.LoteEntradaId ?? 0;
+
+                    if (loteID > 0)
+                    {
+                        var cmdInfo = new SqlCommand(@"
+                            SELECT lp.PrecioCompra, p.Nombre
+                            FROM LotesProducto lp
+                            INNER JOIN Productos p ON lp.ProductoID = p.ProductoID
+                            WHERE lp.LoteID = @LoteID", conn, trx);
+                        cmdInfo.Parameters.AddWithValue("@LoteID", loteID);
+
+                        using (var dr = cmdInfo.ExecuteReader())
+                        {
+                            if (dr.Read())
+                            {
+                                costoUnitario = (decimal)dr["PrecioCompra"];
+                                nombreProducto = dr["Nombre"].ToString();
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // Si no hay lote, obtener nombre del producto
+                        var cmdProd = new SqlCommand("SELECT Nombre FROM Productos WHERE ProductoID = @ProductoID", conn, trx);
+                        cmdProd.Parameters.AddWithValue("@ProductoID", ajuste.ProductoId);
+                        nombreProducto = cmdProd.ExecuteScalar()?.ToString() ?? "Producto";
+                    }
+
+                    // Si no se pudo obtener costo, usar valor promedio o 0
+                    if (costoUnitario == 0 && loteID > 0)
+                    {
+                        var cmdCosto = new SqlCommand("SELECT AVG(PrecioCompra) FROM LotesProducto WHERE ProductoID = @ProductoID", conn, trx);
+                        cmdCosto.Parameters.AddWithValue("@ProductoID", ajuste.ProductoId);
+                        var resultCosto = cmdCosto.ExecuteScalar();
+                        costoUnitario = resultCosto != null && resultCosto != DBNull.Value 
+                            ? Convert.ToDecimal(resultCosto) 
+                            : 0;
+                    }
+
+                    decimal montoTotal = ajuste.Cantidad * costoUnitario;
+
+                    // Insertar registro en AjustesInventario
+                    using (SqlCommand cmd = new SqlCommand(@"
+                        INSERT INTO AjustesInventario 
+                        (Fecha, ProductoId, LoteEntradaId, Tipo, Cantidad, Motivo, UsuarioId) 
+                        VALUES (GETDATE(), @ProductoId, @LoteEntradaId, @Tipo, @Cantidad, @Motivo, @UsuarioId)", conn, trx))
+                    {
+                        cmd.Parameters.AddWithValue("@ProductoId", ajuste.ProductoId);
+                        cmd.Parameters.AddWithValue("@LoteEntradaId", ajuste.LoteEntradaId.HasValue ? (object)ajuste.LoteEntradaId.Value : DBNull.Value);
+                        cmd.Parameters.AddWithValue("@Tipo", ajuste.Tipo ?? "AJUSTE");
+                        cmd.Parameters.AddWithValue("@Cantidad", ajuste.Cantidad);
+                        cmd.Parameters.AddWithValue("@Motivo", ajuste.Motivo ?? "");
+                        cmd.Parameters.AddWithValue("@UsuarioId", ajuste.UsuarioId);
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // Actualizar inventario en LotesProducto (si hay lote especificado)
+                    if (loteID > 0)
+                    {
+                        // Ajuste positivo: aumenta inventario
+                        // Ajuste negativo: disminuye inventario
+                        string tipoOperacion = ajuste.Tipo?.ToUpper() ?? "AJUSTE";
+                        bool esPositivo = tipoOperacion.Contains("POSITIVO") || tipoOperacion.Contains("ENTRADA") || tipoOperacion.Contains("SOBRANTE");
+                        
+                        string operador = esPositivo ? "+" : "-";
+                        var cmdUpdate = new SqlCommand($@"
+                            UPDATE LotesProducto
+                            SET CantidadDisponible = CantidadDisponible {operador} @Cantidad
+                            WHERE LoteID = @LoteID", conn, trx);
+                        cmdUpdate.Parameters.AddWithValue("@Cantidad", Math.Abs(ajuste.Cantidad));
+                        cmdUpdate.Parameters.AddWithValue("@LoteID", loteID);
+                        cmdUpdate.ExecuteNonQuery();
+
+                        // Registrar movimiento en InventarioMovimientos
+                        var cmdMov = new SqlCommand(@"
+                            INSERT INTO InventarioMovimientos 
+                            (LoteID, ProductoID, TipoMovimiento, Cantidad, CostoUnitario, Usuario, Comentarios)
+                            VALUES (@LoteID, @ProductoID, @TipoMovimiento, @Cantidad, @CostoUnitario, @Usuario, @Comentarios)", conn, trx);
+                        cmdMov.Parameters.AddWithValue("@LoteID", loteID);
+                        cmdMov.Parameters.AddWithValue("@ProductoID", ajuste.ProductoId);
+                        cmdMov.Parameters.AddWithValue("@TipoMovimiento", esPositivo ? "AJUSTE_ENTRADA" : "AJUSTE_SALIDA");
+                        cmdMov.Parameters.AddWithValue("@Cantidad", Math.Abs(ajuste.Cantidad));
+                        cmdMov.Parameters.AddWithValue("@CostoUnitario", costoUnitario);
+                        cmdMov.Parameters.AddWithValue("@Usuario", ajuste.UsuarioId.ToString());
+                        cmdMov.Parameters.AddWithValue("@Comentarios", ajuste.Motivo ?? "");
+                        cmdMov.ExecuteNonQuery();
+                    }
+
+                    // Generar póliza contable solo si hay monto
+                    if (montoTotal > 0)
+                    {
+                        string tipoOperacion = ajuste.Tipo?.ToUpper() ?? "AJUSTE";
+                        bool esPositivo = tipoOperacion.Contains("POSITIVO") || tipoOperacion.Contains("ENTRADA") || tipoOperacion.Contains("SOBRANTE");
+
+                        Poliza poliza;
+                        
+                        if (esPositivo)
+                        {
+                            // AJUSTE POSITIVO (Sobrante): Aumenta inventario
+                            // DEBE  1400 Inventario
+                            // HABER 4100 Otros Productos
+                            poliza = new Poliza
+                            {
+                                TipoPoliza = "DIARIO",
+                                FechaPoliza = DateTime.Now,
+                                Concepto = $"Ajuste Positivo de Inventario - {nombreProducto}",
+                                Referencia = $"AJUSTE-{ajuste.ProductoId}-{DateTime.Now:yyyyMMddHHmmss}",
+                                Usuario = ajuste.UsuarioId.ToString(),
+                                EsAutomatica = true,
+                                DocumentoOrigen = $"AJUSTE-{ajuste.ProductoId}",
+                                Estatus = "CERRADA",
+                                Observaciones = ajuste.Motivo,
+                                Detalles = new System.Collections.Generic.List<PolizaDetalle>
+                                {
+                                    new PolizaDetalle
+                                    {
+                                        CuentaID = ObtenerCuentaContable("1400", conn, trx), // Inventario
+                                        Debe = montoTotal,
+                                        Haber = 0,
+                                        Concepto = $"Ajuste positivo - {nombreProducto} ({ajuste.Cantidad} unidades)"
+                                    },
+                                    new PolizaDetalle
+                                    {
+                                        CuentaID = ObtenerCuentaContable("4100", conn, trx), // Otros Productos
+                                        Debe = 0,
+                                        Haber = montoTotal,
+                                        Concepto = $"Sobrante de inventario - {nombreProducto}"
+                                    }
+                                }
+                            };
+                        }
+                        else
+                        {
+                            // AJUSTE NEGATIVO (Faltante): Disminuye inventario
+                            // DEBE  5303 Ajuste de Inventario - Faltante
+                            // HABER 1400 Inventario
+                            poliza = new Poliza
+                            {
+                                TipoPoliza = "DIARIO",
+                                FechaPoliza = DateTime.Now,
+                                Concepto = $"Ajuste Negativo de Inventario - {nombreProducto}",
+                                Referencia = $"AJUSTE-{ajuste.ProductoId}-{DateTime.Now:yyyyMMddHHmmss}",
+                                Usuario = ajuste.UsuarioId.ToString(),
+                                EsAutomatica = true,
+                                DocumentoOrigen = $"AJUSTE-{ajuste.ProductoId}",
+                                Estatus = "CERRADA",
+                                Observaciones = ajuste.Motivo,
+                                Detalles = new System.Collections.Generic.List<PolizaDetalle>
+                                {
+                                    new PolizaDetalle
+                                    {
+                                        CuentaID = ObtenerCuentaContable("5303", conn, trx), // Ajuste Faltante
+                                        Debe = montoTotal,
+                                        Haber = 0,
+                                        Concepto = $"Faltante - {nombreProducto} ({ajuste.Cantidad} unidades)"
+                                    },
+                                    new PolizaDetalle
+                                    {
+                                        CuentaID = ObtenerCuentaContable("1400", conn, trx), // Inventario
+                                        Debe = 0,
+                                        Haber = montoTotal,
+                                        Concepto = $"Baja de inventario - {nombreProducto}"
+                                    }
+                                }
+                            };
+                        }
+
+                        bool polizaOk = CD_Poliza.Instancia.CrearPoliza(poliza, conn, trx);
+                        if (!polizaOk)
+                        {
+                            throw new Exception("Error al crear póliza de ajuste");
+                        }
+                    }
+
+                    trx.Commit();
+                    return true;
+                }
+                catch (Exception ex)
+                {
+                    trx.Rollback();
+                    System.Diagnostics.Debug.WriteLine($"Error registrando ajuste: {ex.Message}");
+                    return false;
                 }
             }
         }
@@ -556,6 +812,22 @@ namespace CapaDatos
                 }
             }
             return lista;
+        }
+
+        // Método helper para obtener CuentaID desde CatalogoContable
+        private int ObtenerCuentaContable(string codigoCuenta, SqlConnection cnx, SqlTransaction trx)
+        {
+            var query = "SELECT CuentaID FROM CatalogoContable WHERE CodigoCuenta = @Codigo AND Activo = 1";
+            using (var cmd = new SqlCommand(query, cnx, trx))
+            {
+                cmd.Parameters.AddWithValue("@Codigo", codigoCuenta);
+                var result = cmd.ExecuteScalar();
+                if (result == null)
+                {
+                    throw new Exception($"Cuenta contable {codigoCuenta} no encontrada en el catálogo");
+                }
+                return Convert.ToInt32(result);
+            }
         }
     }
 }

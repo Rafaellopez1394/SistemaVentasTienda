@@ -126,10 +126,18 @@
     <Compile Include="Controllers\ClienteController.cs" />
     <Compile Include="Controllers\CompraController.cs" />
     <Compile Include="Controllers\ConfiguracionController.cs" />
+    <Compile Include="Controllers\ContabilidadController.cs" />
+    <Compile Include="Controllers\ContadorController.cs" />
     <Compile Include="Controllers\CreditoController.cs" />
+    <Compile Include="Controllers\CuentasPorPagarController.cs" />
+    <Compile Include="Controllers\FacturaController.cs" />
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\LoginController.cs" />
+    <Compile Include="Controllers\MermasController.cs" />
+    <Compile Include="Controllers\NominaController.cs" />
+    <Compile Include="Controllers\PagosController.cs" />
     <Compile Include="Controllers\PermisosController.cs" />
+    <Compile Include="Controllers\PolizaController.cs" />
     <Compile Include="Controllers\ProductoController.cs" />
     <Compile Include="Controllers\ProveedorController.cs" />
     <Compile Include="Controllers\ReporteController.cs" />
@@ -1905,10 +1913,14 @@
     <Content Include="Scripts\bootstrap.js" />
     <Content Include="Scripts\bootstrap.min.js" />
     <Content Include="Scripts\cliente.js" />
+    <Content Include="Scripts\Contador\Certificados.js" />
+    <Content Include="Scripts\Contador\Dashboard.js" />
     <Content Include="Scripts\esm\popper-utils.js" />
     <Content Include="Scripts\esm\popper-utils.min.js" />
     <Content Include="Scripts\esm\popper.js" />
     <Content Include="Scripts\esm\popper.min.js" />
+    <Content Include="Scripts\Factura\Factura_Index.js" />
+    <Content Include="Scripts\Factura\GenerarFactura.js" />
     <Content Include="Scripts\index.js.flow" />
     <Content Include="Scripts\esm\popper.min.js.map" />
     <Content Include="Scripts\esm\popper.js.map" />
@@ -1925,6 +1937,7 @@
     <Content Include="Scripts\bootstrap.js.map" />
     <Content Include="Scripts\bootstrap.min.js.map" />
     <Content Include="Content\Plugins\datatables\i18n\es-ES.json" />
+    <Content Include="CONFIGURACION_EMAIL.md" />
     <None Include="Scripts\jquery-3.3.1.intellisense.js" />
     <Content Include="Scripts\jquery-3.3.1.js" />
     <Content Include="Scripts\jquery-3.3.1.min.js" />
@@ -2015,6 +2028,10 @@
     <Content Include="Scripts\Views\Compra_Consultar.js" />
     <Content Include="Scripts\Views\Compra_Crear.js" />
     <Content Include="Scripts\Views\Credito.js" />
+    <Content Include="Scripts\Views\Nomina_Calcular.js" />
+    <Content Include="Scripts\Views\Nomina_Detalle.js" />
+    <Content Include="Scripts\Views\Nomina_Index.js" />
+    <Content Include="Scripts\Views\Poliza_Consultar.js" />
     <Content Include="Scripts\Views\Producto_Asignar.js" />
     <Content Include="Scripts\Views\Producto.js" />
     <Content Include="Scripts\Views\Home_Index.js" />
@@ -2029,8 +2046,11 @@
     <Content Include="Scripts\Views\Rol_Crear.js" />
     <Content Include="Scripts\Views\Venta.js" />
     <Content Include="Scripts\Views\VentaPOS.js" />
+    <Content Include="Scripts\Views\VentaPOS_Caja.js" />
     <Content Include="Scripts\Views\Venta_Consultar.js" />
     <Content Include="Scripts\Views\Venta_Crear.js" />
+    <Content Include="Views\Proveedor\Crear.cshtml" />
+    <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Web.config">
       <SubType>Designer</SubType>
     </Content>
@@ -2043,7 +2063,6 @@
     <Content Include="Views\Web.config" />
     <Content Include="Views\_ViewStart.cshtml" />
     <Content Include="Views\Shared\Error.cshtml" />
-    <Content Include="Views\Shared\_Layout.cshtml" />
     <Content Include="Views\Home\Index.cshtml" />
     <Content Include="Scripts\umd\popper.min.js.map" />
     <Content Include="Scripts\umd\popper.js.map" />
@@ -2062,7 +2081,6 @@
     <Content Include="Views\Permisos\Crear.cshtml" />
     <Content Include="Views\Producto\Index.cshtml" />
     <Content Include="Views\Producto\Asignar.cshtml" />
-    <Content Include="Views\Proveedor\Crear.cshtml" />
     <Content Include="Views\Reporte\Producto.cshtml" />
     <Content Include="Views\Reporte\Ventas.cshtml" />
     <Content Include="Views\Rol\Crear.cshtml" />
@@ -2089,6 +2107,32 @@
     <Content Include="Views\Credito\Index.cshtml" />
     <Content Include="Views\Configuracion\Index.cshtml" />
     <Content Include="Scripts\Views\Configuracion.js" />
+    <Content Include="Views\Poliza\Consultar.cshtml" />
+    <Content Include="Views\Poliza\Index.cshtml" />
+    <Content Include="Views\Poliza\List.cshtml" />
+    <Content Include="Views\Contabilidad\AuxiliarCuenta.cshtml" />
+    <Content Include="Views\Contabilidad\Balanza.cshtml" />
+    <Content Include="Views\Contabilidad\EstadoResultados.cshtml" />
+    <Content Include="Views\Contabilidad\LibroDiario.cshtml" />
+    <Content Include="Views\Contabilidad\ReporteIVA.cshtml" />
+    <Content Include="Views\Contador\Certificados.cshtml" />
+    <Content Include="Views\Contador\ConfiguracionEmpresa.cshtml" />
+    <Content Include="Views\Contador\Dashboard.cshtml" />
+    <Content Include="Views\CuentasPorPagar\Index.cshtml" />
+    <Content Include="Views\CuentasPorPagar\Pagar.cshtml" />
+    <Content Include="Views\CuentasPorPagar\ReporteAntiguedad.cshtml" />
+    <Content Include="Views\Factura\Index.cshtml" />
+    <Content Include="Views\Mermas\Index.cshtml" />
+    <Content Include="Views\Mermas\RegistrarAjuste.cshtml" />
+    <Content Include="Views\Mermas\RegistrarMerma.cshtml" />
+    <Content Include="Views\Nomina\Calcular.cshtml" />
+    <Content Include="Views\Nomina\Detalle.cshtml" />
+    <Content Include="Views\Nomina\Index.cshtml" />
+    <Content Include="Views\Nomina\ReciboEmpleado.cshtml" />
+    <Content Include="Views\Pagos\AplicarPagos.cshtml" />
+    <Content Include="Views\Shared\_ModalGenerarFactura.cshtml" />
+    <Content Include="Views\Proveedor\Index.cshtml" />
+    <Content Include="Web.config.SMTP.EXAMPLE" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

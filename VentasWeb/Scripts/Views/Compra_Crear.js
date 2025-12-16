@@ -6,8 +6,6 @@ var tablaproducto;
 
 
 $(document).ready(function () {
-    activarMenu("Compras");
-
     //OBTENER PROVEEDORES
     tablaproveedor = $('#tbProveedor').DataTable({
         "ajax": {
@@ -78,14 +76,9 @@ $(document).ready(function () {
                 "searchable": false,
                 "width": "90px"
             },
-            { "data": "Codigo" },
+            { "data": "CodigoInterno", defaultContent: "" },
             { "data": "Nombre" },
-            { "data": "Descripcion" },
-            {
-                "data": "oCategoria", render: function (data) {
-                    return data.Descripcion
-                }
-            }
+            { "data": "NombreCategoria", defaultContent: "Sin categoría" }
 
         ],
         "language": {

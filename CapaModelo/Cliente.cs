@@ -7,6 +7,7 @@ namespace CapaModelo
     public class Cliente
     {
         public Guid ClienteID { get; set; }
+        public int IdCliente { get; set; } // ID entero para compatibilidad con BD
         public string RFC { get; set; }
         public string RazonSocial { get; set; }
         public string RegimenFiscalID { get; set; }

@@ -1,0 +1,116 @@
+@{
+    ViewBag.Title = "Libro Diario";
+}
+
+<div class="container-fluid">
+    <h2><i class="fas fa-book"></i> Libro Diario</h2>
+    <hr />
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Fecha Inicio:</label>
+                    <input type="date" id="txtFechaInicio" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label>Fecha Fin:</label>
+                    <input type="date" id="txtFechaFin" class="form-control" />
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" onclick="generarLibro()">
+                        <i class="fas fa-file-alt"></i> Generar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div id="libroContainer"></div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            var hoy = new Date();
+            $("#txtFechaInicio").val(hoy.toISOString().split('T')[0]);
+            $("#txtFechaFin").val(hoy.toISOString().split('T')[0]);
+        });
+
+        function generarLibro() {
+            var fechaInicio = $("#txtFechaInicio").val();
+            var fechaFin = $("#txtFechaFin").val();
+
+            $.ajax({
+                url: '@Url.Action("GenerarLibroDiario", "Contabilidad")',
+                type: 'POST',
+                data: { fechaInicio: fechaInicio, fechaFin: fechaFin },
+                beforeSend: function () {
+                    $("#libroContainer").html('<div class="text-center"><i class="fas fa-spinner fa-spin fa-3x"></i></div>');
+                },
+                success: function (response) {
+                    if (response.success) {
+                        mostrarLibro(response.data);
+                        toastr.success("Libro diario generado", "Éxito");
+                    } else {
+                        toastr.error(response.mensaje, "Error");
+                    }
+                },
+                error: function () {
+                    toastr.error("Error al generar el libro", "Error");
+                }
+            });
+        }
+
+        function mostrarLibro(polizas) {
+            var html = "";
+
+            polizas.forEach(function (poliza) {
+                html += `<div class="card mb-3">
+                    <div class="card-header bg-primary text-white">
+                        <strong>Póliza ${poliza.TipoPoliza}</strong> | 
+                        Fecha: ${poliza.FechaPoliza} | 
+                        ${poliza.Referencia ? 'Ref: ' + poliza.Referencia : ''}
+                    </div>
+                    <div class="card-body">
+                        <p><strong>Concepto:</strong> ${poliza.Concepto}</p>
+                        <table class="table table-sm table-bordered">
+                            <thead class="thead-light">
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Cuenta</th>
+                                    <th class="text-right">Debe</th>
+                                    <th class="text-right">Haber</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+                poliza.Asientos.forEach(function (asiento) {
+                    html += `<tr>
+                        <td>${asiento.CodigoCuenta}</td>
+                        <td>${asiento.NombreCuenta}</td>
+                        <td class="text-right">${asiento.Debe !== "0.00" ? '$' + asiento.Debe : ''}</td>
+                        <td class="text-right">${asiento.Haber !== "0.00" ? '$' + asiento.Haber : ''}</td>
+                    </tr>`;
+                });
+
+                html += `</tbody>
+                            <tfoot class="font-weight-bold">
+                                <tr>
+                                    <td colspan="2" class="text-right">TOTALES:</td>
+                                    <td class="text-right">$${poliza.TotalDebe}</td>
+                                    <td class="text-right">$${poliza.TotalHaber}</td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                </div>`;
+            });
+
+            $("#libroContainer").html(html);
+        }
+    </script>
+}

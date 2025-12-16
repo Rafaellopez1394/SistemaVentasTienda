@@ -17,7 +17,7 @@ namespace CapaDatos
             var lista = new List<object>();
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
-                SqlCommand cmd = new SqlCommand("SELECT RegimenFiscalID, Descripcion FROM CatRegimenFiscal WHERE Estatus = 1 ORDER BY Descripcion", cnx);
+                SqlCommand cmd = new SqlCommand("SELECT RegimenFiscalID, Descripcion FROM CatRegimenFiscal ORDER BY Descripcion", cnx);
                 cnx.Open();
                 using (SqlDataReader dr = cmd.ExecuteReader())
                 {
@@ -71,7 +71,7 @@ namespace CapaDatos
             var lista = new List<RegimenFiscal>();
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
-                SqlCommand cmd = new SqlCommand("SELECT RegimenFiscalID, Descripcion FROM CatRegimenFiscal WHERE Estatus = 1", cnx);
+                SqlCommand cmd = new SqlCommand("SELECT RegimenFiscalID, Descripcion FROM CatRegimenFiscal", cnx);
                 cnx.Open();
                 using (SqlDataReader dr = cmd.ExecuteReader())
                 {
@@ -107,7 +107,7 @@ namespace CapaDatos
             var lista = new List<Banco>();
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
-                SqlCommand cmd = new SqlCommand("SELECT BancoID, Nombre FROM CatBancos WHERE Estatus = 1", cnx);
+                SqlCommand cmd = new SqlCommand("SELECT BancoID, Nombre FROM CatBancos", cnx);
                 cnx.Open();
                 using (SqlDataReader dr = cmd.ExecuteReader())
                 {
@@ -125,7 +125,7 @@ namespace CapaDatos
             var lista = new List<TipoProveedor>();
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
-                SqlCommand cmd = new SqlCommand("SELECT TipoProveedorID, Descripcion FROM CatTipoProveedor WHERE Estatus = 1", cnx);
+                SqlCommand cmd = new SqlCommand("SELECT TipoProveedorID, Descripcion FROM CatTipoProveedor", cnx);
                 cnx.Open();
                 using (SqlDataReader dr = cmd.ExecuteReader())
                 {

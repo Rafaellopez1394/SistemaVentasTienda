@@ -1,0 +1,234 @@
+@model CapaModelo.Nomina
+@{
+    ViewBag.Title = "Detalle de Nómina";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Detalle de Nómina</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="#">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Nomina")">Nóminas</a></li>
+                        <li class="breadcrumb-item active">Detalle</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Información General -->
+            <div class="row">
+                <div class="col-md-3 col-sm-6 col-12">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-info"><i class="fas fa-file-invoice"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Folio</span>
+                            <span class="info-box-number">@Model.Folio</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 col-12">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-warning"><i class="fas fa-calendar"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Periodo</span>
+                            <span class="info-box-number">@Model.Periodo</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 col-12">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-success"><i class="fas fa-users"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Empleados</span>
+                            <span class="info-box-number">@Model.NumeroEmpleados</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 col-sm-6 col-12">
+                    <div class="info-box">
+                        <span class="info-box-icon bg-@(Model.Estatus == "CALCULADA" ? "info" : Model.Estatus == "CONTABILIZADA" ? "warning" : Model.Estatus == "PAGADA" ? "success" : "danger")">
+                            <i class="fas fa-tag"></i>
+                        </span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">Estatus</span>
+                            <span class="info-box-number">@Model.Estatus</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Totales -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h3 class="text-success">@Model.TotalPercepciones.ToString("C")</h3>
+                            <p class="text-muted">Total Percepciones</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h3 class="text-danger">@Model.TotalDeducciones.ToString("C")</h3>
+                            <p class="text-muted">Total Deducciones</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <h3 class="text-primary"><strong>@Model.TotalNeto.ToString("C")</strong></h3>
+                            <p class="text-muted">Neto a Pagar</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Información Adicional -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-info-circle"></i> Información de la Nómina</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3">
+                            <strong>Tipo:</strong><br />
+                            <span class="badge badge-primary">@Model.TipoNomina</span>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Fecha Inicio:</strong><br />
+                            @Model.FechaInicio.ToString("dd/MM/yyyy")
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Fecha Fin:</strong><br />
+                            @Model.FechaFin.ToString("dd/MM/yyyy")
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Fecha Pago:</strong><br />
+                            @Model.FechaPago.ToString("dd/MM/yyyy")
+                        </div>
+                    </div>
+                    @if (Model.Estatus == "CONTABILIZADA" || Model.Estatus == "PAGADA")
+                    {
+                        <hr />
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Fecha Contabilizada:</strong><br />
+                                @(Model.FechaContabilizada?.ToString("dd/MM/yyyy HH:mm") ?? "N/A")
+                            </div>
+                            @if (Model.PolizaID.HasValue)
+                            {
+                                <div class="col-md-6">
+                                    <strong>Póliza Contable:</strong><br />
+                                    <a href="@Url.Action("Detalle", "Poliza", new { id = Model.PolizaID })" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-file-invoice"></i> Ver Póliza
+                                    </a>
+                                </div>
+                            }
+                        </div>
+                    }
+                    @if (Model.Estatus == "PAGADA")
+                    {
+                        <hr />
+                        <div class="row">
+                            <div class="col-md-6">
+                                <strong>Fecha Pagado:</strong><br />
+                                @(Model.FechaPagado?.ToString("dd/MM/yyyy") ?? "N/A")
+                            </div>
+                        </div>
+                    }
+                </div>
+            </div>
+
+            <!-- Botones de Acción -->
+            @if (Model.Estatus == "CALCULADA")
+            {
+                <div class="card">
+                    <div class="card-body">
+                        <button type="button" class="btn btn-warning" onclick="contabilizarNomina(@Model.NominaID)">
+                            <i class="fas fa-book"></i> Generar Póliza Contable
+                        </button>
+                        <button type="button" class="btn btn-danger" onclick="cancelarNomina(@Model.NominaID)">
+                            <i class="fas fa-times"></i> Cancelar Nómina
+                        </button>
+                    </div>
+                </div>
+            }
+
+            <!-- Lista de Recibos -->
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-receipt"></i> Recibos de Nómina</h3>
+                    <div class="card-tools">
+                        <button type="button" class="btn btn-sm btn-success" onclick="exportarExcel(@Model.NominaID)">
+                            <i class="fas fa-file-excel"></i> Exportar Excel
+                        </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <table id="tbRecibos" class="table table-bordered table-striped">
+                        <thead>
+                            <tr>
+                                <th>No. Empleado</th>
+                                <th>Nombre</th>
+                                <th>RFC</th>
+                                <th class="text-center">Días</th>
+                                <th class="text-right">Salario Diario</th>
+                                <th class="text-right">Percepciones</th>
+                                <th class="text-right">Deducciones</th>
+                                <th class="text-right">Neto a Pagar</th>
+                                <th class="text-center">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @if (Model.Recibos != null)
+                            {
+                                foreach (var recibo in Model.Recibos)
+                                {
+                                    <tr>
+                                        <td>@recibo.EmpleadoID</td>
+                                        <td>
+                                            <strong>@recibo.Empleado.Nombre @recibo.Empleado.ApellidoPaterno @recibo.Empleado.ApellidoMaterno</strong><br />
+                                            <small class="text-muted">@recibo.Empleado.Puesto</small>
+                                        </td>
+                                        <td>@recibo.Empleado.RFC</td>
+                                        <td class="text-center">@recibo.DiasTrabajados</td>
+                                        <td class="text-right">@recibo.SalarioDiario.ToString("C")</td>
+                                        <td class="text-right text-success">@recibo.TotalPercepciones.ToString("C")</td>
+                                        <td class="text-right text-danger">@recibo.TotalDeducciones.ToString("C")</td>
+                                        <td class="text-right"><strong>@recibo.NetoPagar.ToString("C")</strong></td>
+                                        <td class="text-center">
+                                            <a href="@Url.Action("ReciboEmpleado", "Nomina", new { id = recibo.NominaDetalleID })" 
+                                               class="btn btn-sm btn-info" target="_blank">
+                                                <i class="fas fa-file-alt"></i> Ver
+                                            </a>
+                                        </td>
+                                    </tr>
+                                }
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="text-center mb-3">
+                <a href="@Url.Action("Index", "Nomina")" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Volver al Listado
+                </a>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section Scripts {
+    <script src="~/Scripts/Views/Nomina_Detalle.js"></script>
+}

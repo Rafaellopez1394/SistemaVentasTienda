@@ -1,0 +1,258 @@
+@{
+    ViewBag.Title = "Estado de Resultados";
+}
+
+<div class="container-fluid">
+    <h2><i class="fas fa-chart-line"></i> Estado de Resultados</h2>
+    <hr />
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Mes:</label>
+                    <select id="ddlMes" class="form-control">
+                        <option value="1">Enero</option>
+                        <option value="2">Febrero</option>
+                        <option value="3">Marzo</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Mayo</option>
+                        <option value="6">Junio</option>
+                        <option value="7">Julio</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Septiembre</option>
+                        <option value="10">Octubre</option>
+                        <option value="11">Noviembre</option>
+                        <option value="12">Diciembre</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Año:</label>
+                    <input type="number" id="txtAño" class="form-control" value="2024" min="2020" max="2030" />
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-primary btn-block" onclick="generarEstado()">
+                        <i class="fas fa-file-alt"></i> Generar
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <button class="btn btn-success btn-block" onclick="exportarPDF()">
+                        <i class="fas fa-file-pdf"></i> Exportar PDF
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div class="card" id="reporteEstado" style="display:none;">
+        <div class="card-body">
+            <div class="text-center mb-4">
+                <h4 id="tituloEmpresa"></h4>
+                <h5>ESTADO DE RESULTADOS</h5>
+                <p id="periodo"></p>
+            </div>
+
+            <table class="table table-sm">
+                <tbody>
+                    <tr class="table-info font-weight-bold">
+                        <td>INGRESOS</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td class="pl-4">Ventas Netas</td>
+                        <td class="text-right" id="ventasNetas">$0.00</td>
+                    </tr>
+                    <tr>
+                        <td class="pl-4">Otros Ingresos</td>
+                        <td class="text-right" id="otrosIngresos">$0.00</td>
+                    </tr>
+                    <tr class="font-weight-bold">
+                        <td>Total Ingresos</td>
+                        <td class="text-right border-top" id="totalIngresos">$0.00</td>
+                    </tr>
+
+                    <tr><td colspan="2">&nbsp;</td></tr>
+
+                    <tr class="table-warning font-weight-bold">
+                        <td>COSTO DE VENTAS</td>
+                        <td class="text-right" id="costoVentas">$0.00</td>
+                    </tr>
+
+                    <tr class="font-weight-bold table-success">
+                        <td>UTILIDAD BRUTA</td>
+                        <td class="text-right border-top border-bottom" id="utilidadBruta">$0.00</td>
+                    </tr>
+
+                    <tr><td colspan="2">&nbsp;</td></tr>
+
+                    <tr class="table-info font-weight-bold">
+                        <td>GASTOS DE OPERACIÓN</td>
+                        <td></td>
+                    </tr>
+                    <tr>
+                        <td class="pl-4">Gastos de Venta</td>
+                        <td class="text-right" id="gastosVenta">$0.00</td>
+                    </tr>
+                    <tr>
+                        <td class="pl-4">Gastos de Administración</td>
+                        <td class="text-right" id="gastosAdministracion">$0.00</td>
+                    </tr>
+                    <tr class="font-weight-bold">
+                        <td>Total Gastos de Operación</td>
+                        <td class="text-right border-top" id="totalGastosOperacion">$0.00</td>
+                    </tr>
+
+                    <tr class="font-weight-bold table-success">
+                        <td>UTILIDAD DE OPERACIÓN</td>
+                        <td class="text-right border-top border-bottom" id="utilidadOperacion">$0.00</td>
+                    </tr>
+
+                    <tr><td colspan="2">&nbsp;</td></tr>
+
+                    <tr>
+                        <td>Gastos Financieros</td>
+                        <td class="text-right text-danger" id="gastosFinancieros">$0.00</td>
+                    </tr>
+                    <tr>
+                        <td>Productos Financieros</td>
+                        <td class="text-right text-success" id="productosFinancieros">$0.00</td>
+                    </tr>
+
+                    <tr class="font-weight-bold table-primary">
+                        <td>UTILIDAD ANTES DE IMPUESTOS</td>
+                        <td class="text-right border-top border-bottom" id="utilidadAntesImpuestos">$0.00</td>
+                    </tr>
+
+                    <tr>
+                        <td>ISR (30%)</td>
+                        <td class="text-right text-danger" id="isr">$0.00</td>
+                    </tr>
+
+                    <tr class="font-weight-bold table-success h5">
+                        <td>UTILIDAD NETA</td>
+                        <td class="text-right border-top border-bottom" id="utilidadNeta">$0.00</td>
+                    </tr>
+                </tbody>
+            </table>
+
+            <hr />
+
+            <div id="detalleContainer">
+                <h5>Detalle por Cuenta</h5>
+                <div id="detalleIngresos"></div>
+                <div id="detalleCostos"></div>
+                <div id="detalleGastosVenta"></div>
+                <div id="detalleGastosAdmin"></div>
+                <div id="detalleGastosFinancieros"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            var mesActual = new Date().getMonth() + 1;
+            var añoActual = new Date().getFullYear();
+            $("#ddlMes").val(mesActual);
+            $("#txtAño").val(añoActual);
+        });
+
+        function generarEstado() {
+            var mes = $("#ddlMes").val();
+            var año = $("#txtAño").val();
+
+            $.ajax({
+                url: '@Url.Action("GenerarEstadoResultados", "Contabilidad")',
+                type: 'POST',
+                data: { mes: mes, año: año },
+                beforeSend: function () {
+                    $("#reporteEstado").hide();
+                    toastr.info("Generando estado de resultados...");
+                },
+                success: function (response) {
+                    if (response.success) {
+                        mostrarEstado(response.data);
+                        toastr.success("Estado de resultados generado", "Éxito");
+                    } else {
+                        toastr.error(response.mensaje, "Error");
+                    }
+                },
+                error: function () {
+                    toastr.error("Error al generar el estado", "Error");
+                }
+            });
+        }
+
+        function mostrarEstado(data) {
+            $("#tituloEmpresa").text(data.Empresa);
+            $("#periodo").text(data.Periodo);
+
+            $("#ventasNetas").text("$" + data.VentasNetas);
+            $("#otrosIngresos").text("$" + data.OtrosIngresos);
+            $("#costoVentas").text("$" + data.CostoVentas);
+            $("#utilidadBruta").text("$" + data.UtilidadBruta);
+            $("#gastosVenta").text("$" + data.GastosVenta);
+            $("#gastosAdministracion").text("$" + data.GastosAdministracion);
+            $("#totalGastosOperacion").text("$" + data.TotalGastosOperacion);
+            $("#utilidadOperacion").text("$" + data.UtilidadOperacion);
+            $("#gastosFinancieros").text("($" + data.GastosFinancieros + ")");
+            $("#productosFinancieros").text("$" + data.ProductosFinancieros);
+            $("#utilidadAntesImpuestos").text("$" + data.UtilidadAntesImpuestos);
+            $("#isr").text("($" + data.ISR + ")");
+            $("#utilidadNeta").text("$" + data.UtilidadNeta);
+
+            // Mostrar detalle
+            mostrarDetalle(data.Detalle);
+
+            $("#reporteEstado").show();
+        }
+
+        function mostrarDetalle(detalle) {
+            var ingresos = detalle.filter(d => d.Seccion === "INGRESOS");
+            var costos = detalle.filter(d => d.Seccion === "COSTOS");
+            var gastosVenta = detalle.filter(d => d.Seccion === "GASTOS_VENTA");
+            var gastosAdmin = detalle.filter(d => d.Seccion === "GASTOS_ADMIN");
+            var gastosFinancieros = detalle.filter(d => d.Seccion === "GASTOS_FINANCIEROS");
+
+            $("#detalleIngresos").html(crearTablaDetalle("Ingresos", ingresos));
+            $("#detalleCostos").html(crearTablaDetalle("Costos", costos));
+            $("#detalleGastosVenta").html(crearTablaDetalle("Gastos de Venta", gastosVenta));
+            $("#detalleGastosAdmin").html(crearTablaDetalle("Gastos de Administración", gastosAdmin));
+            $("#detalleGastosFinancieros").html(crearTablaDetalle("Gastos Financieros", gastosFinancieros));
+        }
+
+        function crearTablaDetalle(titulo, items) {
+            if (items.length === 0) return "";
+
+            var html = `<h6 class="mt-3">${titulo}</h6><table class="table table-sm table-bordered">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Código</th>
+                        <th>Cuenta</th>
+                        <th class="text-right">Monto</th>
+                    </tr>
+                </thead><tbody>`;
+
+            items.forEach(function (item) {
+                html += `<tr>
+                    <td>${item.CodigoCuenta}</td>
+                    <td>${item.NombreCuenta}</td>
+                    <td class="text-right">$${item.Monto}</td>
+                </tr>`;
+            });
+
+            html += "</tbody></table>";
+            return html;
+        }
+
+        function exportarPDF() {
+            toastr.info("Función de exportación PDF en desarrollo", "Info");
+            // TODO: Implementar con jsPDF o similar
+        }
+    </script>
+}

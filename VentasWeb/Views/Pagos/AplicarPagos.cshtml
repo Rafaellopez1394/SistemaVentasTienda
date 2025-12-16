@@ -1,0 +1,426 @@
+@{
+    ViewBag.Title = "Aplicar Pagos";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-money-bill-wave"></i> Aplicar Pagos - Complemento de Pago CFDI 2.0
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form id="formAplicarPago">
+                        <div class="row">
+                            <!-- Selección de Cliente -->
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label for="cboCliente">Cliente <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="cboCliente" required>
+                                        <option value="">-- Seleccione un cliente --</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- Fecha de Pago -->
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="txtFechaPago">Fecha de Pago <span class="text-danger">*</span></label>
+                                    <input type="datetime-local" class="form-control" id="txtFechaPago" required>
+                                </div>
+                            </div>
+
+                            <!-- Forma de Pago -->
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label for="cboFormaPago">Forma de Pago <span class="text-danger">*</span></label>
+                                    <select class="form-control" id="cboFormaPago" required>
+                                        <option value="">-- Seleccione --</option>
+                                        <option value="01">01 - Efectivo</option>
+                                        <option value="02">02 - Cheque nominativo</option>
+                                        <option value="03">03 - Transferencia electrónica</option>
+                                        <option value="04">04 - Tarjeta de crédito</option>
+                                        <option value="28">28 - Tarjeta de débito</option>
+                                        <option value="99">99 - Por definir</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Datos Bancarios Opcionales -->
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="txtNumOperacion">Número de Operación</label>
+                                    <input type="text" class="form-control" id="txtNumOperacion" placeholder="Opcional">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="txtCtaOrdenante">Cuenta Ordenante (últimos 4 dígitos)</label>
+                                    <input type="text" class="form-control" id="txtCtaOrdenante" maxlength="4" placeholder="XXXX">
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="txtCtaBeneficiario">Cuenta Beneficiario (últimos 4 dígitos)</label>
+                                    <input type="text" class="form-control" id="txtCtaBeneficiario" maxlength="4" placeholder="XXXX">
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Facturas Pendientes -->
+                        <div class="row">
+                            <div class="col-12">
+                                <h5><i class="fas fa-file-invoice"></i> Facturas Pendientes</h5>
+                                <p class="text-muted">Seleccione las facturas a las que desea aplicar el pago</p>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-12">
+                                <table id="tbFacturasPendientes" class="table table-striped table-bordered dt-responsive nowrap" style="width:100%">
+                                    <thead class="thead-dark">
+                                        <tr>
+                                            <th style="width: 30px;">
+                                                <input type="checkbox" id="chkSeleccionarTodas">
+                                            </th>
+                                            <th>Serie-Folio</th>
+                                            <th>UUID</th>
+                                            <th>Fecha</th>
+                                            <th>Total</th>
+                                            <th>Saldo Pendiente</th>
+                                            <th>Parcialidad</th>
+                                            <th>Monto a Pagar</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <hr>
+
+                        <!-- Resumen de Pago -->
+                        <div class="row">
+                            <div class="col-md-8">
+                                <div class="alert alert-info">
+                                    <i class="fas fa-info-circle"></i>
+                                    <strong>Facturas seleccionadas:</strong> <span id="lblFacturasSeleccionadas">0</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-right">
+                                <h4>
+                                    <strong>Total a Pagar:</strong>
+                                    <span class="text-success" id="lblTotalPagar">$0.00</span>
+                                </h4>
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="row">
+                            <div class="col-12 text-right">
+                                <button type="button" class="btn btn-secondary" onclick="window.location.href='/Pagos/Historial'">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </button>
+                                <button type="submit" class="btn btn-success" id="btnGenerarComplemento">
+                                    <i class="fas fa-file-invoice-dollar"></i> Generar Complemento de Pago
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        var tablaFacturas;
+        var facturasData = [];
+
+        $(document).ready(function () {
+            inicializarFecha();
+            cargarClientes();
+            configurarEventos();
+        });
+
+        function inicializarFecha() {
+            var ahora = new Date();
+            var fecha = ahora.toISOString().slice(0, 16);
+            $('#txtFechaPago').val(fecha);
+        }
+
+        function cargarClientes() {
+            $.get('/Cliente/ObtenerTodos', function (response) {
+                if (response.success && response.data) {
+                    var options = '<option value="">-- Seleccione un cliente --</option>';
+                    response.data.forEach(function (cliente) {
+                        options += '<option value="' + cliente.ClienteID + '">' +
+                            cliente.RFC + ' - ' + cliente.RazonSocial + '</option>';
+                    });
+                    $('#cboCliente').html(options);
+                }
+            });
+        }
+
+        function configurarEventos() {
+            $('#cboCliente').change(function () {
+                var clienteID = $(this).val();
+                if (clienteID) {
+                    cargarFacturasPendientes(clienteID);
+                } else {
+                    if (tablaFacturas) {
+                        tablaFacturas.clear().draw();
+                    }
+                }
+            });
+
+            $('#chkSeleccionarTodas').change(function () {
+                var checked = $(this).prop('checked');
+                $('input[name="chkFactura"]').prop('checked', checked).trigger('change');
+            });
+
+            $('#formAplicarPago').submit(function (e) {
+                e.preventDefault();
+                generarComplementoPago();
+            });
+        }
+
+        function cargarFacturasPendientes(clienteID) {
+            $.get('/Pagos/ObtenerFacturasPendientes', { clienteID: clienteID }, function (response) {
+                if (response.success) {
+                    facturasData = response.data;
+                    inicializarTabla();
+                } else {
+                    toastr.error(response.mensaje || 'Error al cargar facturas');
+                }
+            });
+        }
+
+        function inicializarTabla() {
+            if (tablaFacturas) {
+                tablaFacturas.destroy();
+            }
+
+            tablaFacturas = $('#tbFacturasPendientes').DataTable({
+                data: facturasData,
+                language: {
+                    url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-MX.json'
+                },
+                columns: [
+                    {
+                        data: null,
+                        orderable: false,
+                        render: function (data, type, row) {
+                            return '<input type="checkbox" name="chkFactura" value="' + row.FacturaID + '">';
+                        }
+                    },
+                    { data: 'SerieFolio' },
+                    {
+                        data: 'UUID',
+                        render: function (data) {
+                            return '<small>' + data + '</small>';
+                        }
+                    },
+                    {
+                        data: 'FechaEmision',
+                        render: function (data) {
+                            return new Date(data).toLocaleDateString('es-MX');
+                        }
+                    },
+                    {
+                        data: 'MontoTotal',
+                        render: function (data) {
+                            return '$' + parseFloat(data).toFixed(2);
+                        }
+                    },
+                    {
+                        data: 'SaldoPendiente',
+                        render: function (data) {
+                            return '<strong class="text-danger">$' + parseFloat(data).toFixed(2) + '</strong>';
+                        }
+                    },
+                    {
+                        data: 'NumeroParcialidades',
+                        render: function (data) {
+                            return data + 1; // Próxima parcialidad
+                        }
+                    },
+                    {
+                        data: null,
+                        render: function (data, type, row) {
+                            return '<input type="number" class="form-control form-control-sm inputMonto" ' +
+                                'data-factura-id="' + row.FacturaID + '" ' +
+                                'data-saldo="' + row.SaldoPendiente + '" ' +
+                                'min="0" max="' + row.SaldoPendiente + '" ' +
+                                'step="0.01" value="0" disabled>';
+                        }
+                    }
+                ]
+            });
+
+            // Eventos para checkboxes y montos
+            $('#tbFacturasPendientes').on('change', 'input[name="chkFactura"]', function () {
+                var checked = $(this).prop('checked');
+                var facturaId = $(this).val();
+                var inputMonto = $('input.inputMonto[data-factura-id="' + facturaId + '"]');
+
+                if (checked) {
+                    inputMonto.prop('disabled', false);
+                    var saldo = parseFloat(inputMonto.data('saldo'));
+                    inputMonto.val(saldo.toFixed(2));
+                } else {
+                    inputMonto.prop('disabled', true).val('0');
+                }
+
+                actualizarTotales();
+            });
+
+            $('#tbFacturasPendientes').on('input', 'input.inputMonto', function () {
+                var max = parseFloat($(this).attr('max'));
+                var valor = parseFloat($(this).val()) || 0;
+
+                if (valor > max) {
+                    $(this).val(max.toFixed(2));
+                }
+
+                actualizarTotales();
+            });
+        }
+
+        function actualizarTotales() {
+            var total = 0;
+            var count = 0;
+
+            $('input[name="chkFactura"]:checked').each(function () {
+                count++;
+                var facturaId = $(this).val();
+                var monto = parseFloat($('input.inputMonto[data-factura-id="' + facturaId + '"]').val()) || 0;
+                total += monto;
+            });
+
+            $('#lblFacturasSeleccionadas').text(count);
+            $('#lblTotalPagar').text('$' + total.toFixed(2));
+        }
+
+        function generarComplementoPago() {
+            // Validaciones
+            var clienteID = parseInt($('#cboCliente').val());
+            if (!clienteID) {
+                toastr.warning('Debe seleccionar un cliente');
+                return;
+            }
+
+            var formaPago = $('#cboFormaPago').val();
+            if (!formaPago) {
+                toastr.warning('Debe seleccionar una forma de pago');
+                return;
+            }
+
+            // Obtener facturas seleccionadas
+            var facturas = [];
+            $('input[name="chkFactura"]:checked').each(function () {
+                var facturaId = parseInt($(this).val());
+                var factura = facturasData.find(f => f.FacturaID === facturaId);
+                var monto = parseFloat($('input.inputMonto[data-factura-id="' + facturaId + '"]').val()) || 0;
+
+                if (monto > 0) {
+                    facturas.push({
+                        FacturaID: facturaId,
+                        UUID: factura.UUID,
+                        SerieFolio: factura.SerieFolio,
+                        MontoTotal: factura.MontoTotal,
+                        SaldoPendiente: factura.SaldoPendiente,
+                        MontoPagar: monto,
+                        NumeroParcialidad: factura.NumeroParcialidades + 1
+                    });
+                }
+            });
+
+            if (facturas.length === 0) {
+                toastr.warning('Debe seleccionar al menos una factura con monto a pagar');
+                return;
+            }
+
+            var total = facturas.reduce((sum, f) => sum + f.MontoPagar, 0);
+
+            // Construir request
+            var request = {
+                ClienteID: clienteID,
+                FechaPago: $('#txtFechaPago').val(),
+                FormaDePago: formaPago,
+                MontoTotal: total,
+                NumOperacion: $('#txtNumOperacion').val() || null,
+                CtaOrdenante: $('#txtCtaOrdenante').val() || null,
+                CtaBeneficiario: $('#txtCtaBeneficiario').val() || null,
+                Facturas: facturas
+            };
+
+            // Confirmación
+            Swal.fire({
+                title: '¿Generar Complemento de Pago?',
+                html: '<p>Se generará un CFDI de tipo Pago (Complemento 2.0)</p>' +
+                    '<p><strong>Facturas:</strong> ' + facturas.length + '</p>' +
+                    '<p><strong>Total:</strong> $' + total.toFixed(2) + '</p>',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, generar y timbrar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#28a745',
+                showLoaderOnConfirm: true,
+                allowOutsideClick: () => !Swal.isLoading(),
+                preConfirm: () => {
+                    return $.ajax({
+                        url: '/Pagos/AplicarPago',
+                        type: 'POST',
+                        contentType: 'application/json',
+                        data: JSON.stringify(request),
+                        dataType: 'json'
+                    }).then(response => {
+                        if (!response.success) {
+                            throw new Error(response.mensaje || 'Error al generar');
+                        }
+                        return response;
+                    }).catch(error => {
+                        Swal.showValidationMessage('Error: ' + (error.message || error.responseText || 'Error de conexión'));
+                    });
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: '¡Complemento Generado!',
+                        html: '<p><strong>UUID:</strong></p>' +
+                            '<p style="word-break: break-all; font-size: 11px;">' + result.value.uuid + '</p>' +
+                            '<p class="mt-3"><strong>Fecha:</strong> ' + result.value.fechaTimbrado + '</p>',
+                        icon: 'success',
+                        confirmButtonText: 'Ir a Historial'
+                    }).then(() => {
+                        window.location.href = '/Pagos/Historial';
+                    });
+                }
+            });
+        }
+    </script>
+}
+
+<style>
+    .inputMonto {
+        max-width: 150px;
+    }
+
+    #tbFacturasPendientes tbody tr {
+        cursor: pointer;
+    }
+
+    #tbFacturasPendientes tbody tr:hover {
+        background-color: #f8f9fa;
+    }
+</style>

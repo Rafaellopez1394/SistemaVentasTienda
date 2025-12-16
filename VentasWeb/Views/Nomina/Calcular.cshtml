@@ -1,0 +1,196 @@
+@{
+    ViewBag.Title = "Calcular Nómina";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Calcular Nómina</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Inicio</a></li>
+                        <li class="breadcrumb-item"><a href="@Url.Action("Index", "Nomina")">Nóminas</a></li>
+                        <li class="breadcrumb-item active">Calcular</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <div class="row">
+                <!-- Formulario de cálculo -->
+                <div class="col-md-8">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Parámetros de Nómina</h3>
+                        </div>
+                        <div class="card-body">
+                            <form id="frmCalcularNomina">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Tipo de Nómina <span class="text-danger">*</span></label>
+                                            <select id="cboTipoNomina" class="form-control" required>
+                                                <option value="ORDINARIA">Ordinaria</option>
+                                                <option value="EXTRAORDINARIA">Extraordinaria</option>
+                                                <option value="AGUINALDO">Aguinaldo</option>
+                                                <option value="FINIQUITO">Finiquito</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Fecha Inicio <span class="text-danger">*</span></label>
+                                            <input type="date" id="txtFechaInicio" class="form-control" required />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Fecha Fin <span class="text-danger">*</span></label>
+                                            <input type="date" id="txtFechaFin" class="form-control" required />
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="form-group">
+                                            <label>Fecha de Pago <span class="text-danger">*</span></label>
+                                            <input type="date" id="txtFechaPago" class="form-control" required />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="alert alert-info" id="alertPeriodo" style="display:none;">
+                                    <i class="fas fa-info-circle"></i> <span id="spanMensajePeriodo"></span>
+                                </div>
+
+                                <div class="alert alert-warning" id="alertAdvertencia" style="display:none;">
+                                    <i class="fas fa-exclamation-triangle"></i> <span id="spanAdvertencia"></span>
+                                </div>
+
+                                <hr>
+
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <button type="submit" class="btn btn-primary btn-lg">
+                                            <i class="fas fa-calculator"></i> Calcular Nómina
+                                        </button>
+                                        <a href="@Url.Action("Index", "Nomina")" class="btn btn-secondary btn-lg">
+                                            <i class="fas fa-times"></i> Cancelar
+                                        </a>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Panel de información -->
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header bg-info">
+                            <h3 class="card-title">Empleados Activos</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="infoEmpleados">
+                                <p class="text-center">
+                                    <i class="fas fa-spinner fa-spin fa-2x"></i><br>
+                                    Cargando...
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header bg-warning">
+                            <h3 class="card-title">Instrucciones</h3>
+                        </div>
+                        <div class="card-body">
+                            <ol class="pl-3">
+                                <li>Seleccione el tipo de nómina a procesar</li>
+                                <li>Ingrese las fechas del periodo de pago</li>
+                                <li>Defina la fecha en que se pagará la nómina</li>
+                                <li>El sistema calculará automáticamente:
+                                    <ul>
+                                        <li>Percepciones por empleado</li>
+                                        <li>ISR según tabla 2025</li>
+                                        <li>IMSS (cuota obrera)</li>
+                                        <li>Subsidio al empleo</li>
+                                    </ul>
+                                </li>
+                                <li>Podrá revisar los recibos antes de contabilizar</li>
+                            </ol>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Modal de Progreso -->
+<div class="modal fade" id="modalProgreso" data-backdrop="static" data-keyboard="false" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-body text-center p-5">
+                <div class="spinner-border text-primary mb-3" role="status" style="width: 3rem; height: 3rem;">
+                    <span class="sr-only">Procesando...</span>
+                </div>
+                <h5>Calculando Nómina</h5>
+                <p class="text-muted">Por favor espere mientras se procesan los cálculos...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal de Resultado -->
+<div class="modal fade" id="modalResultado" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success">
+                <h5 class="modal-title text-white">
+                    <i class="fas fa-check-circle"></i> Nómina Calculada Exitosamente
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Folio:</strong> <span id="spanResultFolio"></span></p>
+                        <p><strong>Periodo:</strong> <span id="spanResultPeriodo"></span></p>
+                        <p><strong>Empleados:</strong> <span id="spanResultEmpleados"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Total Percepciones:</strong> <span id="spanResultPercepciones" class="text-success"></span></p>
+                        <p><strong>Total Deducciones:</strong> <span id="spanResultDeducciones" class="text-danger"></span></p>
+                        <p><strong>Neto a Pagar:</strong> <span id="spanResultNeto" class="text-primary font-weight-bold"></span></p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" onclick="verDetalleNomina()">
+                    <i class="fas fa-eye"></i> Ver Detalle
+                </button>
+                <button type="button" class="btn btn-secondary" onclick="nuevaNomina()">
+                    <i class="fas fa-plus"></i> Calcular Otra
+                </button>
+                <a href="@Url.Action("Index", "Nomina")" class="btn btn-success">
+                    <i class="fas fa-list"></i> Ir a Listado
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/Views/Nomina_Calcular.js"></script>
+}

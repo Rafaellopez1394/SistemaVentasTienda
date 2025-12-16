@@ -1,0 +1,257 @@
+@{
+    ViewBag.Title = "Cuentas por Pagar";
+}
+
+<div class="container-fluid">
+    <h2><i class="fas fa-file-invoice-dollar"></i> Cuentas por Pagar</h2>
+    <hr />
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <label>Filtrar por Estado:</label>
+                    <select id="ddlEstado" class="form-control" onchange="cargarCuentas()">
+                        <option value="">Todos</option>
+                        <option value="PENDIENTE">Pendientes</option>
+                        <option value="PARCIAL">Parciales</option>
+                        <option value="VENCIDA">Vencidas</option>
+                        <option value="PAGADA">Pagadas</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <a href="@Url.Action("Pagar", "CuentasPorPagar")" class="btn btn-primary btn-block">
+                        <i class="fas fa-dollar-sign"></i> Registrar Pago
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <label>&nbsp;</label>
+                    <a href="@Url.Action("ReporteAntiguedad", "CuentasPorPagar")" class="btn btn-info btn-block">
+                        <i class="fas fa-chart-bar"></i> Antigüedad Saldos
+                    </a>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card bg-warning text-white">
+                        <div class="card-body">
+                            <h5>Total Adeudo</h5>
+                            <h3 id="totalAdeudo">$0.00</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <h5>Vencidas</h5>
+                            <h3 id="totalVencidas">$0.00</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body">
+                            <h5>Por Vencer (7 días)</h5>
+                            <h3 id="totalPorVencer">$0.00</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h5>Corrientes</h5>
+                            <h3 id="totalCorrientes">$0.00</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div class="card">
+        <div class="card-body">
+            <table id="tbCuentas" class="table table-bordered table-hover table-sm">
+                <thead class="thead-dark">
+                    <tr>
+                        <th>Proveedor</th>
+                        <th>RFC</th>
+                        <th>Compra #</th>
+                        <th>Folio Factura</th>
+                        <th>Fecha Registro</th>
+                        <th>Vencimiento</th>
+                        <th>Días</th>
+                        <th class="text-right">Monto Total</th>
+                        <th class="text-right">Pagado</th>
+                        <th class="text-right">Saldo</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detalle Pagos -->
+<div class="modal fade" id="modalPagos" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Historial de Pagos</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <table id="tbPagos" class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Monto</th>
+                            <th>Forma Pago</th>
+                            <th>Referencia</th>
+                            <th>Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            cargarCuentas();
+        });
+
+        function cargarCuentas() {
+            var estado = $("#ddlEstado").val();
+
+            $.ajax({
+                url: '@Url.Action("ObtenerTodas", "CuentasPorPagar")',
+                type: 'GET',
+                data: { estado: estado },
+                success: function (response) {
+                    if (response.success) {
+                        mostrarCuentas(response.data);
+                        calcularTotales(response.data);
+                    } else {
+                        toastr.error(response.mensaje, "Error");
+                    }
+                }
+            });
+        }
+
+        function mostrarCuentas(data) {
+            var tbody = $("#tbCuentas tbody");
+            tbody.empty();
+
+            if (data.length === 0) {
+                tbody.append('<tr><td colspan="12" class="text-center">No hay cuentas por pagar</td></tr>');
+                return;
+            }
+
+            data.forEach(function (c) {
+                var estadoBadge = getEstadoBadge(c.Estado);
+                var diasText = c.DiasVencido > 0 
+                    ? `<span class="text-danger font-weight-bold">+${c.DiasVencido} vencido</span>`
+                    : c.DiasParaVencer >= 0 
+                        ? `<span class="text-success">${c.DiasParaVencer} días</span>`
+                        : `<span class="text-muted">Pagada</span>`;
+
+                var fila = `<tr>
+                    <td>${c.Proveedor}</td>
+                    <td>${c.RFC}</td>
+                    <td>${c.CompraID}</td>
+                    <td>${c.FolioFactura || '-'}</td>
+                    <td>${c.FechaRegistro}</td>
+                    <td>${c.FechaVencimiento}</td>
+                    <td>${diasText}</td>
+                    <td class="text-right">$${c.MontoTotal}</td>
+                    <td class="text-right text-success">$${c.TotalPagado}</td>
+                    <td class="text-right font-weight-bold">$${c.SaldoPendiente}</td>
+                    <td>${estadoBadge}</td>
+                    <td>
+                        <button class="btn btn-sm btn-info" onclick="verPagos('${c.CuentaPorPagarID}')" title="Ver pagos">
+                            <i class="fas fa-history"></i>
+                        </button>
+                        ${c.Estado !== 'PAGADA' ? `<a href="@Url.Action("Pagar", "CuentasPorPagar")?id=${c.CuentaPorPagarID}" class="btn btn-sm btn-success" title="Pagar">
+                            <i class="fas fa-dollar-sign"></i>
+                        </a>` : ''}
+                    </td>
+                </tr>`;
+                tbody.append(fila);
+            });
+        }
+
+        function getEstadoBadge(estado) {
+            switch (estado) {
+                case 'PENDIENTE': return '<span class="badge badge-warning">PENDIENTE</span>';
+                case 'PARCIAL': return '<span class="badge badge-info">PARCIAL</span>';
+                case 'VENCIDA': return '<span class="badge badge-danger">VENCIDA</span>';
+                case 'PAGADA': return '<span class="badge badge-success">PAGADA</span>';
+                default: return '<span class="badge badge-secondary">' + estado + '</span>';
+            }
+        }
+
+        function calcularTotales(data) {
+            var totalAdeudo = 0;
+            var totalVencidas = 0;
+            var totalPorVencer = 0;
+            var totalCorrientes = 0;
+
+            data.forEach(function (c) {
+                var saldo = parseFloat(c.SaldoPendiente.replace(/,/g, ''));
+                totalAdeudo += saldo;
+
+                if (c.Estado === 'VENCIDA') {
+                    totalVencidas += saldo;
+                } else if (c.DiasParaVencer <= 7 && c.DiasParaVencer >= 0) {
+                    totalPorVencer += saldo;
+                } else if (c.DiasParaVencer > 7) {
+                    totalCorrientes += saldo;
+                }
+            });
+
+            $("#totalAdeudo").text("$" + totalAdeudo.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalVencidas").text("$" + totalVencidas.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalPorVencer").text("$" + totalPorVencer.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalCorrientes").text("$" + totalCorrientes.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+        }
+
+        function verPagos(cuentaId) {
+            $.ajax({
+                url: '@Url.Action("ObtenerPagos", "CuentasPorPagar")',
+                type: 'GET',
+                data: { cuentaPorPagarId: cuentaId },
+                success: function (response) {
+                    if (response.success) {
+                        var tbody = $("#tbPagos tbody");
+                        tbody.empty();
+
+                        if (response.data.length === 0) {
+                            tbody.append('<tr><td colspan="5" class="text-center">No hay pagos registrados</td></tr>');
+                        } else {
+                            response.data.forEach(function (p) {
+                                tbody.append(`<tr>
+                                    <td>${p.FechaPago}</td>
+                                    <td class="font-weight-bold">$${p.MontoPagado}</td>
+                                    <td>${p.FormaPago}</td>
+                                    <td>${p.Referencia || '-'}</td>
+                                    <td>${p.Observaciones || '-'}</td>
+                                </tr>`);
+                            });
+                        }
+
+                        $("#modalPagos").modal("show");
+                    }
+                }
+            });
+        }
+    </script>
+}

@@ -7,6 +7,7 @@ namespace CapaModelo
     {
         public int ProductoID { get; set; }
         public string Nombre { get; set; } = string.Empty;
+        public string Descripcion { get; set; }
         public int CategoriaID { get; set; }
         public string NombreCategoria { get; set; }
         public string ClaveProdServSATID { get; set; } = string.Empty;

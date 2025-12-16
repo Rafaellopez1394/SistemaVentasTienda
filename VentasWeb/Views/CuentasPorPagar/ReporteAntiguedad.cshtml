@@ -1,0 +1,256 @@
+@{
+    ViewBag.Title = "Reporte Antigüedad de Saldos";
+}
+
+<div class="container-fluid">
+    <h2><i class="fas fa-chart-bar"></i> Reporte de Antigüedad de Saldos</h2>
+    <hr />
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <button class="btn btn-primary btn-block" onclick="generarReporte()">
+                        <i class="fas fa-sync"></i> Actualizar Reporte
+                    </button>
+                </div>
+                <div class="col-md-3">
+                    <button class="btn btn-success btn-block" onclick="exportarExcel()">
+                        <i class="fas fa-file-excel"></i> Exportar Excel
+                    </button>
+                </div>
+            </div>
+
+            <div class="alert alert-info">
+                <strong>Nota:</strong> Este reporte muestra la antigüedad de los saldos pendientes por proveedor,
+                clasificados en rangos de días de vencimiento.
+            </div>
+
+            <div class="table-responsive">
+                <table id="tbAntiguedad" class="table table-bordered table-hover table-sm">
+                    <thead class="thead-dark">
+                        <tr>
+                            <th>Proveedor</th>
+                            <th>RFC</th>
+                            <th class="text-right">Total Adeudo</th>
+                            <th class="text-right">Corriente<br />(0-30 días)</th>
+                            <th class="text-right">31-60 días</th>
+                            <th class="text-right">61-90 días</th>
+                            <th class="text-right">91-120 días</th>
+                            <th class="text-right">+120 días</th>
+                            <th class="text-center">Cuentas<br />Vencidas</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                    <tfoot class="font-weight-bold bg-light">
+                        <tr>
+                            <td colspan="2" class="text-right">TOTALES:</td>
+                            <td id="totalAdeudo" class="text-right">$0.00</td>
+                            <td id="totalCorriente" class="text-right">$0.00</td>
+                            <td id="totalDias30" class="text-right">$0.00</td>
+                            <td id="totalDias60" class="text-right">$0.00</td>
+                            <td id="totalDias90" class="text-right">$0.00</td>
+                            <td id="totalMas120" class="text-right">$0.00</td>
+                            <td id="totalCuentasVencidas" class="text-center">0</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <br />
+
+    <div class="row" id="graficasContainer" style="display:none;">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5>Distribución por Proveedor</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartProveedores" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h5>Distribución por Antigüedad</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartAntiguedad" height="200"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script>
+        var reporteData = [];
+
+        $(document).ready(function () {
+            generarReporte();
+        });
+
+        function generarReporte() {
+            $.ajax({
+                url: '@Url.Action("ObtenerReporteAntiguedad", "CuentasPorPagar")',
+                type: 'GET',
+                beforeSend: function () {
+                    $("#tbAntiguedad tbody").html('<tr><td colspan="9" class="text-center"><i class="fas fa-spinner fa-spin"></i> Generando reporte...</td></tr>');
+                },
+                success: function (response) {
+                    if (response.success) {
+                        reporteData = response.data;
+                        mostrarReporte(response.data);
+                        generarGraficas(response.data);
+                        toastr.success("Reporte generado", "Éxito");
+                    } else {
+                        toastr.error(response.mensaje, "Error");
+                    }
+                }
+            });
+        }
+
+        function mostrarReporte(data) {
+            var tbody = $("#tbAntiguedad tbody");
+            tbody.empty();
+
+            if (data.length === 0) {
+                tbody.append('<tr><td colspan="9" class="text-center">No hay saldos pendientes</td></tr>');
+                return;
+            }
+
+            var totales = {
+                adeudo: 0,
+                corriente: 0,
+                dias30: 0,
+                dias60: 0,
+                dias90: 0,
+                mas120: 0,
+                vencidas: 0
+            };
+
+            data.forEach(function (r) {
+                var adeudo = parseFloat(r.TotalAdeudo.replace(/,/g, ''));
+                var corriente = parseFloat(r.Corriente.replace(/,/g, ''));
+                var dias30 = parseFloat(r.Dias30.replace(/,/g, ''));
+                var dias60 = parseFloat(r.Dias60.replace(/,/g, ''));
+                var dias90 = parseFloat(r.Dias90.replace(/,/g, ''));
+                var mas120 = parseFloat(r.Mas120.replace(/,/g, ''));
+
+                totales.adeudo += adeudo;
+                totales.corriente += corriente;
+                totales.dias30 += dias30;
+                totales.dias60 += dias60;
+                totales.dias90 += dias90;
+                totales.mas120 += mas120;
+                totales.vencidas += r.CuentasVencidas;
+
+                var fila = `<tr>
+                    <td>${r.Proveedor}</td>
+                    <td>${r.RFC}</td>
+                    <td class="text-right font-weight-bold">$${r.TotalAdeudo}</td>
+                    <td class="text-right text-success">$${r.Corriente}</td>
+                    <td class="text-right ${dias30 > 0 ? 'text-warning' : ''}">$${r.Dias30}</td>
+                    <td class="text-right ${dias60 > 0 ? 'text-warning' : ''}">$${r.Dias60}</td>
+                    <td class="text-right ${dias90 > 0 ? 'text-danger' : ''}">$${r.Dias90}</td>
+                    <td class="text-right ${mas120 > 0 ? 'text-danger font-weight-bold' : ''}">$${r.Mas120}</td>
+                    <td class="text-center ${r.CuentasVencidas > 0 ? 'text-danger font-weight-bold' : ''}">${r.CuentasVencidas}</td>
+                </tr>`;
+                tbody.append(fila);
+            });
+
+            $("#totalAdeudo").text("$" + totales.adeudo.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalCorriente").text("$" + totales.corriente.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalDias30").text("$" + totales.dias30.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalDias60").text("$" + totales.dias60.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalDias90").text("$" + totales.dias90.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalMas120").text("$" + totales.mas120.toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,'));
+            $("#totalCuentasVencidas").text(totales.vencidas);
+        }
+
+        function generarGraficas(data) {
+            if (data.length === 0) return;
+
+            $("#graficasContainer").show();
+
+            // Top 5 proveedores
+            var top5 = data.slice(0, 5);
+            var proveedores = top5.map(r => r.Proveedor);
+            var montos = top5.map(r => parseFloat(r.TotalAdeudo.replace(/,/g, '')));
+
+            new Chart(document.getElementById('chartProveedores'), {
+                type: 'bar',
+                data: {
+                    labels: proveedores,
+                    datasets: [{
+                        label: 'Adeudo Total',
+                        data: montos,
+                        backgroundColor: 'rgba(54, 162, 235, 0.5)',
+                        borderColor: 'rgba(54, 162, 235, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    scales: {
+                        y: { beginAtZero: true }
+                    }
+                }
+            });
+
+            // Distribución por antigüedad
+            var totalCorriente = data.reduce((sum, r) => sum + parseFloat(r.Corriente.replace(/,/g, '')), 0);
+            var totalDias30 = data.reduce((sum, r) => sum + parseFloat(r.Dias30.replace(/,/g, '')), 0);
+            var totalDias60 = data.reduce((sum, r) => sum + parseFloat(r.Dias60.replace(/,/g, '')), 0);
+            var totalDias90 = data.reduce((sum, r) => sum + parseFloat(r.Dias90.replace(/,/g, '')), 0);
+            var totalMas120 = data.reduce((sum, r) => sum + parseFloat(r.Mas120.replace(/,/g, '')), 0);
+
+            new Chart(document.getElementById('chartAntiguedad'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['Corriente', '31-60 días', '61-90 días', '91-120 días', '+120 días'],
+                    datasets: [{
+                        data: [totalCorriente, totalDias30, totalDias60, totalDias90, totalMas120],
+                        backgroundColor: [
+                            'rgba(75, 192, 192, 0.5)',
+                            'rgba(255, 206, 86, 0.5)',
+                            'rgba(255, 159, 64, 0.5)',
+                            'rgba(255, 99, 132, 0.5)',
+                            'rgba(153, 102, 255, 0.5)'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true
+                }
+            });
+        }
+
+        function exportarExcel() {
+            if (reporteData.length === 0) {
+                toastr.warning("Primero genere el reporte", "Atención");
+                return;
+            }
+
+            var tabla = $("#tbAntiguedad").clone();
+            var html = tabla[0].outerHTML;
+            
+            var uri = 'data:application/vnd.ms-excel;base64,';
+            var template = '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel"><head><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Antigüedad</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--><meta http-equiv="content-type" content="text/plain; charset=UTF-8"/></head><body>{table}</body></html>';
+            var base64 = function (s) { return window.btoa(unescape(encodeURIComponent(s))) };
+            var format = function (s, c) { return s.replace(/{(\w+)}/g, function (m, p) { return c[p]; }) };
+
+            var ctx = { table: html };
+            var link = document.createElement("a");
+            link.download = "AntiguedadSaldos_" + new Date().toISOString().split('T')[0] + ".xls";
+            link.href = uri + base64(format(template, ctx));
+            link.click();
+        }
+    </script>
+}

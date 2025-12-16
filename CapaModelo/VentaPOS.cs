@@ -130,4 +130,38 @@ namespace CapaModelo
         public decimal CreditoDisponible { get; set; }
         public string Mensaje { get; set; }
     }
+
+    // Estado de caja (para validaciones)
+    public class EstadoCaja
+    {
+        public int CajaID { get; set; }
+        public bool EstaAbierta { get; set; }
+        public DateTime? FechaApertura { get; set; }
+        public decimal SaldoActual { get; set; }
+        public int NumeroVentas { get; set; }
+        public decimal TotalVentas { get; set; }
+    }
+
+    // Corte de caja (cierre con arqueo)
+    public class CorteCaja
+    {
+        public int CorteID { get; set; }
+        public int CajaID { get; set; }
+        public DateTime FechaApertura { get; set; }
+        public DateTime FechaCierre { get; set; }
+        public decimal FondoInicial { get; set; }
+        public decimal TotalVentas { get; set; }
+        public decimal TotalRetiros { get; set; }
+        public decimal TotalGastos { get; set; }
+        public decimal MontoEsperado { get; set; }
+        public decimal MontoRealEfectivo { get; set; }
+        public decimal MontoRealTarjeta { get; set; }
+        public decimal MontoRealTransferencia { get; set; }
+        public decimal MontoRealTotal { get; set; }
+        public decimal Diferencia { get; set; }
+        public string TipoDiferencia { get; set; } // FALTANTE, SOBRANTE, CUADRADO
+        public string Observaciones { get; set; }
+        public string UsuarioCierre { get; set; }
+        public Guid? PolizaID { get; set; }
+    }
 }

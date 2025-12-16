@@ -32,10 +32,12 @@ namespace VentasWeb
             ));
 
             // ============================
-            // CSS PRINCIPAL DEL SITIO
+            // CSS PRINCIPAL DEL SITIO (ORDEN IMPORTA!)
             // ============================
             bundles.Add(new StyleBundle("~/Content/css").Include(
-                      "~/Content/Site.css"
+                      "~/Content/custom-supermarket.css",  // PRIMERO: Estilos base profesionales
+                      "~/Content/components.css",          // SEGUNDO: Componentes específicos
+                      "~/Content/Site.css"                 // ÚLTIMO: Sobrescrituras específicas
             ));
 
             // ============================
@@ -70,6 +72,17 @@ namespace VentasWeb
                      // ✅ Select2 JS
                      "~/Content/Plugins/select2.min.js"
             ));
+
+            // ============================
+            // HABILITAR OPTIMIZACIÓN
+            // ============================
+            // En modo debug, los archivos se sirven sin minificar pero SÍ se agrupan
+            // true = producción (minificado), false = debug (sin minificar)
+            #if DEBUG
+                BundleTable.EnableOptimizations = false;
+            #else
+                BundleTable.EnableOptimizations = true;
+            #endif
         }
     }
 }

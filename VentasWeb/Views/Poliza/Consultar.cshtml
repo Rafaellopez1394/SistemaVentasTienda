@@ -1,0 +1,118 @@
+@{
+    ViewBag.Title = "Consultar Pólizas";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<nav aria-label="breadcrumb">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="@Url.Action("Index","Home")">Inicio</a></li>
+        <li class="breadcrumb-item active">Consultar Pólizas</li>
+    </ol>
+</nav>
+
+<div class="card shadow">
+    <div class="card-header bg-success text-white">
+        <h4 class="mb-0"><i class="fas fa-book"></i> Consultar Pólizas Contables</h4>
+    </div>
+    <div class="card-body">
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label>Fecha Inicio</label>
+                <input type="date" id="txtFechaInicio" class="form-control" value="@DateTime.Now.AddDays(-30).ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-3">
+                <label>Fecha Fin</label>
+                <input type="date" id="txtFechaFin" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+            </div>
+            <div class="col-md-3">
+                <label>Tipo Póliza</label>
+                <select id="cboTipoPoliza" class="form-control">
+                    <option value="">Todos</option>
+                    <option value="VENTA">VENTA</option>
+                    <option value="COMPRA">COMPRA</option>
+                    <option value="AJUSTE_INVENTARIO">AJUSTE INVENTARIO</option>
+                    <option value="DIARIO">DIARIO</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label>&nbsp;</label>
+                <button id="btnBuscar" class="btn btn-primary btn-block">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
+
+        <table id="tbPolizas" class="table table-striped table-hover table-sm" style="width:100%">
+            <thead class="thead-dark">
+                <tr>
+                    <th>ID</th>
+                    <th>Tipo</th>
+                    <th>Fecha</th>
+                    <th>Concepto</th>
+                    <th>Total Debe</th>
+                    <th>Total Haber</th>
+                    <th>Usuario</th>
+                    <th>Acciones</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+</div>
+
+<!-- Modal Detalle Póliza -->
+<div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title">Detalle de Póliza</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Póliza ID:</strong> <span id="lblPolizaID"></span><br>
+                        <strong>Tipo:</strong> <span id="lblTipo"></span><br>
+                        <strong>Fecha:</strong> <span id="lblFecha"></span>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Concepto:</strong> <span id="lblConcepto"></span><br>
+                        <strong>Usuario:</strong> <span id="lblUsuario"></span><br>
+                        <strong>Fecha Registro:</strong> <span id="lblFechaReg"></span>
+                    </div>
+                </div>
+
+                <h6 class="text-primary">Movimientos Contables</h6>
+                <table class="table table-bordered table-sm">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Cuenta</th>
+                            <th>Concepto</th>
+                            <th class="text-right">DEBE</th>
+                            <th class="text-right">HABER</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tbodyDetalle"></tbody>
+                    <tfoot class="font-weight-bold">
+                        <tr class="table-info">
+                            <td colspan="2" class="text-right">TOTALES:</td>
+                            <td class="text-right" id="totalDebe">$0.00</td>
+                            <td class="text-right" id="totalHaber">$0.00</td>
+                        </tr>
+                        <tr id="rowDiferencia" class="table-warning" style="display:none;">
+                            <td colspan="2" class="text-right">DIFERENCIA:</td>
+                            <td colspan="2" class="text-right text-danger" id="diferencia">$0.00</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/Views/Poliza_Consultar.js"></script>
+}

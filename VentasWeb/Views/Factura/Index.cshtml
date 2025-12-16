@@ -1,0 +1,383 @@
+@{
+    ViewBag.Title = "Facturas Electrónicas";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<input type="hidden" id="ventaIdHidden" value="@ViewBag.VentaID" />
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-invoice"></i> Facturas Electrónicas CFDI 4.0
+                    </h4>
+                </div>
+                <div class="card-body">
+                    @if (!string.IsNullOrEmpty(ViewBag.VentaID as string))
+                    {
+                        <div class="alert alert-info alert-dismissible fade show" role="alert">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>Facturar venta:</strong> Se pre-cargará la información de la venta seleccionada.
+                            <button type="button" class="close" data-dismiss="alert">
+                                <span>&times;</span>
+                            </button>
+                        </div>
+                    }
+
+                    <!-- Botón Nueva Factura -->
+                    <div class="row mb-3">
+                        <div class="col-12">
+                            <button type="button" class="btn btn-success" id="btnNuevaFactura">
+                                <i class="fas fa-plus"></i> Nueva Factura
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Filtros -->
+                    <div class="row mb-3">
+                        <div class="col-md-3">
+                            <label>RFC Cliente:</label>
+                            <input type="text" id="txtFiltroRFC" class="form-control" placeholder="RFC">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Fecha Desde:</label>
+                            <input type="date" id="txtFechaDesde" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Fecha Hasta:</label>
+                            <input type="date" id="txtFechaHasta" class="form-control">
+                        </div>
+                        <div class="col-md-3">
+                            <label>Estatus:</label>
+                            <select id="cboEstatus" class="form-control">
+                                <option value="">Todos</option>
+                                <option value="PENDIENTE">Pendiente</option>
+                                <option value="TIMBRADA">Timbrada</option>
+                                <option value="CANCELADA">Cancelada</option>
+                                <option value="ERROR">Error</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de facturas -->
+                    <table id="tbFacturas" class="table table-striped table-bordered dt-responsive nowrap" style="width:100%">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>Serie-Folio</th>
+                                <th>UUID</th>
+                                <th>Fecha</th>
+                                <th>RFC Cliente</th>
+                                <th>Cliente</th>
+                                <th>Total</th>
+                                <th>Estatus</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Generar Factura -->
+<div class="modal fade" id="modalGenerarFactura" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-xl" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-file-invoice"></i> Generar Factura CFDI 4.0</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="formFactura">
+                    <input type="hidden" id="txtVentaID" name="VentaID">
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Datos del Receptor</h6>
+                            <div class="form-group">
+                                <label>RFC <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="txtReceptorRFC" name="ReceptorRFC" required maxlength="13">
+                            </div>
+                            <div class="form-group">
+                                <label>Razón Social <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="txtReceptorNombre" name="ReceptorNombre" required>
+                            </div>
+                            <div class="form-group">
+                                <label>Uso CFDI <span class="text-danger">*</span></label>
+                                <select class="form-control" id="cboUsoCFDI" name="UsoCFDI" required>
+                                    <option value="">-- Seleccione --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Régimen Fiscal <span class="text-danger">*</span></label>
+                                <select class="form-control" id="cboRegimenFiscal" name="RegimenFiscalReceptor" required>
+                                    <option value="">-- Seleccione --</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <h6 class="text-primary">Datos de la Factura</h6>
+                            <div class="form-group">
+                                <label>Forma de Pago <span class="text-danger">*</span></label>
+                                <select class="form-control" id="cboFormaPago" name="FormaPago" required>
+                                    <option value="01">01 - Efectivo</option>
+                                    <option value="03">03 - Transferencia electrónica</option>
+                                    <option value="04">04 - Tarjeta de crédito</option>
+                                    <option value="28">28 - Tarjeta de débito</option>
+                                    <option value="99">99 - Por definir</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Método de Pago <span class="text-danger">*</span></label>
+                                <select class="form-control" id="cboMetodoPago" name="MetodoPago" required>
+                                    <option value="PUE">PUE - Pago en una sola exhibición</option>
+                                    <option value="PPD">PPD - Pago en parcialidades o diferido</option>
+                                </select>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Subtotal</label>
+                                        <input type="number" class="form-control" id="txtSubtotal" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>IVA</label>
+                                        <input type="number" class="form-control" id="txtIVA" readonly>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-group">
+                                        <label>Total</label>
+                                        <input type="number" class="form-control font-weight-bold" id="txtTotal" readonly>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-primary">Conceptos</h6>
+                    <table class="table table-sm table-bordered" id="tablaConceptos">
+                        <thead class="thead-light">
+                            <tr>
+                                <th>Descripción</th>
+                                <th width="100">Cantidad</th>
+                                <th width="120">P. Unitario</th>
+                                <th width="120">Importe</th>
+                                <th width="50"></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <button type="button" class="btn btn-sm btn-secondary" id="btnAgregarConcepto">
+                        <i class="fas fa-plus"></i> Agregar Concepto
+                    </button>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" id="btnGenerarYTimbrar">
+                    <i class="fas fa-stamp"></i> Generar y Timbrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Ver Detalle -->
+<div class="modal fade" id="modalDetalleFactura" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title">Detalle de Factura</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Serie-Folio:</strong> <span id="detalleSerieFolio"></span></p>
+                        <p><strong>UUID:</strong> <span id="detalleUUID"></span></p>
+                        <p><strong>Fecha Emisión:</strong> <span id="detalleFecha"></span></p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>RFC Receptor:</strong> <span id="detalleRFC"></span></p>
+                        <p><strong>Cliente:</strong> <span id="detalleCliente"></span></p>
+                        <p><strong>Total:</strong> <span id="detalleTotal"></span></p>
+                    </div>
+                </div>
+                <hr>
+                <h6>Conceptos</h6>
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Descripción</th>
+                            <th>Cantidad</th>
+                            <th>P. Unitario</th>
+                            <th>Importe</th>
+                        </tr>
+                    </thead>
+                    <tbody id="detalleConceptos"></tbody>
+                </table>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Cancelar Factura -->
+<div class="modal fade" id="modalCancelarFactura" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title"><i class="fas fa-ban"></i> Cancelar CFDI</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>Advertencia:</strong> La cancelación de un CFDI es una operación <strong>irreversible</strong>.
+                    Asegúrese de seleccionar el motivo correcto según el catálogo del SAT.
+                </div>
+
+                <form id="formCancelar">
+                    <input type="hidden" id="cancelarFacturaId" name="facturaId">
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <p><strong>UUID:</strong> <span id="cancelarUUID" class="text-muted"></span></p>
+                            <p><strong>Serie-Folio:</strong> <span id="cancelarSerieFolio" class="text-muted"></span></p>
+                            <p><strong>Cliente:</strong> <span id="cancelarCliente" class="text-muted"></span></p>
+                            <p><strong>Total:</strong> <span id="cancelarTotal" class="text-muted"></span></p>
+                            <p><strong>Fecha Timbrado:</strong> <span id="cancelarFechaTimbrado" class="text-muted"></span></p>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="cboMotivoCancelacion">
+                                    Motivo de Cancelación <span class="text-danger">*</span>
+                                </label>
+                                <select class="form-control" id="cboMotivoCancelacion" name="motivo" required>
+                                    <option value="">-- Seleccione un motivo --</option>
+                                    <option value="01">01 - Comprobante emitido con errores con relación</option>
+                                    <option value="02">02 - Comprobante emitido con errores sin relación</option>
+                                    <option value="03">03 - No se llevó a cabo la operación</option>
+                                    <option value="04">04 - Operación nominativa relacionada en la factura global</option>
+                                </select>
+                                <small class="form-text text-muted">
+                                    Seleccione el motivo que corresponda según el catálogo del SAT.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row" id="divUuidSustitucion" style="display:none;">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label for="txtUuidSustitucion">
+                                    UUID de Sustitución <span class="text-danger">*</span>
+                                </label>
+                                <input type="text" class="form-control" id="txtUuidSustitucion" name="uuidSustitucion"
+                                       placeholder="XXXXXXXX-XXXX-XXXX-XXXX-XXXXXXXXXXXX"
+                                       pattern="[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}">
+                                <small class="form-text text-muted">
+                                    Requerido solo para motivo 01. Ingrese el UUID del CFDI que sustituye a este.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="alert alert-info">
+                                <i class="fas fa-clock"></i>
+                                <strong>Tiempo límite:</strong> Solo puede cancelar CFDIs dentro de las 72 horas posteriores a su timbrado.
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-danger" id="btnConfirmarCancelacion">
+                    <i class="fas fa-ban"></i> Confirmar Cancelación
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Enviar Email -->
+<div class="modal fade" id="modalEnviarEmail" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-envelope"></i> Enviar CFDI por Email</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="formEnviarEmail">
+                    <input type="hidden" id="emailFacturaId">
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        Se enviará el CFDI en formato PDF y XML al correo electrónico especificado.
+                    </div>
+
+                    <div class="form-group">
+                        <p><strong>Factura:</strong> <span id="emailSerieFolio"></span></p>
+                        <p><strong>UUID:</strong> <span id="emailUUID" style="font-size: 11px; word-break: break-all;"></span></p>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="txtEmailDestinatario">
+                            Email del Cliente <span class="text-danger">*</span>
+                        </label>
+                        <input type="email" class="form-control" id="txtEmailDestinatario" 
+                               placeholder="cliente@ejemplo.com" required>
+                        <small class="form-text text-muted">
+                            Ingrese el correo electrónico donde se enviará el CFDI
+                        </small>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-info" id="btnConfirmarEnvio">
+                    <i class="fas fa-paper-plane"></i> Enviar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/Factura/Factura_Index.js"></script>
+}
+
+<style>
+    .badge-PENDIENTE { background-color: #ffc107; color: #000; }
+    .badge-TIMBRADA { background-color: #28a745; }
+    .badge-CANCELADA { background-color: #dc3545; }
+    .badge-ERROR { background-color: #6c757d; }
+</style>

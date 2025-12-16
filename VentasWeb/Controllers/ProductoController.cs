@@ -100,6 +100,13 @@ namespace VentasWeb.Controllers
         }
 
         [HttpGet]
+        public JsonResult ObtenerPorSucursal(int sucursalId)
+        {
+            var productos = CD_Producto.Instancia.BuscarProductos("");
+            return Json(new { data = productos }, JsonRequestBehavior.AllowGet);
+        }
+
+        [HttpGet]
         public JsonResult ObtenerLotes(int productoId)
         {
             var lotes = CD_Producto.Instancia.ObtenerLotes(productoId);
@@ -217,13 +224,11 @@ namespace VentasWeb.Controllers
 
                 var poliza = new Poliza
                 {
-                    PolizaID = Guid.NewGuid(),
                     FechaPoliza = DateTime.Now,
                     TipoPoliza = tipoPoliza,
                     Concepto = $"Ajuste de inventario Lote #{lote.LoteID}: {motivo}",
-                    Usuario = User.Identity.Name ?? "system",
-                    ReferenciaId = lote.LoteID,
-                    ReferenciaTipo = "LOTE"
+                    Referencia = $"LOTE-{lote.LoteID}",
+                    Usuario = User.Identity.Name ?? "Sistema"
                 };
 
                 if (esIncremento)
@@ -267,11 +272,15 @@ namespace VentasWeb.Controllers
                     });
                 }
 
-                CD_Poliza.Instancia.RegistrarPoliza(poliza);
+                bool polizaCreada = CD_Poliza.Instancia.CrearPoliza(poliza);
+                if (!polizaCreada)
+                {
+                    TempData["Warning"] = "El ajuste se registró pero hubo un error al crear la póliza contable";
+                }
             }
             catch (Exception ex)
             {
-                // Log error pero no detener el proceso
+                TempData["Warning"] = $"El ajuste se registró pero hubo un error al crear la póliza: {ex.Message}";
                 System.Diagnostics.Debug.WriteLine($"Error al crear póliza: {ex.Message}");
             }
         }
