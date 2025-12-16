@@ -1,32 +1,35 @@
 /* =====================================================
-   SISTEMA DE PUNTO DE VENTA - SUPERMERCADO
-   Diseño Profesional Moderno
+   SISTEMA DE PUNTO DE VENTA - CRYPTOCURRENCY STYLE
+   Diseño Moderno Minimalista
    ===================================================== */
 
 /* =====================================================
-   VARIABLES DE COLOR - PALETA PROFESIONAL MODERNA
-   Esquema: Azul Oscuro + Naranja (Logo) + Neutros
+   VARIABLES DE COLOR - TEMA OCÉANO FRESCO
    ===================================================== */
 :root {
-    --primary-color: #1e293b;        /* Azul oscuro slate profesional */
-    --primary-light: #334155;        /* Azul slate medio */
-    --secondary-color: #f97316;      /* Naranja del logo */
-    --secondary-light: #fb923c;      /* Naranja claro */
-    --accent-color: #10b981;         /* Verde esmeralda éxito */
-    --danger-color: #ef4444;         /* Rojo moderno */
-    --warning-color: #f59e0b;        /* Ámbar advertencias */
-    --dark-color: #0f172a;           /* Slate muy oscuro */
-    --light-color: #f8fafc;          /* Gris casi blanco */
+    --primary-color: #0891b2;        /* Cyan océano */
+    --primary-light: #06b6d4;        /* Cyan claro */
+    --secondary-color: #0ea5e9;      /* Azul cielo */
+    --secondary-light: #38bdf8;      /* Azul claro */
+    --accent-color: #14b8a6;         /* Turquesa */
+    --accent-light: #2dd4bf;         /* Turquesa claro */
+    --danger-color: #ef4444;         /* Rojo */
+    --warning-color: #f59e0b;        /* Ámbar */
+    --dark-color: #0f172a;           /* Texto oscuro */
+    --dark-light: #1e293b;           /* Gris oscuro */
+    --light-color: #f0f9ff;          /* Azul muy claro */
     --white-color: #ffffff;
-    --border-color: #e2e8f0;
+    --border-color: #e0f2fe;
     --text-muted: #64748b;
-    --shadow-sm: 0 1px 3px rgba(0,0,0,0.08);
-    --shadow-md: 0 4px 12px rgba(0,0,0,0.1);
-    --shadow-lg: 0 10px 30px rgba(0,0,0,0.15);
-    --transition-speed: 0.3s;
-    --gradient-primary: linear-gradient(135deg, #1e293b 0%, #334155 100%);
-    --gradient-accent: linear-gradient(135deg, #f97316 0%, #fb923c 100%);
-    --gradient-light: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --shadow-lg: 0 10px 15px -3px rgba(8, 145, 178, 0.15);
+    --shadow-xl: 0 20px 25px -5px rgba(8, 145, 178, 0.2);
+    --transition-speed: 0.2s;
+    --gradient-primary: linear-gradient(135deg, #0891b2 0%, #06b6d4 100%);
+    --gradient-ocean: linear-gradient(135deg, #0891b2 0%, #14b8a6 100%);
+    --gradient-success: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    --gradient-light: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);
 }
 
 /* =====================================================
@@ -40,8 +43,8 @@
 
 body {
     font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
-    background: var(--light-color);
-    color: var(--dark-color);
+    background: #f0f9ff;
+    color: #0f172a;
     font-size: 14px;
     line-height: 1.6;
     min-height: 100vh;
@@ -56,38 +59,41 @@ body::before {
     width: 100%;
     height: 100%;
     background: 
-        linear-gradient(45deg, rgba(249, 115, 22, 0.02) 0%, transparent 50%),
-        linear-gradient(-45deg, rgba(30, 41, 59, 0.02) 0%, transparent 50%);
+        radial-gradient(circle at 20% 50%, rgba(8, 145, 178, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(20, 184, 166, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(14, 165, 233, 0.06) 0%, transparent 50%);
     z-index: -1;
     pointer-events: none;
 }
 
 h1, h2, h3, h4, h5, h6 {
-    font-weight: 600;
-    color: var(--primary-color);
+    font-weight: 700;
+    color: #0f172a;
     margin-bottom: 1rem;
+    letter-spacing: -0.02em;
 }
 
-h1 { font-size: 2rem; }
-h2 { font-size: 1.75rem; }
+h1 { font-size: 2.25rem; }
+h2 { font-size: 1.875rem; }
 h3 { font-size: 1.5rem; }
 h4 { font-size: 1.25rem; }
 
 /* =====================================================
-   SIDEBAR NAVIGATION
+   SIDEBAR NAVIGATION - CRYPTO STYLE
+   ===================================================== */
 .sidebar {
     position: fixed;
     top: 0;
     left: 0;
     height: 100vh;
     width: 260px;
-    background: var(--primary-color);
-    color: var(--white-color);
+    background: linear-gradient(180deg, #ffffff 0%, #f0f9ff 100%);
+    border-right: 2px solid #e0f2fe;
+    color: var(--dark-color);
     z-index: 1000;
     overflow-y: auto;
     transition: all var(--transition-speed) ease;
-    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
-}   box-shadow: var(--shadow-lg);
+    box-shadow: 4px 0 20px rgba(8, 145, 178, 0.08);
 }
 
 .sidebar.collapsed {
@@ -96,15 +102,15 @@ h4 { font-size: 1.25rem; }
 
 .sidebar-header {
     padding: 1.5rem 1rem;
-    background: var(--dark-color);
-    border-bottom: 3px solid var(--secondary-color);
+    background: transparent;
+    border-bottom: 1px solid rgba(226, 232, 240, 0.1);
     text-align: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
 }
 
 .sidebar-header .logo {
-    max-width: 150px;
+    max-width: 120px;
     height: auto;
+    filter: brightness(1.2) drop-shadow(0 0 20px rgba(91, 33, 182, 0.5));
     transition: all var(--transition-speed);
 }
 
@@ -137,34 +143,41 @@ h4 { font-size: 1.25rem; }
     display: flex;
     align-items: center;
     padding: 0.875rem 1.25rem;
-    color: rgba(255, 255, 255, 0.85);
+    color: rgba(226, 232, 240, 0.7);
     text-decoration: none;
     transition: all var(--transition-speed);
     position: relative;
+    border-radius: 0.5rem;
+    margin: 0.25rem 0.75rem;
 }
+
 .sidebar-nav-link:hover {
-    background: var(--primary-light);
-    color: var(--white-color);
+    background: rgba(8, 145, 178, 0.1);
+    color: var(--primary-color);
     text-decoration: none;
-    border-left: 3px solid var(--secondary-color);
-    padding-left: calc(1.25rem - 3px);
+    transform: translateX(4px);
 }
 
 .sidebar-nav-link.active {
-    background: var(--primary-light);
-    color: var(--white-color);
-    border-left: 4px solid var(--secondary-color);
-    padding-left: calc(1.25rem - 4px);
+    background: var(--gradient-ocean);
+    color: #ffffff;
     font-weight: 600;
-}   border-left: 4px solid var(--accent-color);
+    box-shadow: 0 4px 12px rgba(8, 145, 178, 0.3);
 }
 
 .sidebar-nav-link i {
-    font-size: 1.25rem;
-    width: 30px;
+    font-size: 1.1rem;
+    width: 28px;
     text-align: center;
-    margin-right: 0.875rem;
+    margin-right: 0.75rem;
     transition: all var(--transition-speed);
+    color: var(--primary-color);
+}
+
+.sidebar-nav-link.active i,
+.sidebar-nav-link:hover i {
+    color: #ffffff;
+    transform: scale(1.1);
 }
 
 .sidebar.collapsed .sidebar-nav-link i {
@@ -220,18 +233,45 @@ h4 { font-size: 1.25rem; }
     padding: 2rem;
     transition: margin-left var(--transition-speed);
     min-height: 100vh;
+    background: transparent;
 }
-/* Top Header */
+
+/* Cards Estilo Fresco */
+.dashboard-card,
+.stat-card,
+.card,
+.box {
+    background: #ffffff;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    box-shadow: 0 4px 6px -1px rgba(8, 145, 178, 0.1), 0 2px 4px -1px rgba(8, 145, 178, 0.06);
+    transition: all var(--transition-speed);
+    border: 2px solid #e0f2fe;
+    margin-bottom: 1.5rem;
+}
+
+.dashboard-card:hover,
+.stat-card:hover,
+.card:hover,
+.box:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    border-color: rgba(91, 33, 182, 0.3);
+}
+
+/* =====================================================
+   TOP HEADER - ESTILO FRESCO
+   ===================================================== */
 .top-header {
-    background: var(--white-color);
-    border-radius: 12px;
-    padding: 1.5rem 2rem;
+    background: #ffffff;
+    border-radius: 1rem;
+    padding: 1.25rem 2rem;
     margin-bottom: 2rem;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 6px rgba(8, 145, 178, 0.1);
     display: flex;
     justify-content: space-between;
     align-items: center;
-    border: 1px solid var(--border-color);
+    border: 2px solid #e0f2fe;
     position: relative;
     overflow: hidden;
 }
@@ -243,62 +283,70 @@ h4 { font-size: 1.25rem; }
     left: 0;
     width: 100%;
     height: 3px;
-    background: var(--gradient-accent);
-}   height: 4px;
-    background: var(--gradient-primary);
-}   display: flex;
-    justify-content: space-between;
-    align-items: center;
+    background: var(--gradient-ocean);
 }
 
 .top-header .page-title {
+    color: var(--dark-color);
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
 .user-avatar {
     width: 45px;
     height: 45px;
     border-radius: 50%;
-    background: var(--gradient-accent);
-    color: var(--white-color);
+    background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+    color: #ffffff;
     display: flex;
     align-items: center;
     justify-content: center;
     font-weight: bold;
     font-size: 1.2rem;
-    box-shadow: 0 3px 10px rgba(249, 115, 22, 0.3);
-    border: 2px solid var(--white-color);
-}   box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
-    border: 2px solid var(--white-color);
-}   align-items: center;
-    gap: 1rem;
-}
-
-.user-avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    background: var(--secondary-color);
-    color: var(--white-color);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-    font-size: 1.1rem;
+    box-shadow: 0 4px 12px rgba(249, 115, 22, 0.3);
+    border: 2px solid #e0f2fe;
 }
 
 .user-name {
-    color: var(--primary-color);
+    color: var(--dark-color);
     font-weight: 600;
 }
 
 .btn-logout {
-    background: var(--danger-color);
-    color: var(--white-color);
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: #ffffff;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-logout:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.5);
+    color: #ffffff;
+    text-decoration: none;
+}
+
+/* =====================================================
+   DASHBOARD CARDS
+   ===================================================== */
 .dashboard-card {
-    background: var(--white-color);
-    border-radius: 16px;
+    background: #ffffff;
+    border-radius: 1rem;
     padding: 2rem;
-    box-shadow: var(--shadow-sm);
+    box-shadow: 0 4px 6px rgba(8, 145, 178, 0.1);
     transition: all var(--transition-speed);
-    border: 1px solid var(--border-color);
+    border: 2px solid #e0f2fe;
     margin-bottom: 1.5rem;
     position: relative;
     overflow: hidden;

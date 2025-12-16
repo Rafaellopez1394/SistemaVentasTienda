@@ -225,10 +225,11 @@ namespace CapaDatos
             {
                 string query = @"
             SELECT LoteID, ProductoID, FechaEntrada, FechaCaducidad,
-                   CantidadDisponible, PrecioCompra, PrecioVenta
+                   CantidadDisponible, PrecioCompra, PrecioVenta, Estatus
             FROM LotesProducto
             WHERE ProductoID = @ProductoID 
               AND CantidadDisponible > 0
+              AND Estatus = 1
             ORDER BY ISNULL(FechaCaducidad, '2099-12-31') ASC, FechaEntrada ASC";
 
                 var cmd = new SqlCommand(query, cnx);
@@ -247,7 +248,8 @@ namespace CapaDatos
                             FechaCaducidad = dr["FechaCaducidad"] as DateTime?,
                             CantidadDisponible = (int)dr["CantidadDisponible"],
                             PrecioCompra = (decimal)dr["PrecioCompra"],
-                            PrecioVenta = (decimal)dr["PrecioVenta"]
+                            PrecioVenta = (decimal)dr["PrecioVenta"],
+                            Estatus = (bool)dr["Estatus"]
                         });
                     }
                 }
@@ -420,7 +422,7 @@ namespace CapaDatos
                 {
                     trx.Rollback();
                     System.Diagnostics.Debug.WriteLine($"Error registrando merma: {ex.Message}");
-                    return false;
+                    throw; // Propagar la excepción para que el controlador pueda capturar el mensaje
                 }
             }
         }
@@ -717,7 +719,7 @@ namespace CapaDatos
                 {
                     trx.Rollback();
                     System.Diagnostics.Debug.WriteLine($"Error registrando ajuste: {ex.Message}");
-                    return false;
+                    throw; // Propagar la excepción para que el controlador pueda capturar el mensaje
                 }
             }
         }

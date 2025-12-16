@@ -246,8 +246,8 @@ namespace VentasWeb.Controllers
             try
             {
                 // Usar CD_Producto para obtener lotes del producto
+                // La consulta SQL ya filtra por Estatus = 1 y CantidadDisponible > 0
                 var lotes = CD_Producto.Instancia.ObtenerLotesDisponibles(productoId)
-                    .Where(l => l.Estatus && l.CantidadDisponible > 0)
                     .Select(l => new {
                         value = l.LoteID,
                         text = $"Lote {l.LoteID} - Disponible: {l.CantidadDisponible} - Caducidad: {(l.FechaCaducidad.HasValue ? l.FechaCaducidad.Value.ToString("dd/MM/yyyy") : "N/A")}",
