@@ -1,4 +1,4 @@
-ï»¿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,6 +10,8 @@ namespace CapaModelo
     {
         public int TipoFinanciamientoID { get; set; }
         public string Clave { get; set; }     // ej: "dias", "monto", "unidades"
-        public string Nombre { get; set; }    // ej: "CrÃ©dito 30 dÃ­as", "Monto fijo", etc.
+        public string Nombre { get; set; }    // ej: "Crédito 30 días", "Monto fijo", etc.
     }
 }
+
+

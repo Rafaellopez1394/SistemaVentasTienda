@@ -1,4 +1,4 @@
-﻿// CapaModelo/VentaCliente.cs
+// CapaModelo/VentaCliente.cs
 using System;
 using System.Collections.Generic;
 
@@ -6,6 +6,11 @@ namespace CapaModelo
 {
     public class VentaCliente
     {
+        public VentaCliente()
+        {
+            Detalle = new List<VentaDetalleCliente>();
+        }
+
         public Guid VentaID { get; set; }
         public Guid ClienteID { get; set; }
         public string RazonSocial { get; set; }
@@ -16,7 +21,7 @@ namespace CapaModelo
         public decimal TotalPagado { get; set; }
         public decimal SaldoPendiente { get; set; }
         public string Usuario { get; set; }
-        public List<VentaDetalleCliente> Detalle { get; set; } = new List<VentaDetalleCliente>();
+        public List<VentaDetalleCliente> Detalle { get; set; }
     }
 
     public class VentaDetalleCliente
@@ -27,9 +32,9 @@ namespace CapaModelo
         public int Cantidad { get; set; }
         public decimal PrecioVenta { get; set; }
         public decimal PrecioCompra { get; set; }
-        public decimal TasaIVAPorcentaje { get; set; } = 16m;
-        public bool Exento { get; set; } = false;
-        public decimal Utilidad => Cantidad * (PrecioVenta - PrecioCompra);
+        public decimal TasaIVAPorcentaje { get; set; }
+        public bool Exento { get; set; }
+        public decimal Utilidad { get { return Cantidad * (PrecioVenta - PrecioCompra); } }
     }
 
     public class PagoCliente
@@ -50,8 +55,9 @@ namespace CapaModelo
         [Obsolete("Use Monto instead")]
         public decimal Importe
         {
-            get => Monto;
-            set => Monto = value;
+            get { return Monto; }
+            set { Monto = value; }
         }
     }
 }
+

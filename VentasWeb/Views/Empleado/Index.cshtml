@@ -1,0 +1,112 @@
+@{
+    ViewBag.Title = "Gestión de Empleados";
+}
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="mb-1">
+                        <i class="fas fa-users text-primary"></i> Gestión de Empleados
+                    </h2>
+                    <p class="text-muted mb-0">Administración del personal y datos laborales</p>
+                </div>
+                <button class="btn btn-primary" onclick="nuevoEmpleado()">
+                    <i class="fas fa-plus-circle"></i> Nuevo Empleado
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Card con tabla -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white py-3">
+            <h5 class="mb-0">
+                <i class="fas fa-list"></i> Listado de Empleados
+            </h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table id="tbEmpleados" class="table table-striped table-hover" style="width:100%">
+                    <thead class="thead-light">
+                        <tr>
+                            <th>Acciones</th>
+                            <th>No. Empleado</th>
+                            <th>Nombre Completo</th>
+                            <th>RFC</th>
+                            <th>CURP</th>
+                            <th>Puesto</th>
+                            <th>Departamento</th>
+                            <th>Salario Base</th>
+                            <th>Fecha Ingreso</th>
+                            <th>Estatus</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <!-- Datos de ejemplo mientras se implementa el backend -->
+                        <tr>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <button class="btn btn-info" title="Ver Detalle">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button class="btn btn-warning" title="Editar">
+                                        <i class="fas fa-edit"></i>
+                                    </button>
+                                </div>
+                            </td>
+                            <td>EMP001</td>
+                            <td>Juan Pérez García</td>
+                            <td>PEGJ850101ABC</td>
+                            <td>PEGJ850101HDFRRS01</td>
+                            <td>Vendedor</td>
+                            <td>Ventas</td>
+                            <td>$8,500.00</td>
+                            <td>01/01/2020</td>
+                            <td><span class="badge badge-success">Activo</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Alert informativo -->
+    <div class="alert alert-info mt-4" role="alert">
+        <i class="fas fa-info-circle"></i>
+        <strong>Módulo en desarrollo:</strong> 
+        Este módulo está siendo configurado. Próximamente contará con funcionalidades completas de:
+        <ul class="mb-0 mt-2">
+            <li>Alta, baja y modificación de empleados</li>
+            <li>Gestión de datos fiscales y laborales</li>
+            <li>Cálculo automático de nómina</li>
+            <li>Integración con módulo de contabilidad</li>
+        </ul>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            $('#tbEmpleados').DataTable({
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+                },
+                order: [[1, 'asc']],
+                pageLength: 25,
+                responsive: true
+            });
+        });
+
+        function nuevoEmpleado() {
+            swal({
+                title: "Módulo en desarrollo",
+                text: "La funcionalidad de registro de empleados estará disponible próximamente.",
+                icon: "info",
+                button: "Entendido"
+            });
+        }
+    </script>
+}

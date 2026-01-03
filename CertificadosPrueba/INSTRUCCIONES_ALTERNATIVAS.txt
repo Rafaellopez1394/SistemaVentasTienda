@@ -1,0 +1,93 @@
+===============================================
+INSTRUCCIONES ALTERNATIVAS
+===============================================
+
+Como los certificados oficiales de Finkok no están disponibles públicamente,
+tienes DOS OPCIONES para probar la facturación:
+
+===============================================
+OPCIÓN 1: Solicitar certificados a Finkok (Recomendado)
+===============================================
+
+1. Enviar email a: soporte@finkok.com
+   Asunto: "Solicitud de certificados de prueba EKU9003173C9"
+   Mensaje: "Hola, requiero los certificados de prueba EKU9003173C9 (.cer y .key)
+            para realizar pruebas de facturación con su servicio. Gracias."
+
+2. Responden en 1-2 días hábiles con los archivos
+
+===============================================
+OPCIÓN 2: Usar tu propio RFC de prueba (Más rápido)
+===============================================
+
+Si tienes acceso al portal del SAT con tu e.firma o FIEL:
+
+1. Ir a: https://www.sat.gob.mx/portal/public/tramites-y-servicios
+2. Buscar: "Certificado de Sello Digital" o "CSD"
+3. Click en el trámite y seguir las instrucciones
+4. Iniciar sesión con tu e.firma (archivo .key + .cer + contraseña)
+5. Generar y descargar tu certificado (.cer y .key)
+
+IMPORTANTE: Esta opción requiere:
+- Tener RFC activo como persona física o moral
+- Tener e.firma (FIEL) vigente del SAT
+- Estar al corriente con obligaciones fiscales
+- Es tu certificado REAL (no de prueba)
+
+Ventaja: Tienes certificados inmediatamente
+Desventaja: Necesitas tener e.firma y RFC activo
+
+===============================================
+OPCIÓN 3: Usar otro proveedor PAC con mejor documentación
+===============================================
+
+Algunos PAC tienen certificados de prueba más accesibles:
+
+SW-SAPIEN: https://developers.sw.com.mx
+- Certificados de prueba incluidos en la documentación
+- API REST moderna y fácil de usar
+- Ejemplos de código completos
+
+===============================================
+OPCIÓN 4: Probar sin certificado (limitado)
+===============================================
+
+Tu sistema puede generar el XML sin timbrar para verificar
+que la estructura es correcta:
+
+1. Ir a: http://localhost:50772/Factura
+2. Generar factura (fallará al timbrar)
+3. Ver el XML generado en los logs
+4. Validar estructura con herramientas online
+
+===============================================
+RECOMENDACIÓN INMEDIATA
+===============================================
+
+Para probar AHORA mismo:
+
+1. Contactar a Finkok vía email para los certificados
+2. Mientras tanto, revisa que el sistema funcione:
+   - Hacer ventas normales
+   - Marcar "Requiere Factura"
+   - Capturar datos del cliente
+   - Ver que el modal funcione correctamente
+
+3. Cuando tengas los certificados, solo cargarlos y listo
+
+===============================================
+CONTACTO FINKOK
+===============================================
+
+Email: soporte@finkok.com
+Tel: +52 (55) 4333-2550
+Chat: https://www.finkok.com (esquina inferior derecha)
+Horario: Lunes a Viernes 9:00 - 18:00 hrs (México)
+
+Pídeles específicamente:
+"Certificados de prueba EKU9003173C9 del kit de pruebas
+ para ambiente DEMO/SANDBOX"
+
+===============================================
+
+¿Qué opción prefieres seguir?

@@ -1,7 +1,6 @@
-﻿
 var tabladata;
 $(document).ready(function () {
-    activarMenu("Mantenedor");
+    // activarMenu("Mantenedor"); // No necesario - el menú se activa automáticamente
 
 
     ////validamos el formulario
@@ -84,7 +83,12 @@ $(document).ready(function () {
         "ajax": {
             "url": $.MisUrls.url._ObtenerUsuarios,
             "type": "GET",
-            "datatype": "json"
+            "datatype": "json",
+            "dataSrc": "data",
+            "error": function (xhr, error, code) {
+                console.log('Error al cargar usuarios:', xhr.responseText);
+                alert('Error al cargar los datos: ' + (xhr.responseJSON?.error || 'Error desconocido'));
+            }
         },
         "columns": [
             {
@@ -133,26 +137,38 @@ function abrirPopUpForm(json) {
 
         $("#txtid").val(json.UsuarioID);
 
-
         $("#txtNombres").val(json.Nombres);
         $("#txtApellidos").val(json.Apellidos);
         $("#txtCorreo").val(json.Correo);
-        $("#txtClave").val(json.Clave);
+        // NO establecer el valor de la contraseña al editar
+        $("#txtClave").val("");
+        $("#txtClave").attr("placeholder", "Dejar en blanco para mantener la actual");
         $("#cboSucursal").val(json.SucursalID);
         $("#cboRol").val(json.RolID);
         $("#cboEstado").val(json.Activo == true ? 1 : 0);
-        $("#txtClave").prop("disabled", true);
+        // Habilitar el campo de contraseña para permitir cambios
+        $("#txtClave").prop("disabled", false);
+        // Hacer el campo opcional al editar
+        $("#txtClave").rules("remove", "required");
 
     } else {
         $("#txtNombres").val("");
         $("#txtApellidos").val("");
         $("#txtCorreo").val("");
         $("#txtClave").val("");
+        $("#txtClave").attr("placeholder", "");
         $("#cboSucursal").val($("#cboSucursal option:first").val());
         $("#cboRol").val($("#cboRol option:first").val());
         $("#cboEstado").val(1);
         
         $("#txtClave").prop("disabled", false);
+        // Hacer el campo obligatorio al crear
+        $("#txtClave").rules("add", {
+            required: true,
+            messages: {
+                required: "(*)"
+            }
+        });
     }
 
     $('#FormModal').modal('show');
@@ -164,13 +180,18 @@ function Guardar() {
 
     if ($("#form").valid()) {
 
+        var usuarioID = parseInt($("#txtid").val());
+        var clave = $("#txtClave").val();
+        
+        // Si es edición y la contraseña está vacía, no enviarla (mantener la actual)
+        // El backend detectará que es un hash existente y no lo volverá a encriptar
         var request = {
             objeto: {
-                UsuarioID: $("#txtid").val(),
+                UsuarioID: usuarioID,
                 Nombres: $("#txtNombres").val(),
                 Apellidos: $("#txtApellidos").val(),
                 Correo: $("#txtCorreo").val(),
-                Clave: $("#txtClave").val(),
+                Clave: clave, // Puede ser vacío si se está editando sin cambiar contraseña
                 SucursalID: $("#cboSucursal").val(),
                 RolID: $("#cboRol").val(),
                 Activo: parseInt($("#cboEstado").val()) == 1 ? true : false
@@ -188,6 +209,7 @@ function Guardar() {
                 if (data.resultado) {
                     tabladata.ajax.reload();
                     $('#FormModal').modal('hide');
+                    swal("Mensaje", "Los cambios se guardaron correctamente", "success");
                 } else {
 
                     swal("Mensaje", "No se pudo guardar los cambios", "warning")

@@ -1,4 +1,4 @@
-﻿using CapaDatos;
+using CapaDatos;
 using CapaModelo;
 using System;
 using System.Collections.Generic;
@@ -11,6 +11,12 @@ namespace VentasWeb.Controllers
     public class RolController : Controller
     {
         // GET: Rol
+        public ActionResult Index()
+        {
+            return View("Crear");
+        }
+
+        // GET: Rol/Crear
         public ActionResult Crear()
         {
             return View();
@@ -19,9 +25,19 @@ namespace VentasWeb.Controllers
         [HttpGet]
         public JsonResult Obtener()
         {
-            List<Rol> olista = CD_Rol.Instancia.ObtenerRol();
-           
-            return Json(new { data = olista }, JsonRequestBehavior.AllowGet);
+            try
+            {
+                List<Rol> olista = CD_Rol.Instancia.ObtenerRol();
+                var result = Json(new { data = olista }, JsonRequestBehavior.AllowGet);
+                result.MaxJsonLength = int.MaxValue;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                var result = Json(new { data = new List<Rol>(), error = ex.Message }, JsonRequestBehavior.AllowGet);
+                result.MaxJsonLength = int.MaxValue;
+                return result;
+            }
         }
 
         // GET: Rol/Listar - Para el modulo de configuracion

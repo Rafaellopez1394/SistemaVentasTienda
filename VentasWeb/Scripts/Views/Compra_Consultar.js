@@ -2,7 +2,7 @@
 var tabladata;
 
 $(document).ready(function () {
-    activarMenu("Compras");
+    // activarMenu("Compras"); // No necesario - el menú se activa automáticamente
 
     $.datepicker.regional['es'] = {
         closeText: 'Cerrar',
@@ -113,7 +113,21 @@ $(document).ready(function () {
                     return data.Nombre
                 }
             },
-            { "data": "FechaCompra" },
+            { 
+                "data": "FechaCompra",
+                render: function(data) {
+                    if (!data) return 'N/A';
+                    if (data.includes('/Date(')) {
+                        var timestamp = parseInt(data.replace(/\/Date\((\d+)\)\//, '$1'));
+                        var fecha = new Date(timestamp);
+                        var dia = ('0' + fecha.getDate()).slice(-2);
+                        var mes = ('0' + (fecha.getMonth() + 1)).slice(-2);
+                        var anio = fecha.getFullYear();
+                        return dia + '/' + mes + '/' + anio;
+                    }
+                    return data;
+                }
+            },
             {
                 "data": "TotalCosto", render: function (data) {
 

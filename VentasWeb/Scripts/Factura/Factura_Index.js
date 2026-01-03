@@ -258,7 +258,7 @@ function inicializarTabla() {
             }
         ],
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json'
+            url: 'https://cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json'
         },
         responsive: true,
         order: [[2, 'desc']]
@@ -492,7 +492,7 @@ function abrirModalEnviarEmail(facturaId, uuid, serieFolio, emailCliente) {
 
 // Evento confirmar envío de email
 $(document).on('click', '#btnConfirmarEnvio', function () {
-    var facturaId = parseInt($('#emailFacturaId').val());
+    var facturaId = $('#emailFacturaId').val();
     var email = $('#txtEmailDestinatario').val().trim();
     
     // Validar email

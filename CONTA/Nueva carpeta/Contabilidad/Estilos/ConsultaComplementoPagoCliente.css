@@ -1,0 +1,68 @@
+﻿body {
+}
+
+.encabezado{
+    color:#fff;
+    background-color:red;
+    padding: 10px 10px;
+    margin-bottom: 0px;
+    width:100%;    
+    font-size:14px;
+    font-weight:bold;
+}
+
+.encabezado .restante-facturas{
+
+}
+
+.cliente {
+    color: #000;
+    background-color: #F3AC9C;
+    padding: 10px 10px;
+    margin-bottom: 2px;
+    width: 100%;
+    cursor: pointer;
+    font-size:14px;
+    font-weight:bold;
+}
+
+.detallefacturas {
+    display: none;
+    width: 100%;
+    font-size: 12px;
+}
+
+
+
+.detallefacturas .svGrid th,td{        
+    font-size:12px !important;
+}
+
+.nombre{
+    width:35%;
+    text-align:left;
+}
+
+.total-facturas{
+    width:10%;
+    text-align:center;
+}
+
+.importe-facturas {
+    width: 10%;
+    text-align: right;
+}
+
+.total-complementos{
+    width: 15%;
+    text-align: center;
+}
+.importe-complementos{
+    width: 20%;
+    text-align: center;
+}
+
+.restante-facturas{
+    width: 20%;
+    text-align: right;
+}

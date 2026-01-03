@@ -39,3 +39,5 @@ namespace CapaModelo
         public bool ImprimirTicketAutomatico { get; set; }
     }
 }
+
+

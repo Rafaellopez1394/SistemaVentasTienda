@@ -9,7 +9,10 @@ namespace CapaModelo
         public string Nombre { get; set; }
         public string ApellidoPaterno { get; set; }
         public string ApellidoMaterno { get; set; }
-        public string NombreCompleto => $"{Nombre} {ApellidoPaterno} {ApellidoMaterno}".Trim();
+        public string NombreCompleto 
+        { 
+            get { return (Nombre + " " + ApellidoPaterno + " " + ApellidoMaterno).Trim(); }
+        }
         
         public string RFC { get; set; }
         public string CURP { get; set; }
@@ -50,3 +53,5 @@ namespace CapaModelo
         public DateTime UltimaAct { get; set; }
     }
 }
+
+

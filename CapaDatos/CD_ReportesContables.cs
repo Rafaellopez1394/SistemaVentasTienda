@@ -282,7 +282,7 @@ namespace CapaDatos
             {
                 // Obtener info cuenta
                 var queryCuenta = @"
-                    SELECT Codigo, Nombre, Naturaleza
+                    SELECT CodigoCuenta, NombreCuenta, TipoCuenta
                     FROM CatalogoContable
                     WHERE CuentaID = @CuentaID";
 
@@ -297,8 +297,8 @@ namespace CapaDatos
                         mayor = new LibroMayor
                         {
                             CuentaID = cuentaId,
-                            CodigoCuenta = dr["Codigo"].ToString(),
-                            NombreCuenta = dr["Nombre"].ToString(),
+                            CodigoCuenta = dr["CodigoCuenta"].ToString(),
+                            NombreCuenta = dr["NombreCuenta"].ToString(),
                             Movimientos = new List<MovimientoCuenta>()
                         };
                     }
@@ -448,8 +448,8 @@ namespace CapaDatos
                         16 AS Tasa,
                         c.Total - (c.Total / 1.16) AS IVA,
                         c.Total
-                    FROM COMPRA c
-                    INNER JOIN PROVEEDOR p ON c.ProveedorID = p.ProveedorID
+                    FROM Compras c
+                    INNER JOIN Proveedores p ON c.ProveedorID = p.ProveedorID
                     WHERE MONTH(c.FechaCompra) = @Mes
                         AND YEAR(c.FechaCompra) = @Año
                     ORDER BY c.FechaCompra";
@@ -510,13 +510,13 @@ namespace CapaDatos
                 var query = @"
                     SELECT 
                         CuentaID,
-                        Codigo,
-                        Nombre,
-                        Tipo,
-                        Naturaleza
+                        CodigoCuenta,
+                        NombreCuenta,
+                        TipoCuenta,
+                        SubTipo
                     FROM CatalogoContable
                     WHERE Activo = 1
-                    ORDER BY Codigo";
+                    ORDER BY CodigoCuenta";
 
                 SqlCommand cmd = new SqlCommand(query, cnx);
                 cnx.Open();
@@ -528,10 +528,10 @@ namespace CapaDatos
                         lista.Add(new CuentaContable
                         {
                             CuentaID = Convert.ToInt32(dr["CuentaID"]),
-                            Codigo = dr["Codigo"].ToString(),
-                            Nombre = dr["Nombre"].ToString(),
-                            Tipo = dr["Tipo"].ToString(),
-                            Naturaleza = dr["Naturaleza"].ToString()
+                            Codigo = dr["CodigoCuenta"].ToString(),
+                            Nombre = dr["NombreCuenta"].ToString(),
+                            Tipo = dr["TipoCuenta"].ToString(),
+                            Naturaleza = dr["SubTipo"].ToString()
                         });
                     }
                 }

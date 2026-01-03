@@ -1,4 +1,4 @@
-﻿using CapaModelo;
+using CapaModelo;
 using CapaDatos;
 using System;
 using System.Collections.Generic;
@@ -106,12 +106,68 @@ namespace VentasWeb.Controllers
                 int productosStockBajo = 0;
                 System.Diagnostics.Debug.WriteLine($"Productos en stock: {productosStock}");
 
-                // Top 5 productos más vendidos
-                var topProductos = CD_Reportes.Instancia.ReporteProductoSucursal(0, "")?.Take(5).ToList();
+                // Top 5 productos más vendidos (últimos 7 días)
+                var topProductos = new List<object>();
+                using (var cnx = new System.Data.SqlClient.SqlConnection(Conexion.CN))
+                {
+                    cnx.Open();
+                    var cmd = new System.Data.SqlClient.SqlCommand(@"
+                        SELECT TOP 5
+                            p.Nombre,
+                            SUM(dv.Cantidad) AS CantidadVendida,
+                            SUM(dv.PrecioVenta * dv.Cantidad) AS TotalVendido
+                        FROM VentasDetalleClientes dv
+                        INNER JOIN VentasClientes v ON dv.VentaID = v.VentaID
+                        INNER JOIN Productos p ON dv.ProductoID = p.ProductoID
+                        WHERE v.FechaVenta >= @FechaInicio
+                        GROUP BY p.Nombre
+                        ORDER BY CantidadVendida DESC
+                    ", cnx);
+                    cmd.Parameters.AddWithValue("@FechaInicio", hoy.AddDays(-7));
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            topProductos.Add(new
+                            {
+                                Nombre = dr["Nombre"].ToString(),
+                                CantidadVendida = Convert.ToInt32(dr["CantidadVendida"]),
+                                TotalVendido = Convert.ToDecimal(dr["TotalVendido"])
+                            });
+                        }
+                    }
+                }
                 System.Diagnostics.Debug.WriteLine($"Top productos: {topProductos?.Count ?? 0}");
 
                 // Ventas recientes (últimas 10)
-                var ventasRecientes = CD_Reportes.Instancia.ReporteVenta(hoy.AddDays(-7), hoy, 0)?.Take(10).ToList();
+                var ventasRecientes = new List<object>();
+                using (var cnx = new System.Data.SqlClient.SqlConnection(Conexion.CN))
+                {
+                    cnx.Open();
+                    var cmd = new System.Data.SqlClient.SqlCommand(@"
+                        SELECT TOP 10
+                            v.VentaID,
+                            CONCAT('V-', CAST(v.VentaID AS NVARCHAR(50))) AS NumeroVenta,
+                            v.Total,
+                            v.FechaVenta
+                        FROM VentasClientes v
+                        WHERE v.FechaVenta >= @FechaInicio
+                        ORDER BY v.FechaVenta DESC
+                    ", cnx);
+                    cmd.Parameters.AddWithValue("@FechaInicio", hoy.AddDays(-7));
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            ventasRecientes.Add(new
+                            {
+                                NumeroVenta = dr["NumeroVenta"].ToString(),
+                                Total = Convert.ToDecimal(dr["Total"]),
+                                FechaCreacion = Convert.ToDateTime(dr["FechaVenta"]).ToString("dd/MM/yyyy HH:mm")
+                            });
+                        }
+                    }
+                }
                 System.Diagnostics.Debug.WriteLine($"Ventas recientes: {ventasRecientes?.Count ?? 0}");
 
                 System.Diagnostics.Debug.WriteLine("=== Datos del dashboard cargados exitosamente ===");

@@ -43,15 +43,24 @@ function cargarCertificados() {
                 render: function (data, type, row) {
                     if (!data) return '<em class="text-muted">N/A</em>';
                     
-                    var html = data;
+                    // Convertir fecha .NET si es necesario
+                    var fechaTexto = data;
+                    if (data.toString().includes('/Date(')) {
+                        var timestamp = parseInt(data.replace(/\/Date\((\d+)\)\//, '$1'));
+                        var fecha = new Date(timestamp);
+                        var dia = ('0' + fecha.getDate()).slice(-2);
+                        var mes = ('0' + (fecha.getMonth() + 1)).slice(-2);
+                        var anio = fecha.getFullYear();
+                        fechaTexto = dia + '/' + mes + '/' + anio;
+                    }
                     
                     // Advertencia si está próximo a vencer (30 días)
                     if (row.DiasParaVencer <= 30 && row.DiasParaVencer > 0) {
-                        html += ' <span class="badge badge-warning" title="Vence en ' + row.DiasParaVencer + ' días">' +
+                        fechaTexto += ' <span class="badge badge-warning" title="Vence en ' + row.DiasParaVencer + ' días">' +
                                 '<i class="fas fa-exclamation-triangle"></i> ' + row.DiasParaVencer + 'd</span>';
                     }
                     
-                    return html;
+                    return fechaTexto;
                 }
             },
             {
@@ -111,7 +120,7 @@ function cargarCertificados() {
             }
         ],
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json'
+            url: 'https://cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json'
         },
         order: [[5, 'desc']], // Ordenar por fecha vencimiento
         drawCallback: function () {

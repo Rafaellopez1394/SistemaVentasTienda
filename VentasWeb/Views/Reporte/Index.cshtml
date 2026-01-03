@@ -1,0 +1,576 @@
+@{
+    ViewBag.Title = "Reportes de Ventas";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .stat-card {
+        background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+        border-left: 4px solid #0891b2;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: transform 0.2s;
+    }
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    }
+    .stat-card .icon {
+        font-size: 2.5rem;
+        color: #0891b2;
+        opacity: 0.8;
+    }
+    .stat-card .value {
+        font-size: 1.8rem;
+        font-weight: bold;
+        color: #0891b2;
+        margin: 10px 0 5px 0;
+    }
+    .stat-card .label {
+        color: #64748b;
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .filter-panel {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .chart-container {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        height: 400px;
+    }
+    .table-container {
+        background: white;
+        border-radius: 8px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <h2 class="text-dark">
+                <i class="fas fa-chart-line text-info"></i> Análisis de Ventas
+            </h2>
+            <p class="text-muted">Reportes detallados con análisis de productos, utilidades y tendencias</p>
+        </div>
+    </div>
+
+    <!-- Panel de Filtros -->
+    <div class="filter-panel">
+        <div class="row align-items-end">
+            <div class="col-md-3">
+                <label class="form-label">Fecha Inicio</label>
+                <input type="date" class="form-control" id="txtFechaInicio">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Fecha Fin</label>
+                <input type="date" class="form-control" id="txtFechaFin">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Categoría</label>
+                <select class="form-control" id="cboCategoria">
+                    <option value="">Todas las categorías</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <button class="btn btn-primary btn-block" onclick="aplicarFiltros()">
+                    <i class="fas fa-search"></i> Buscar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tarjetas de Estadísticas -->
+    <div class="row">
+        <div class="col-lg-3 col-md-6">
+            <div class="stat-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="label">Total Ventas</div>
+                        <div class="value" id="totalVentas">$0.00</div>
+                    </div>
+                    <div class="icon">
+                        <i class="fas fa-dollar-sign"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="stat-card" style="border-left-color: #10b981;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="label">Utilidad Total</div>
+                        <div class="value" id="totalUtilidad" style="color: #10b981;">$0.00</div>
+                    </div>
+                    <div class="icon" style="color: #10b981;">
+                        <i class="fas fa-chart-line"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="stat-card" style="border-left-color: #f59e0b;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="label">Número Ventas</div>
+                        <div class="value" id="numeroVentas" style="color: #f59e0b;">0</div>
+                    </div>
+                    <div class="icon" style="color: #f59e0b;">
+                        <i class="fas fa-receipt"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-3 col-md-6">
+            <div class="stat-card" style="border-left-color: #8b5cf6;">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <div class="label">Unidades Vendidas</div>
+                        <div class="value" id="unidadesVendidas" style="color: #8b5cf6;">0</div>
+                    </div>
+                    <div class="icon" style="color: #8b5cf6;">
+                        <i class="fas fa-box"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Gráficas -->
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="chart-container">
+                <h5 class="mb-3">
+                    <i class="fas fa-trophy text-warning"></i> Top 10 Productos Más Vendidos
+                </h5>
+                <canvas id="chartProductosTop"></canvas>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="chart-container">
+                <h5 class="mb-3">
+                    <i class="fas fa-chart-pie text-info"></i> Ventas por Categoría
+                </h5>
+                <canvas id="chartCategorias"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de Productos Más Vendidos -->
+    <div class="table-container">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">
+                <i class="fas fa-table text-success"></i> Detalle de Productos Más Vendidos
+            </h5>
+            <div class="btn-group">
+                <button class="btn btn-success btn-sm" onclick="exportarExcel()">
+                    <i class="fas fa-file-excel"></i> Excel
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="exportarPDF()">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </button>
+            </div>
+        </div>
+        <table class="table table-hover table-striped" id="tbProductos">
+            <thead class="thead-dark">
+                <tr>
+                    <th>Código</th>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Unidades</th>
+                    <th>P. Compra</th>
+                    <th>P. Venta</th>
+                    <th>Ingresos</th>
+                    <th>Utilidad</th>
+                    <th>% Utilidad</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Se llena dinámicamente -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Tabla de Ventas Detalladas -->
+    <div class="table-container mt-4">
+        <h5 class="mb-3">
+            <i class="fas fa-list text-primary"></i> Historial de Ventas Detallado
+        </h5>
+        <table class="table table-hover" id="tbVentasDetalladas">
+            <thead class="thead-light">
+                <tr>
+                    <th>Fecha</th>
+                    <th>Folio</th>
+                    <th>Producto</th>
+                    <th>Categoría</th>
+                    <th>Cantidad</th>
+                    <th>P. Compra</th>
+                    <th>P. Venta</th>
+                    <th>Total</th>
+                    <th>Utilidad</th>
+                    <th>% Utilidad</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Se llena dinámicamente -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section scripts {
+    <!-- Versión 2.0 - Reportes mejorados con manejo de errores -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap4.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+    <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.html5.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+    
+    <script>
+        console.log('=== Reportes v2.0 - Iniciando ===');
+        var chartProductos, chartCategorias;
+        var tablaProductos, tablaVentas;
+
+        // Función helper para formatear fechas de SQL Server
+        function formatearFecha(fechaStr) {
+            if (!fechaStr) return '';
+            try {
+                // SQL Server devuelve formato: "/Date(1704153325277)/" o fecha ISO
+                if (fechaStr.indexOf('/Date(') === 0) {
+                    var timestamp = parseInt(fechaStr.substr(6));
+                    var fecha = new Date(timestamp);
+                    return fecha.toLocaleDateString('es-MX');
+                }
+                // Intentar parsear como fecha ISO
+                var fecha = new Date(fechaStr);
+                if (!isNaN(fecha.getTime())) {
+                    return fecha.toLocaleDateString('es-MX');
+                }
+                return fechaStr;
+            } catch (e) {
+                console.error('Error al formatear fecha:', fechaStr, e);
+                return fechaStr;
+            }
+        }
+
+        $(document).ready(function () {
+            console.log('Documento listo - Inicializando reportes');
+            inicializarFechas();
+            inicializarGraficas();
+            inicializarTablas();
+            cargarCategorias();
+            console.log('Aplicando filtros iniciales');
+            aplicarFiltros();
+        });
+
+        function inicializarFechas() {
+            var hoy = new Date();
+            var primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+            
+            $('#txtFechaInicio').val(primerDia.toISOString().split('T')[0]);
+            $('#txtFechaFin').val(hoy.toISOString().split('T')[0]);
+            
+            console.log('Fechas inicializadas:', {
+                inicio: primerDia.toISOString().split('T')[0],
+                fin: hoy.toISOString().split('T')[0]
+            });
+        }
+
+        function inicializarGraficas() {
+            // Gráfica de productos más vendidos
+            var ctx1 = document.getElementById('chartProductosTop').getContext('2d');
+            chartProductos = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        label: 'Unidades Vendidas',
+                        data: [],
+                        backgroundColor: 'rgba(8, 145, 178, 0.8)',
+                        borderColor: 'rgba(8, 145, 178, 1)',
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    indexAxis: 'y',
+                    plugins: {
+                        legend: { display: false }
+                    },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return value.toLocaleString('es-MX');
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+
+            // Gráfica de categorías
+            var ctx2 = document.getElementById('chartCategorias').getContext('2d');
+            chartCategorias = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        backgroundColor: [
+                            '#0891b2', '#10b981', '#f59e0b', '#8b5cf6', 
+                            '#ef4444', '#14b8a6', '#f97316', '#06b6d4'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+
+        function inicializarTablas() {
+            tablaProductos = $('#tbProductos').DataTable({
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+                },
+                pageLength: 10,
+                order: [[3, 'desc']],
+                dom: 'Bfrtip',
+                buttons: [
+                    { extend: 'excel', className: 'btn btn-success btn-sm d-none' },
+                    { extend: 'pdf', className: 'btn btn-danger btn-sm d-none' }
+                ],
+                columns: [
+                    { data: 'CodigoProducto' },
+                    { data: 'NombreProducto' },
+                    { data: 'Categoria' },
+                    { 
+                        data: 'TotalUnidadesVendidas',
+                        render: (data) => data.toLocaleString('es-MX')
+                    },
+                    { 
+                        data: 'PrecioPromedioCompra',
+                        render: (data) => '$' + data.toLocaleString('es-MX', {minimumFractionDigits: 2})
+                    },
+                    { 
+                        data: 'PrecioPromedioVenta',
+                        render: (data) => '$' + data.toLocaleString('es-MX', {minimumFractionDigits: 2})
+                    },
+                    { 
+                        data: 'TotalIngresos',
+                        render: (data) => '<strong>$' + data.toLocaleString('es-MX', {minimumFractionDigits: 2}) + '</strong>',
+                        className: 'text-success'
+                    },
+                    { 
+                        data: 'UtilidadTotal',
+                        render: (data) => '<strong>$' + data.toLocaleString('es-MX', {minimumFractionDigits: 2}) + '</strong>',
+                        className: 'text-primary'
+                    },
+                    { 
+                        data: null,
+                        render: (data) => {
+                            var porcent = (data.UtilidadTotal / (data.TotalIngresos - data.UtilidadTotal) * 100);
+                            return porcent.toFixed(2) + '%';
+                        },
+                        className: 'text-info'
+                    }
+                ]
+            });
+
+            tablaVentas = $('#tbVentasDetalladas').DataTable({
+                language: {
+                    url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+                },
+                pageLength: 25,
+                order: [[0, 'desc']],
+                columns: [
+                    { 
+                        data: 'FechaVenta',
+                        render: (data) => formatearFecha(data)
+                    },
+                    { data: 'NumeroVenta' },
+                    { data: 'NombreProducto' },
+                    { data: 'Categoria' },
+                    { data: 'Cantidad' },
+                    { 
+                        data: 'PrecioCompra',
+                        render: (data) => '$' + data.toLocaleString('es-MX', {minimumFractionDigits: 2})
+                    },
+                    { 
+                        data: 'PrecioVenta',
+                        render: (data) => '$' + data.toLocaleString('es-MX', {minimumFractionDigits: 2})
+                    },
+                    { 
+                        data: 'TotalLinea',
+                        render: (data) => '$' + data.toLocaleString('es-MX', {minimumFractionDigits: 2})
+                    },
+                    { 
+                        data: 'UtilidadTotal',
+                        render: (data) => '$' + data.toLocaleString('es-MX', {minimumFractionDigits: 2}),
+                        className: 'text-success'
+                    },
+                    { 
+                        data: 'PorcentajeUtilidad',
+                        render: (data) => data.toFixed(2) + '%',
+                        className: 'text-info'
+                    }
+                ]
+            });
+        }
+
+        function cargarCategorias() {
+            $.get('@Url.Action("ObtenerVentasPorCategoria", "Reporte")', {
+                fechaInicio: '2020-01-01',
+                fechaFin: new Date().toISOString().split('T')[0]
+            }, function(response) {
+                if (response.success && response.data) {
+                    var select = $('#cboCategoria');
+                    response.data.forEach(function(cat) {
+                        select.append($('<option>', {
+                            value: cat.Categoria,
+                            text: cat.Categoria
+                        }));
+                    });
+                }
+            });
+        }
+
+        function aplicarFiltros() {
+            var fechaInicio = $('#txtFechaInicio').val();
+            var fechaFin = $('#txtFechaFin').val();
+            var categoria = $('#cboCategoria').val();
+
+            if (!fechaInicio || !fechaFin) {
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'Fechas requeridas',
+                    text: 'Por favor selecciona un rango de fechas'
+                });
+                return;
+            }
+
+            cargarEstadisticas(fechaInicio, fechaFin);
+            cargarProductosMasVendidos(fechaInicio, fechaFin);
+            cargarVentasPorCategoria(fechaInicio, fechaFin);
+            cargarVentasDetalladas(fechaInicio, fechaFin, categoria);
+        }
+
+        function cargarEstadisticas(fechaInicio, fechaFin) {
+            $.get('@Url.Action("ObtenerEstadisticasGenerales", "Reporte")', {
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin
+            }, function(response) {
+                console.log('Estadísticas:', response);
+                if (response.success && response.data) {
+                    $('#totalVentas').text('$' + (response.data.TotalVentas || 0).toLocaleString('es-MX', {minimumFractionDigits: 2}));
+                    $('#totalUtilidad').text('$' + (response.data.TotalUtilidad || 0).toLocaleString('es-MX', {minimumFractionDigits: 2}));
+                    $('#numeroVentas').text((response.data.NumeroVentas || 0).toLocaleString('es-MX'));
+                    $('#unidadesVendidas').text((response.data.TotalUnidadesVendidas || 0).toLocaleString('es-MX'));
+                } else {
+                    console.error('Error en estadísticas:', response);
+                }
+            }).fail(function(xhr, status, error) {
+                console.error('Error al cargar estadísticas:', error, xhr.responseText);
+            });
+        }
+
+        function cargarProductosMasVendidos(fechaInicio, fechaFin) {
+            $.get('@Url.Action("ObtenerProductosMasVendidos", "Reporte")', {
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin,
+                top: 10
+            }, function(response) {
+                console.log('Productos más vendidos:', response);
+                if (response.success && response.data && response.data.length > 0) {
+                    // Actualizar gráfica
+                    var labels = response.data.map(p => p.NombreProducto.substring(0, 30));
+                    var valores = response.data.map(p => p.TotalUnidadesVendidas);
+                    
+                    chartProductos.data.labels = labels;
+                    chartProductos.data.datasets[0].data = valores;
+                    chartProductos.update();
+
+                    // Actualizar tabla
+                    tablaProductos.clear();
+                    tablaProductos.rows.add(response.data);
+                    tablaProductos.draw();
+                } else {
+                    console.warn('No hay datos de productos vendidos');
+                }
+            }).fail(function(xhr, status, error) {
+                console.error('Error al cargar productos:', error, xhr.responseText);
+            });
+        }
+
+        function cargarVentasPorCategoria(fechaInicio, fechaFin) {
+            $.get('@Url.Action("ObtenerVentasPorCategoria", "Reporte")', {
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin
+            }, function(response) {
+                console.log('Ventas por categoría:', response);
+                if (response.success && response.data && response.data.length > 0) {
+                    var labels = response.data.map(c => c.Categoria);
+                    var valores = response.data.map(c => c.TotalVentas);
+                    
+                    chartCategorias.data.labels = labels;
+                    chartCategorias.data.datasets[0].data = valores;
+                    chartCategorias.update();
+                } else {
+                    console.warn('No hay datos de categorías');
+                }
+            }).fail(function(xhr, status, error) {
+                console.error('Error al cargar categorías:', error, xhr.responseText);
+            });
+        }
+
+        function cargarVentasDetalladas(fechaInicio, fechaFin, categoria) {
+            $.get('@Url.Action("ObtenerVentasDetalladas", "Reporte")', {
+                fechaInicio: fechaInicio,
+                fechaFin: fechaFin,
+                categoria: categoria || null
+            }, function(response) {
+                console.log('Ventas detalladas:', response);
+                if (response.success && response.data && response.data.length > 0) {
+                    tablaVentas.clear();
+                    tablaVentas.rows.add(response.data);
+                    tablaVentas.draw();
+                } else {
+                    console.warn('No hay datos de ventas detalladas');
+                }
+            }).fail(function(xhr, status, error) {
+                console.error('Error al cargar ventas detalladas:', error, xhr.responseText);
+            });
+        }
+
+        function exportarExcel() {
+            $('.buttons-excel').click();
+        }
+
+        function exportarPDF() {
+            $('.buttons-pdf').click();
+        }
+    </script>
+}

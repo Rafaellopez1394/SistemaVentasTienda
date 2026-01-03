@@ -1,7 +1,6 @@
-﻿
 var tabladata;
 $(document).ready(function () {
-    activarMenu("Mantenedor");
+    // activarMenu("Mantenedor"); // No necesario - el menú se activa automáticamente
 
 
     ////validamos el formulario
@@ -19,7 +18,12 @@ $(document).ready(function () {
         "ajax": {
             "url": $.MisUrls.url._ObtenerRoles,
             "type": "GET",
-            "datatype": "json"
+            "datatype": "json",
+            "dataSrc": "data",
+            "error": function (xhr, error, code) {
+                console.log('Error al cargar roles:', xhr.responseText);
+                alert('Error al cargar los datos: ' + (xhr.responseJSON?.error || 'Error desconocido'));
+            }
         },
         "columns": [
             { "data": "Descripcion" },

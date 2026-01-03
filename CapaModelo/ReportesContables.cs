@@ -160,3 +160,5 @@ namespace CapaModelo
         public decimal SaldoFinal { get; set; }
     }
 }
+
+

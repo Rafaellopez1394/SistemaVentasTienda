@@ -13,7 +13,9 @@ namespace CapaModelo
         public int CuentaDeudora { get; set; } // Cuenta para débitos (ventas/compras)
         public int CuentaAcreedora { get; set; } // Cuenta para créditos (IVA cobrado/pagado)
         public string Descripcion { get; set; } // Ej: "IVA 16%", "Exento"
-        public bool Activo { get; set; } = true;
-        public DateTime FechaAlta { get; set; } = DateTime.Now;
+        public bool Activo { get; set; }
+        public DateTime FechaAlta { get; set; }
     }
 }
+
+

@@ -1,4 +1,4 @@
-﻿// CapaDatos/CD_Producto.cs
+// CapaDatos/CD_Producto.cs
 using CapaModelo;
 using System;
 using System.Collections.Generic;
@@ -816,8 +816,49 @@ namespace CapaDatos
             return lista;
         }
 
+        // Obtener productos con stock disponible en una sucursal
+        public List<Producto> ObtenerProductosConStock(int sucursalID)
+        {
+            var lista = new List<Producto>();
+            using (var cnx = new SqlConnection(Conexion.CN))
+            {
+                var query = @"
+                    SELECT p.ProductoID, p.Nombre, p.CodigoInterno, ps.Stock,
+                           p.VentaPorGramaje, p.PrecioPorKilo, p.UnidadMedidaBase,
+                           c.Nombre AS NombreCategoria
+                    FROM Productos p
+                    INNER JOIN ProductosSucursal ps ON p.ProductoID = ps.ProductoID
+                    LEFT JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
+                    WHERE ps.SucursalID = @SucursalID 
+                      AND ps.Stock > 0 
+                      AND p.Estatus = 1
+                    ORDER BY p.Nombre";
+
+                var cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@SucursalID", sucursalID);
+                cnx.Open();
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(new Producto
+                        {
+                            ProductoID = (int)dr["ProductoID"],
+                            Nombre = dr["Nombre"].ToString()!,
+                            CodigoInterno = dr["CodigoInterno"] as string,
+                            NombreCategoria = dr["NombreCategoria"]?.ToString(),
+                            VentaPorGramaje = dr["VentaPorGramaje"] != DBNull.Value && (bool)dr["VentaPorGramaje"],
+                            PrecioPorKilo = dr["PrecioPorKilo"] as decimal?,
+                            UnidadMedidaBase = dr["UnidadMedidaBase"] as string
+                        });
+                    }
+                }
+            }
+            return lista;
+        }
+
         // Método helper para obtener CuentaID desde CatalogoContable
-        private int ObtenerCuentaContable(string codigoCuenta, SqlConnection cnx, SqlTransaction trx)
+        private Guid? ObtenerCuentaContable(string codigoCuenta, SqlConnection cnx, SqlTransaction trx)
         {
             var query = "SELECT CuentaID FROM CatalogoContable WHERE CodigoCuenta = @Codigo AND Activo = 1";
             using (var cmd = new SqlCommand(query, cnx, trx))
@@ -828,7 +869,11 @@ namespace CapaDatos
                 {
                     throw new Exception($"Cuenta contable {codigoCuenta} no encontrada en el catálogo");
                 }
-                return Convert.ToInt32(result);
+                // Convertir int a Guid
+                int id = Convert.ToInt32(result);
+                byte[] bytes = new byte[16];
+                BitConverter.GetBytes(id).CopyTo(bytes, 0);
+                return new Guid(bytes);
             }
         }
     }

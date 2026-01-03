@@ -1,4 +1,4 @@
-﻿// CapaModelo/Catalogos.cs
+// CapaModelo/Catalogos.cs
 using System;
 using System.Collections.Generic;
 
@@ -19,8 +19,8 @@ namespace CapaModelo
         public decimal? Porcentaje { get; set; }
         public string Descripcion { get; set; }
 
-        // Propiedad calculada para mostrar en el dropdown (solo descripción, ya incluye el porcentaje)
-        public string TextoCombo => Descripcion;
+        // Propiedad calculada para mostrar en el dropdown (solo descripci�n, ya incluye el porcentaje)
+        public string TextoCombo { get { return Descripcion; } }
     }
 
     public class TasaIEPS
@@ -31,6 +31,14 @@ namespace CapaModelo
         public string Descripcion { get; set; }
 
         // Propiedad calculada para mostrar en el dropdown
-        public string TextoCombo => $"{Descripcion} ({Porcentaje?.ToString("0.##") ?? "0"}%)";
+        public string TextoCombo 
+        { 
+            get 
+            { 
+                string porcentajeStr = Porcentaje.HasValue ? Porcentaje.Value.ToString("0.##") : "0";
+                return Descripcion + " (" + porcentajeStr + "%)";
+            }
+        }
     }
 }
+

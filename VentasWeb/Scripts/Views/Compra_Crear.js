@@ -1,4 +1,3 @@
-﻿
 var tabladata;
 var tablaproveedor;
 var tablatienda;

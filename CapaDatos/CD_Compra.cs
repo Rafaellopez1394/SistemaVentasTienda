@@ -1,4 +1,4 @@
-﻿// CapaDatos/CD_Compra.cs
+// CapaDatos/CD_Compra.cs
 using CapaModelo;
 using System;
 using System.Collections.Generic;
@@ -89,6 +89,10 @@ namespace CapaDatos
 
                     int cuentaInventario = cuentaInventarioObj.CuentaID;
                     int cuentaProveedores = cuentaProveedoresObj.CuentaID;
+                    
+                    // Convertir int a Guid
+                    Guid? cuentaInventarioGuid = ConvertirIntAGuid(cuentaInventario);
+                    Guid? cuentaProveedoresGuid = ConvertirIntAGuid(cuentaProveedores);
 
                     var poliza = new Poliza
                     {
@@ -102,7 +106,7 @@ namespace CapaDatos
                     // 1. DÉBITO: Inventario (solo base, sin IVA)
                     poliza.Detalles.Add(new PolizaDetalle 
                     { 
-                        CuentaID = cuentaInventario, 
+                        CuentaID = cuentaInventarioGuid, 
                         Debe = totalInventario, 
                         Haber = 0, 
                         Concepto = "Entrada de inventario (neto)" 
@@ -122,7 +126,7 @@ namespace CapaDatos
                             {
                                 poliza.Detalles.Add(new PolizaDetalle
                                 {
-                                    CuentaID = mapeo.CuentaDeudora, // En compras, IVA es deudor (acreedor fiscal)
+                                    CuentaID = ConvertirIntAGuid(mapeo.CuentaDeudora), // En compras, IVA es deudor (acreedor fiscal)
                                     Debe = breakdown.IVA,
                                     Haber = 0,
                                     Concepto = $"IVA pagado ({mapeo.Descripcion})"
@@ -134,7 +138,7 @@ namespace CapaDatos
                     // 3. CRÉDITO: Proveedores (monto total con IVA)
                     poliza.Detalles.Add(new PolizaDetalle 
                     { 
-                        CuentaID = cuentaProveedores, 
+                        CuentaID = cuentaProveedoresGuid, 
                         Debe = 0, 
                         Haber = totalCompra, 
                         Concepto = "Cuenta por pagar a proveedor" 
@@ -149,7 +153,7 @@ namespace CapaDatos
 
                     // ===== REGISTRAR CUENTA POR PAGAR SI ES A CRÉDITO =====
                     // Obtener días de crédito del proveedor
-                    var queryProveedor = "SELECT DiasCredito FROM PROVEEDOR WHERE ProveedorID = @ProveedorID";
+                    var queryProveedor = "SELECT DiasCredito FROM Proveedores WHERE ProveedorID = @ProveedorID";
                     SqlCommand cmdProv = new SqlCommand(queryProveedor, cnx, tran);
                     cmdProv.Parameters.AddWithValue("@ProveedorID", compra.ProveedorID);
                     object diasCreditoObj = cmdProv.ExecuteScalar();
@@ -239,6 +243,17 @@ namespace CapaDatos
             }
 
             return lista;
+        }
+        
+        /// <summary>
+        /// Convierte un CuentaID int a Guid de forma determinística
+        /// </summary>
+        private Guid? ConvertirIntAGuid(int id)
+        {
+            if (id <= 0) return null;
+            byte[] bytes = new byte[16];
+            BitConverter.GetBytes(id).CopyTo(bytes, 0);
+            return new Guid(bytes);
         }
     }
 }

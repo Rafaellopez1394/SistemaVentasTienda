@@ -1,4 +1,4 @@
-Ôªøusing System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 namespace CapaModelo
 {
     /// <summary>
-    /// Respuesta gen√©rica con un objeto de tipo T
+    /// Respuesta genÈrica con un objeto de tipo T
     /// </summary>
     public class Respuesta<T>
     {
@@ -17,7 +17,7 @@ namespace CapaModelo
     }
 
     /// <summary>
-    /// Respuesta b√°sica sin objeto
+    /// Respuesta b·sica sin objeto
     /// </summary>
     public class Respuesta
     {
@@ -27,3 +27,5 @@ namespace CapaModelo
         public object Tag { get; set; }
     }
 }
+
+

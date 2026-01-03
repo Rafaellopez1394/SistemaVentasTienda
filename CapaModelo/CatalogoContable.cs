@@ -13,7 +13,9 @@ namespace CapaModelo
         public string TipoCuenta { get; set; }        // Ej: "ACTIVO", "PASIVO", "INGRESO", "GASTO", "PATRIMONIO"
         public string SubTipo { get; set; }           // Ej: "CLIENTE", "CAJA", "INVENTARIO", "IVA_COBRADO", "IVA_PAGADO"
         public string Descripcion { get; set; }
-        public bool Activo { get; set; } = true;
-        public DateTime FechaAlta { get; set; } = DateTime.Now;
+        public bool Activo { get; set; }
+        public DateTime FechaAlta { get; set; }
     }
 }
+
+

@@ -1,0 +1,159 @@
+@{
+    ViewBag.Title = "Certificados Digitales";
+}
+
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0"><i class="fas fa-certificate"></i> Certificados Digitales (CSD)</h1>
+            </div>
+            <div class="col-sm-6">
+                <button class="btn btn-primary float-right" onclick="mostrarModalCargar()">
+                    <i class="fas fa-plus"></i> Cargar Certificado
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <!-- Alertas de vigencia -->
+        <div id="alertaVigencia" class="alert alert-warning" style="display:none;">
+            <i class="fas fa-exclamation-triangle"></i> <strong>Atención:</strong>
+            <span id="mensajeVigencia"></span>
+        </div>
+
+        <!-- Tabla de certificados -->
+        <div class="card">
+            <div class="card-header">
+                <h3 class="card-title"><i class="fas fa-list"></i> Certificados Registrados</h3>
+            </div>
+            <div class="card-body">
+                <table id="tablaCertificados" class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>Nombre</th>
+                            <th>RFC</th>
+                            <th>No. Certificado</th>
+                            <th>Vigencia</th>
+                            <th>Estado</th>
+                            <th>Predeterminado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Modal Cargar Certificado -->
+<div class="modal fade" id="modalCargarCertificado" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="fas fa-upload"></i> Cargar Certificado Digital (CSD)</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> <strong>Información:</strong>
+                    Los certificados digitales (CSD) se obtienen del portal del SAT. Necesitarás los archivos .cer y .key
+                </div>
+
+                <form id="formCargarCertificado" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label>Nombre del Certificado *</label>
+                                <input type="text" class="form-control" id="nombreCertificado" name="nombreCertificado" required
+                                       placeholder="Ej: Certificado Principal 2025">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>RFC *</label>
+                                <input type="text" class="form-control" id="rfc" name="rfc" required maxlength="13"
+                                       placeholder="ABC123456XYZ" style="text-transform: uppercase;">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Razón Social *</label>
+                                <input type="text" class="form-control" id="razonSocial" name="razonSocial" required
+                                       placeholder="NOMBRE DE LA EMPRESA S.A. DE C.V.">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Archivo .cer (Certificado) *</label>
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="archivoCER" name="archivoCER" accept=".cer" required>
+                                    <label class="custom-file-label" for="archivoCER">Seleccionar archivo .cer</label>
+                                </div>
+                                <small class="form-text text-muted">Archivo del certificado público</small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Archivo .key (Llave Privada) *</label>
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="archivoKEY" name="archivoKEY" accept=".key" required>
+                                    <label class="custom-file-label" for="archivoKEY">Seleccionar archivo .key</label>
+                                </div>
+                                <small class="form-text text-muted">Archivo de la llave privada</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label>Contraseña de la Llave Privada *</label>
+                                <input type="password" class="form-control" id="passwordKey" name="passwordKey" required
+                                       placeholder="Contraseña proporcionada por el SAT">
+                                <small class="form-text text-muted">Esta contraseña se proporcionó al generar el certificado</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="esPredeterminado" name="esPredeterminado">
+                                <label class="form-check-label" for="esPredeterminado">
+                                    <strong>Establecer como certificado predeterminado</strong>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="cargarCertificado()">
+                    <i class="fas fa-save"></i> Cargar Certificado
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .badge-vigente { background-color: #28a745; }
+    .badge-por-vencer { background-color: #ffc107; color: #000; }
+    .badge-vencido { background-color: #dc3545; }
+</style>
+
+@section scripts {
+    <script src="~/Scripts/Views/certificado-digital.js"></script>
+}

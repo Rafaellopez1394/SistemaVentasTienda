@@ -1,0 +1,23 @@
+﻿body {
+}
+
+.alta{
+    color:green;
+    padding: 10px;
+    cursor:pointer;
+    font-size:18px;
+}
+
+.baja{
+    color:red;
+    padding: 10px;
+    cursor:pointer;
+    font-size:18px;
+}
+
+.mapa{
+    color:#05B8CC;
+    padding: 10px;
+    cursor:pointer;
+    font-size:18px;
+}

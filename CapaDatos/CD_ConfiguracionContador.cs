@@ -649,7 +649,12 @@ namespace CapaDatos
             return deducciones;
         }
 
+        /*
         #region Certificados Digitales
+        // NOTA: Esta región ha sido comentada porque ahora se usa CD_CertificadoDigital.cs
+        // Las propiedades de CertificadoDigital han cambiado y la tabla ahora usa FechaVigenciaInicio/Fin
+        // en lugar de FechaInicio/FechaVencimiento, y no tiene TipoCertificado, UsarParaFacturas, etc.
+        
 
         /// <summary>
         /// Guarda un certificado digital (CSD o FIEL)
@@ -914,6 +919,7 @@ namespace CapaDatos
         }
 
         #endregion
+        */
     }
 }
 

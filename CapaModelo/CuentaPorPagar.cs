@@ -74,3 +74,5 @@ namespace CapaModelo
         public int UsuarioRegistro { get; set; }
     }
 }
+
+

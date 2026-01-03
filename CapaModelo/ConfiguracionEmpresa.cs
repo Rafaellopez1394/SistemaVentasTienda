@@ -25,7 +25,7 @@ namespace CapaModelo
         public string Municipio { get; set; }
         public string Estado { get; set; }
         public string CodigoPostal { get; set; }
-        public string Pais { get; set; } = "México";
+        public string Pais { get; set; }
         
         // Certificados Digitales (CSD)
         public string NoCertificado { get; set; }
@@ -37,7 +37,7 @@ namespace CapaModelo
         public byte[] LlavePrivadaBytes { get; set; }
         
         // Configuración PAC
-        public string ProveedorPAC { get; set; } = "Finkok";
+        public string ProveedorPAC { get; set; }
         public string UrlPAC { get; set; }
         public string UsuarioPAC { get; set; }
         public string PasswordPAC { get; set; }
@@ -88,6 +88,8 @@ namespace CapaModelo
         public DateTime FechaCreacion { get; set; }
         public string UsuarioModificacion { get; set; }
         public DateTime? FechaModificacion { get; set; }
-        public bool Activo { get; set; } = true;
+        public bool Activo { get; set; }
     }
 }
+
+

@@ -1,4 +1,4 @@
-﻿using CapaDatos;
+using CapaDatos;
 using CapaModelo;
 using System;
 using System.Collections.Generic;
@@ -19,8 +19,19 @@ namespace VentasWeb.Controllers
 
         public JsonResult Obtener()
         {
-            List<Categoria> lista = CD_Categoria.Instancia.ObtenerCategoria();
-            return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            try
+            {
+                List<Categoria> lista = CD_Categoria.Instancia.ObtenerCategoria();
+                var result = Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+                result.MaxJsonLength = int.MaxValue;
+                return result;
+            }
+            catch (Exception ex)
+            {
+                var result = Json(new { data = new List<Categoria>(), error = ex.Message }, JsonRequestBehavior.AllowGet);
+                result.MaxJsonLength = int.MaxValue;
+                return result;
+            }
         }
 
 

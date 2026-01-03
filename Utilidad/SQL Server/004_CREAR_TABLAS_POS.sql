@@ -22,14 +22,14 @@ BEGIN
         UltimaAct DATETIME DEFAULT GETDATE()
     );
 
-    -- Insertar formas de pago según SAT
+    -- Insertar formas de pago según SAT (usando N para Unicode)
     INSERT INTO CatFormasPago (Clave, Descripcion, RequiereCambio) VALUES
-    ('01', 'Efectivo', 1),
-    ('02', 'Cheque nominativo', 0),
-    ('03', 'Transferencia electrónica de fondos', 0),
-    ('04', 'Tarjeta de crédito', 0),
-    ('28', 'Tarjeta de débito', 0),
-    ('99', 'Por definir', 0);
+    ('01', N'Efectivo', 1),
+    ('02', N'Cheque nominativo', 0),
+    ('03', N'Transferencia electrónica de fondos', 0),
+    ('04', N'Tarjeta de crédito', 0),
+    ('28', N'Tarjeta de débito', 0),
+    ('99', N'Por definir', 0);
 
     PRINT 'Tabla CatFormasPago creada e inicializada';
 END
@@ -47,10 +47,10 @@ BEGIN
         Estatus BIT DEFAULT 1
     );
 
-    -- Insertar métodos de pago según SAT
+    -- Insertar métodos de pago según SAT (usando N para Unicode)
     INSERT INTO CatMetodosPago (Clave, Descripcion) VALUES
-    ('PUE', 'Pago en una sola exhibición'),
-    ('PPD', 'Pago en parcialidades o diferido');
+    ('PUE', N'Pago en una sola exhibición'),
+    ('PPD', N'Pago en parcialidades o diferido');
 
     PRINT 'Tabla CatMetodosPago creada e inicializada';
 END

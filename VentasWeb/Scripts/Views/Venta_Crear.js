@@ -4,7 +4,7 @@ let tiposPrecio = [];           // Catálogo de tipos de precio
 let clienteSeleccionado = null; // Cliente actual
 
 $(document).ready(function () {
-    activarMenu("Ventas");
+    // activarMenu("Ventas"); // No necesario - el menú se activa automáticamente
     $("#txtproductocantidad").val("0");
     $("#txtfechaventa").val(ObtenerFecha());
 

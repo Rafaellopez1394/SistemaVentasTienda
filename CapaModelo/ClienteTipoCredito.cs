@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,7 +14,7 @@ namespace CapaModelo
 
         // Estos campos vienen del SP ConsultarClienteTiposCreditoPorCliente
         public string Codigo { get; set; }           // CR001, CR002...
-        public string TipoCredito { get; set; }      // Nombre del tipo (ej: "Crédito por cantidad de producto")
+        public string TipoCredito { get; set; }      // Nombre del tipo (ej: "Cr�dito por cantidad de producto")
         public string Criterio { get; set; }         // Producto / Dinero / Tiempo
         public int? LimiteProducto { get; set; }
         public decimal? LimiteDinero { get; set; }
@@ -29,3 +29,5 @@ namespace CapaModelo
         public string RazonSocial { get; set; }
     }
 }
+
+

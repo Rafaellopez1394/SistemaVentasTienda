@@ -8,6 +8,11 @@ namespace CapaModelo
     /// </summary>
     public class Factura
     {
+        public Factura()
+        {
+            Conceptos = new List<FacturaDetalle>();
+        }
+
         public Guid FacturaID { get; set; }
         public int IdFactura { get; set; } // ID autoincremental para referencias
         public Guid? VentaID { get; set; }
@@ -16,10 +21,10 @@ namespace CapaModelo
         public string Serie { get; set; }
         public string Folio { get; set; }
         public DateTime FechaEmision { get; set; }
-        public string Version { get; set; } = "4.0";
-        public string TipoComprobante { get; set; } = "I"; // I=Ingreso
-        public string Moneda { get; set; } = "MXN";
-        public decimal TipoCambio { get; set; } = 1;
+        public string Version { get; set; }
+        public string TipoComprobante { get; set; } // I=Ingreso
+        public string Moneda { get; set; }
+        public decimal TipoCambio { get; set; }
         
         // Montos
         public decimal Subtotal { get; set; }
@@ -51,7 +56,7 @@ namespace CapaModelo
         
         // Pago
         public string FormaPago { get; set; }
-        public string MetodoPago { get; set; } = "PUE";
+        public string MetodoPago { get; set; }
         
         // PAC (Finkok)
         public string UUID { get; set; }
@@ -61,7 +66,7 @@ namespace CapaModelo
         public string SelloCFD { get; set; }
         public string SelloSAT { get; set; }
         public string CadenaOriginalSAT { get; set; }
-        public string ProveedorPAC { get; set; } = "Finkok";
+        public string ProveedorPAC { get; set; }
         
         // Archivos
         public string XMLOriginal { get; set; }
@@ -69,9 +74,9 @@ namespace CapaModelo
         public string RutaPDF { get; set; }
         
         // Estado
-        public string Estatus { get; set; } = "PENDIENTE";
+        public string Estatus { get; set; }
         public string MensajeError { get; set; }
-        public bool EsCancelada { get; set; } = false;
+        public bool EsCancelada { get; set; }
         public DateTime? FechaCancelacion { get; set; }
         public string MotivoCancelacion { get; set; }
         public string FolioSustitucion { get; set; }
@@ -83,7 +88,7 @@ namespace CapaModelo
         public DateTime? FechaModificacion { get; set; }
         
         // Colecciones
-        public List<FacturaDetalle> Conceptos { get; set; } = new List<FacturaDetalle>();
+        public List<FacturaDetalle> Conceptos { get; set; }
     }
 
     /// <summary>
@@ -91,6 +96,11 @@ namespace CapaModelo
     /// </summary>
     public class FacturaDetalle
     {
+        public FacturaDetalle()
+        {
+            Impuestos = new List<FacturaImpuesto>();
+        }
+
         public int FacturaDetalleID { get; set; }
         public Guid FacturaID { get; set; }
         public int Secuencia { get; set; }
@@ -104,12 +114,12 @@ namespace CapaModelo
         public decimal ValorUnitario { get; set; }
         public decimal Importe { get; set; }
         public decimal Descuento { get; set; }
-        public string ObjetoImp { get; set; } = "02";
+        public string ObjetoImp { get; set; }
         
         public decimal TotalImpuestosTrasladados { get; set; }
         public decimal TotalImpuestosRetenidos { get; set; }
         
-        public List<FacturaImpuesto> Impuestos { get; set; } = new List<FacturaImpuesto>();
+        public List<FacturaImpuesto> Impuestos { get; set; }
     }
 
     /// <summary>
@@ -162,7 +172,7 @@ namespace CapaModelo
         public string ReceptorRegimenFiscal { get; set; }
         public string ReceptorEmail { get; set; }
         public string FormaPago { get; set; }
-        public string MetodoPago { get; set; } = "PUE";
+        public string MetodoPago { get; set; }
     }
 
     /// <summary>
@@ -217,3 +227,5 @@ namespace CapaModelo
         public string AcuseCancelacion { get; set; }
     }
 }
+
+

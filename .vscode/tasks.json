@@ -1,0 +1,10 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Apply safe conversions in CancelarCFDI",
+			"type": "shell",
+			"command": "echo Applying code changes"
+		}
+	]
+}

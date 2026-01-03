@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Web.Mvc;
 using CapaDatos;
@@ -18,8 +19,15 @@ namespace VentasWeb.Controllers
         [HttpGet]
         public JsonResult Obtener()
         {
-            var lista = CD_Cliente.Instancia.ObtenerTodos();
-            return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            try
+            {
+                var lista = CD_Cliente.Instancia.ObtenerTodos();
+                return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { data = new List<Cliente>(), error = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
         }
 
         [HttpGet]

@@ -204,8 +204,15 @@ h4 { font-size: 1.25rem; }
     transition: max-height var(--transition-speed) ease;
 }
 
-.sidebar-dropdown.show {
-    max-height: 500px;
+.sidebar-dropdown.show,
+.sidebar-dropdown.collapse.show {
+    max-height: 1000px !important;
+    overflow: visible;
+}
+
+.sidebar-dropdown.collapsing {
+    max-height: 1000px;
+    transition: max-height 0.35s ease;
 }
 
 .sidebar-dropdown-item {

@@ -18,3 +18,5 @@ namespace CapaModelo
         public bool? EsCuadrada { get; set; }
     }
 }
+
+

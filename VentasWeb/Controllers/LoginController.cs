@@ -1,4 +1,4 @@
-﻿using CapaDatos;
+using CapaDatos;
 using CapaModelo;
 using System;
 using System.Collections.Generic;
@@ -21,7 +21,7 @@ namespace VentasWeb.Controllers
         public ActionResult Index(string correo, string clave)
         {
             string passport = Encriptar.GetSHA256(clave);
-            Usuario ousuario = CD_Usuario.Instancia.ObtenerUsuarios().Where(u => u.Correo == correo && u.Clave == Encriptar.GetSHA256(clave) ).FirstOrDefault();
+            Usuario ousuario = CD_Usuario.Instancia.ObtenerUsuarios().Where(u => u.Correo.Equals(correo, StringComparison.OrdinalIgnoreCase) && u.Clave == Encriptar.GetSHA256(clave) ).FirstOrDefault();
 
             if (ousuario == null)
             {
@@ -29,9 +29,23 @@ namespace VentasWeb.Controllers
                 return View();
             }
 
+            // Guardar usuario completo en sesión incluyendo rol
             Session["Usuario"] = ousuario;
+            Session["UsuarioRol"] = ousuario.oRol != null ? ousuario.oRol.Descripcion : "EMPLEADO";
+            Session["UsuarioNombre"] = ousuario.Nombres + " " + ousuario.Apellidos;
 
-            return RedirectToAction("Index", "Home");
+            // Redirigir según el rol del usuario
+            string rol = ousuario.oRol != null ? ousuario.oRol.Descripcion.ToUpper() : "EMPLEADO";
+            
+            if (rol == "ADMINISTRADOR")
+            {
+                return RedirectToAction("Index", "Home");
+            }
+            else
+            {
+                // Usuarios no administradores van directo a punto de venta
+                return RedirectToAction("Index", "VentaPOS");
+            }
         }
     }
 }

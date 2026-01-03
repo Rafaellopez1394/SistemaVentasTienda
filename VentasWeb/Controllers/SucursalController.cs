@@ -1,4 +1,4 @@
-﻿using CapaDatos;
+using CapaDatos;
 using CapaModelo;
 using System;
 using System.Collections.Generic;
@@ -11,6 +11,12 @@ namespace VentasWeb.Controllers
     public class SucursalController : Controller
     {
         // GET: Sucursal
+        public ActionResult Index()
+        {
+            return View("Crear");
+        }
+
+        // GET: Sucursal/Crear
         public ActionResult Crear()
         {
             return View();
@@ -18,8 +24,15 @@ namespace VentasWeb.Controllers
 
         public JsonResult Obtener()
         {
-            List<Sucursal> lista = CD_Sucursal.Instancia.ObtenerSucursales();
-            return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            try
+            {
+                List<Sucursal> lista = CD_Sucursal.Instancia.ObtenerSucursales();
+                return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { data = new List<Sucursal>(), error = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
         }
     
         [HttpPost]

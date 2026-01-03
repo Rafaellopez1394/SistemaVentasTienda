@@ -1,0 +1,106 @@
+﻿/*
+#tablaDetalle 
+{
+width:70%;
+}
+.tdcuenta {
+width:100%;
+}
+
+.tdconcepto {
+width:350px;
+}
+
+.conceptodet {
+width:340px;
+}
+
+.cargo {
+width:142px;
+}
+
+.abono {
+width:142px;
+}
+
+
+.tdeliminar {
+text-align:center;
+}
+*/
+
+.tr_total {
+background-color: #003366;
+font-size: 12px;
+font-weight: bold;
+color: #FFFFFF;
+font-family: Arial, Helvetica, sans-serif;
+border-color: #003366;
+}
+
+.tr_alternate {
+background-color: #66CCFF;
+font-size: 11px;
+font-weight: normal;
+color: #003366;
+}
+
+.tr_header {
+background-color: #003366;
+font-size: 12px;
+font-weight: bold;
+color: #FFFFFF;
+}
+
+.tr_header th {
+padding: 3px;
+}
+
+.td_numero {
+padding: 3px 5px 3px 0px ;
+text-align:right;
+}
+
+.tdlbltitulo {
+text-align:right;
+}
+
+.cancelada {
+    padding:5px;
+    background:#FF0000;
+    color:#000000;
+    font-weight: bold;
+    border-radius: 6px;
+    margin-left:5px;
+}
+
+.controlOculto
+{
+	display:none;	
+}
+.no_display
+{
+	display:none;
+}
+.display_none
+{
+	display:none;
+}
+
+i.fa {
+  display: inline-block;
+  border-radius: 60px;
+  box-shadow: 0 0 2px #888;
+  padding: 0.5em 0.6em;
+
+}
+
+.icon-check {
+  display: block;
+  border-radius: 100px;
+  box-shadow: 0 0 0px #fff;
+  padding: 1.0em 1.0em;
+  background: url('../../Base/img/check.png') no-repeat center center;
+  background-size: 20px 20px; /* Ajusta el tamaño según sea necesario */
+}
+

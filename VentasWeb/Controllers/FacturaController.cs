@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using System.Web.Mvc;
 using CapaDatos;
@@ -45,6 +46,20 @@ namespace VentasWeb.Controllers
                 // Obtener datos del cliente para facturación
                 var cliente = CD_Cliente.Instancia.ObtenerPorId(venta.ClienteID);
 
+                // Calcular subtotal e IVA real desde el detalle
+                decimal subtotal = 0;
+                decimal totalIVA = 0;
+                
+                foreach (var detalle in venta.Detalle)
+                {
+                    decimal montoBase = detalle.PrecioVenta * detalle.Cantidad;
+                    decimal porcentajeIVA = detalle.Exento ? 0 : (detalle.TasaIVAPorcentaje / 100m);
+                    decimal montoIVA = montoBase * porcentajeIVA;
+                    
+                    subtotal += montoBase;
+                    totalIVA += montoIVA;
+                }
+
                 return Json(new
                 {
                     success = true,
@@ -54,8 +69,8 @@ namespace VentasWeb.Controllers
                         clienteRFC = cliente?.RFC ?? "XAXX010101000",
                         clienteNombre = venta.RazonSocial,
                         total = venta.Total,
-                        subtotal = venta.Total / 1.16m, // Aproximación
-                        iva = venta.Total - (venta.Total / 1.16m),
+                        subtotal = subtotal,
+                        iva = totalIVA,
                         conceptos = venta.Detalle,
                         usoCFDI = "G03", // Por defecto: Gastos en general
                         metodoPago = venta.Estatus == "CONTADO" ? "PUE" : "PPD",
@@ -90,6 +105,65 @@ namespace VentasWeb.Controllers
                 {
                     success = true,
                     data = facturas
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    success = false,
+                    mensaje = ex.Message
+                }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // GET: Factura/ObtenerDetalle (para modal de detalle)
+        [HttpGet]
+        public JsonResult ObtenerDetalle(string facturaId)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(facturaId))
+                {
+                    return Json(new { success = false, mensaje = "FacturaID requerido" }, JsonRequestBehavior.AllowGet);
+                }
+
+                Guid facturaGuid = Guid.Parse(facturaId);
+                var factura = CD_Factura.Instancia.ObtenerPorId(facturaGuid);
+
+                if (factura == null)
+                {
+                    return Json(new { success = false, mensaje = "Factura no encontrada" }, JsonRequestBehavior.AllowGet);
+                }
+
+                // Obtener detalle e impuestos
+                var detalles = CD_Factura.Instancia.ObtenerDetalleFactura(facturaGuid);
+                var impuestos = CD_Factura.Instancia.ObtenerImpuestosFactura(facturaGuid);
+
+                return Json(new
+                {
+                    success = true,
+                    data = new
+                    {
+                        factura.FacturaID,
+                        factura.Serie,
+                        factura.Folio,
+                        factura.UUID,
+                        factura.FechaEmision,
+                        factura.FechaTimbrado,
+                        factura.ReceptorRFC,
+                        factura.ReceptorNombre,
+                        factura.ReceptorUsoCFDI,
+                        factura.Subtotal,
+                        factura.TotalImpuestosTrasladados,
+                        factura.TotalImpuestosRetenidos,
+                        Total = factura.MontoTotal,
+                        factura.FormaPago,
+                        factura.MetodoPago,
+                        factura.Estatus,
+                        Conceptos = detalles,
+                        Impuestos = impuestos
+                    }
                 }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
@@ -198,7 +272,7 @@ namespace VentasWeb.Controllers
         {
             try
             {
-                var factura = CD_Factura.Instancia.ObtenerPorUUID(facturaId.ToString(), out string mensaje);
+                var factura = CD_Factura.Instancia.ObtenerPorId(facturaId);
 
                 if (factura == null || string.IsNullOrEmpty(factura.XMLTimbrado))
                 {
@@ -221,7 +295,7 @@ namespace VentasWeb.Controllers
         {
             try
             {
-                var factura = CD_Factura.Instancia.ObtenerPorUUID(facturaId.ToString(), out string mensaje);
+                var factura = CD_Factura.Instancia.ObtenerPorId(facturaId);
 
                 if (factura == null)
                 {
@@ -246,16 +320,11 @@ namespace VentasWeb.Controllers
         {
             try
             {
-                // TODO: Obtener de base de datos CatUsosCFDI
-                var usos = new[]
-                {
-                    new { Clave = "G01", Descripcion = "Adquisición de mercancías" },
-                    new { Clave = "G02", Descripcion = "Devoluciones, descuentos o bonificaciones" },
-                    new { Clave = "G03", Descripcion = "Gastos en general" },
-                    new { Clave = "I01", Descripcion = "Construcciones" },
-                    new { Clave = "I02", Descripcion = "Mobiliario y equipo de oficina por inversiones" },
-                    new { Clave = "P01", Descripcion = "Por definir" }
-                };
+                var usosList = CD_Catalogos.Instancia.ObtenerUsosCFDI_List();
+                var usos = usosList.Select(u => new { 
+                    Clave = u.UsoCFDIID, 
+                    Descripcion = u.Descripcion 
+                });
 
                 return Json(new { success = true, data = usos }, JsonRequestBehavior.AllowGet);
             }
@@ -301,7 +370,7 @@ namespace VentasWeb.Controllers
 
         // POST: Factura/CancelarFactura
         [HttpPost]
-        public async Task<JsonResult> CancelarFactura(int facturaId, string motivo, string uuidSustitucion)
+        public async Task<JsonResult> CancelarFactura(Guid facturaId, string motivo, string uuidSustitucion)
         {
             try
             {
@@ -314,7 +383,7 @@ namespace VentasWeb.Controllers
                 string usuario = Session["Usuario"].ToString();
 
                 // Validar parámetros
-                if (facturaId <= 0)
+                if (facturaId == Guid.Empty)
                 {
                     return Json(new { success = false, mensaje = "ID de factura inválido" });
                 }
@@ -337,7 +406,9 @@ namespace VentasWeb.Controllers
                 }
 
                 // Llamar a la capa de datos para cancelar
-                var respuesta = await CD_Factura.Instancia.CancelarCFDI(facturaId, motivo, uuidSustitucion, usuario);
+                // Use Task.Run to offload the async operation to a thread pool thread
+                // This helps avoid deadlocks in ASP.NET MVC 5 which has a synchronization context
+                var respuesta = await Task.Run(() => CD_Factura.Instancia.CancelarCFDI(facturaId, motivo, uuidSustitucion, usuario));
 
                 if (respuesta.Exitoso)
                 {
@@ -415,12 +486,11 @@ namespace VentasWeb.Controllers
                 }
 
                 // Obtener datos de la factura
-                string mensaje;
-                var factura = CD_Factura.Instancia.ObtenerPorUUID(facturaGuid.ToString(), out mensaje);
+                var factura = CD_Factura.Instancia.ObtenerPorId(facturaGuid);
 
                 if (factura == null)
                 {
-                    return Json(new { success = false, mensaje = "Factura no encontrada: " + mensaje });
+                    return Json(new { success = false, mensaje = "Factura no encontrada" });
                 }
 
                 // Verificar que la factura esté timbrada
@@ -447,8 +517,95 @@ namespace VentasWeb.Controllers
                     return Json(new { success = false, mensaje = "No se encontró el XML timbrado de la factura" });
                 }
 
-                // TODO: Implementar servicio de email completo
-                return Json(new { success = false, mensaje = "Funcionalidad de envío por email no implementada aún. Por favor descargue manualmente la factura." });
+                // Enviar email (intenta configuración BD primero, luego Web.config)
+                try
+                {
+                    string smtpHost = null;
+                    int smtpPort = 587;
+                    bool usarSSL = true;
+                    string smtpUser = null;
+                    string smtpPass = null;
+                    string fromEmail = null;
+                    string fromName = "Sistema de Facturación";
+
+                    // 1. Intentar leer desde BD
+                    var configBD = CD_ConfiguracionSMTP.Instancia.ObtenerConfiguracion();
+                    if (configBD != null && configBD.Activo)
+                    {
+                        smtpHost = configBD.Host;
+                        smtpPort = configBD.Puerto;
+                        usarSSL = configBD.UsarSSL;
+                        smtpUser = configBD.Usuario;
+                        smtpPass = configBD.Contrasena;
+                        fromEmail = configBD.EmailRemitente;
+                        fromName = configBD.NombreRemitente;
+                    }
+                    else
+                    {
+                        // 2. Fallback a Web.config
+                        smtpHost = System.Configuration.ConfigurationManager.AppSettings["SMTP_Host"];
+                        string portStr = System.Configuration.ConfigurationManager.AppSettings["SMTP_Port"];
+                        string sslStr = System.Configuration.ConfigurationManager.AppSettings["SMTP_SSL"];
+                        smtpUser = System.Configuration.ConfigurationManager.AppSettings["SMTP_Username"];
+                        smtpPass = System.Configuration.ConfigurationManager.AppSettings["SMTP_Password"];
+                        fromEmail = System.Configuration.ConfigurationManager.AppSettings["SMTP_FromEmail"];
+                        fromName = System.Configuration.ConfigurationManager.AppSettings["SMTP_FromName"] ?? "Sistema de Facturación";
+
+                        if (!string.IsNullOrEmpty(portStr)) int.TryParse(portStr, out smtpPort);
+                        if (!string.IsNullOrEmpty(sslStr)) bool.TryParse(sslStr, out usarSSL);
+                    }
+
+                    // Validar que exista configuración
+                    if (string.IsNullOrEmpty(smtpUser) || string.IsNullOrEmpty(smtpPass))
+                    {
+                        return Json(new
+                        {
+                            success = false,
+                            mensaje = "Configuración SMTP no encontrada. Configure las credenciales en Administración > Configuración SMTP"
+                        });
+                    }
+
+                    using (var client = new System.Net.Mail.SmtpClient(smtpHost ?? "smtp.gmail.com", smtpPort))
+                    {
+                        client.EnableSsl = usarSSL;
+                        client.Credentials = new System.Net.NetworkCredential(smtpUser, smtpPass);
+
+                        using (var mensaje = new System.Net.Mail.MailMessage())
+                        {
+                            mensaje.From = new System.Net.Mail.MailAddress(fromEmail ?? smtpUser, fromName);
+                            mensaje.To.Add(email);
+                            mensaje.Subject = $"CFDI - Factura {factura.Serie}{factura.Folio}";
+                            mensaje.Body = GenerarCuerpoEmailFactura(factura);
+                            mensaje.IsBodyHtml = true;
+
+                            // Adjuntar XML
+                            var xmlBytes = System.Text.Encoding.UTF8.GetBytes(xmlTimbrado);
+                            var xmlStream = new System.IO.MemoryStream(xmlBytes);
+                            mensaje.Attachments.Add(new System.Net.Mail.Attachment(xmlStream, $"Factura_{factura.Serie}{factura.Folio}.xml", "application/xml"));
+
+                            // Adjuntar PDF
+                            var pdfStream = new System.IO.MemoryStream(pdfBytes);
+                            mensaje.Attachments.Add(new System.Net.Mail.Attachment(pdfStream, $"Factura_{factura.Serie}{factura.Folio}.pdf", "application/pdf"));
+
+                            client.Send(mensaje);
+                        }
+                    }
+
+                    return Json(new
+                    {
+                        success = true,
+                        mensaje = $"CFDI enviado exitosamente a {email}",
+                        fechaEnvio = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                    });
+                }
+                catch (Exception exEmail)
+                {
+                    return Json(new
+                    {
+                        success = false,
+                        mensaje = $"Error al enviar email: {exEmail.Message}"
+                    });
+                }
 
                 /* 
                 // Código a implementar cuando exista EmailService:
@@ -521,6 +678,92 @@ namespace VentasWeb.Controllers
                     mensaje = "Error al enviar email: " + ex.Message
                 });
             }
+        }
+
+        /// <summary>
+        /// Genera el cuerpo HTML del email para envío de factura
+        /// </summary>
+        private string GenerarCuerpoEmailFactura(Factura factura)
+        {
+            return $@"
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset='utf-8'>
+    <style>
+        body {{ font-family: Arial, sans-serif; line-height: 1.6; color: #333; }}
+        .container {{ max-width: 600px; margin: 0 auto; padding: 20px; }}
+        .header {{ background: #0891B2; color: white; padding: 20px; text-align: center; }}
+        .content {{ background: #f9f9f9; padding: 20px; border: 1px solid #ddd; }}
+        .footer {{ text-align: center; padding: 20px; font-size: 12px; color: #666; }}
+        table {{ width: 100%; border-collapse: collapse; margin: 15px 0; }}
+        td {{ padding: 8px; border-bottom: 1px solid #ddd; }}
+        .label {{ font-weight: bold; width: 40%; }}
+        .highlight {{ background: #e0f2fe; padding: 10px; margin: 10px 0; border-left: 4px solid #0891B2; }}
+    </style>
+</head>
+<body>
+    <div class='container'>
+        <div class='header'>
+            <h1>Comprobante Fiscal Digital (CFDI)</h1>
+        </div>
+        <div class='content'>
+            <p>Estimado(a) <strong>{factura.ReceptorNombre}</strong>,</p>
+            <p>Se adjunta su Comprobante Fiscal Digital por Internet (CFDI) correspondiente a:</p>
+            
+            <div class='highlight'>
+                <strong>Folio Fiscal (UUID):</strong><br>
+                {factura.UUID}
+            </div>
+
+            <table>
+                <tr>
+                    <td class='label'>Serie y Folio:</td>
+                    <td>{factura.Serie}{factura.Folio}</td>
+                </tr>
+                <tr>
+                    <td class='label'>Fecha de Emisión:</td>
+                    <td>{factura.FechaEmision:dd/MM/yyyy HH:mm}</td>
+                </tr>
+                <tr>
+                    <td class='label'>RFC Receptor:</td>
+                    <td>{factura.ReceptorRFC}</td>
+                </tr>
+                <tr>
+                    <td class='label'>Método de Pago:</td>
+                    <td>{(factura.MetodoPago == "PUE" ? "Pago en una sola exhibición" : "Pago en parcialidades")}</td>
+                </tr>
+                <tr>
+                    <td class='label'>Subtotal:</td>
+                    <td>${factura.Subtotal:N2}</td>
+                </tr>
+                <tr>
+                    <td class='label'>IVA:</td>
+                    <td>${factura.TotalImpuestosTrasladados:N2}</td>
+                </tr>
+                <tr>
+                    <td class='label'><strong>Total:</strong></td>
+                    <td><strong>${factura.MontoTotal:N2}</strong></td>
+                </tr>
+            </table>
+
+            <p><strong>Archivos adjuntos:</strong></p>
+            <ul>
+                <li>📄 <strong>XML</strong> - Archivo fiscal para contabilidad</li>
+                <li>📋 <strong>PDF</strong> - Representación impresa</li>
+            </ul>
+
+            <p style='color: #0891B2; font-weight: bold;'>
+                Este comprobante ha sido timbrado ante el SAT y tiene plena validez fiscal.
+            </p>
+        </div>
+        <div class='footer'>
+            <p>Este es un correo automático, por favor no responder.</p>
+            <p>&copy; {DateTime.Now.Year} - Sistema de Facturación Electrónica</p>
+        </div>
+    </div>
+</body>
+</html>";
         }
     }
 }

@@ -1,7 +1,6 @@
-﻿
 var tabladata;
 $(document).ready(function () {
-    activarMenu("Mantenedor");
+    // activarMenu("Mantenedor"); // No necesario - el menú se activa automáticamente
 
 
     //OBTENER ROLES

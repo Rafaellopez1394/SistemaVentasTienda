@@ -35,7 +35,7 @@ namespace CapaModelo
         public DateTime UltimaAct { get; set; }
         
         // Lista de recibos
-        public List<NominaDetalle> Recibos { get; set; } = new List<NominaDetalle>();
+        public List<NominaDetalle> Recibos { get; set; }
     }
     
     public class NominaDetalle
@@ -55,7 +55,7 @@ namespace CapaModelo
         // Datos de contratación (para CFDI Nómina 1.2)
         public DateTime? FechaIngreso { get; set; }
         public string TipoContrato { get; set; } // 01=Indeterminado, 02=Determinado, etc.
-        public bool Sindicalizado { get; set; } = false;
+        public bool Sindicalizado { get; set; }
         public string TipoJornada { get; set; } // 01=Diurna, 02=Nocturna, 03=Mixta, etc.
         public string TipoRegimen { get; set; } // 02=Sueldos, 03=Jubilados, etc.
         public string Departamento { get; set; }
@@ -100,8 +100,8 @@ namespace CapaModelo
         public DateTime UltimaAct { get; set; }
         
         // Listas de percepciones y deducciones
-        public List<NominaPercepcion> Percepciones { get; set; } = new List<NominaPercepcion>();
-        public List<NominaDeduccion> Deducciones { get; set; } = new List<NominaDeduccion>();
+        public List<NominaPercepcion> Percepciones { get; set; }
+        public List<NominaDeduccion> Deducciones { get; set; }
     }
     
     public class NominaPercepcion
@@ -136,3 +136,5 @@ namespace CapaModelo
         public DateTime FechaAlta { get; set; }
     }
 }
+
+

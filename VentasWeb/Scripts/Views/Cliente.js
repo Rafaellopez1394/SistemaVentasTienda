@@ -153,7 +153,7 @@ function abrirModal(obj = {}) {
                     $('#txtTelefono').val(c.Telefono);
                     $('#txtCodigoPostal').val(c.CodigoPostal);
                     $('#cboRegimenFiscal').val(c.RegimenFiscalID).trigger('change');
-                    $('#cboUsoCFDI').val(c.UsoCFDIID).trigger('change');
+                    $('#cboUsoCFDI').val(c.UsoCFDI).trigger('change');
 
                     // Marcar los checkboxes de crX©dito que ya tiene el cliente y mostrar/cargar lX­mites
                     if (res.creditos && res.creditos.length > 0) {

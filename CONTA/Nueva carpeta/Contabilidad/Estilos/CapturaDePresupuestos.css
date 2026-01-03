@@ -1,0 +1,51 @@
+﻿.svGridPresupuesto {
+  border: 1px solid #c0c0c0;
+}
+
+.svGridPresupuesto th,
+.svGridPresupuesto .header {
+  background: #ED1D24;
+  font: bold 14px Arial, Helvetica, Sans-serif;
+  padding: 3px;
+  color: #FFFFFF;
+}
+
+.svGridPresupuesto tfoot td
+{
+  background: #ED1D24;
+  font: bold 14px Arial, Helvetica, Sans-serif;
+  padding: 3px;
+  color: #FFFFFF;
+    }
+
+.svGridPresupuesto tbody
+{   
+    font-size: 14px;
+    font-weight: normal;
+    color: #036;    
+}
+
+.svGridPresupuesto tr {
+  -webkit-transition: background .5s ease;
+  -moz-transition: background .5s ease;
+  transition: background .5s ease;
+}
+
+.svGridPresupuesto tr:hover {
+  background: #dddddd;
+  color: #444;
+  -webkit-transition: background .25s ease;
+  -moz-transition: background .25s ease;
+  transition: background .25s ease;
+}
+
+.svGridPresupuesto td, .svGrid th {
+  padding: 0.25em 0.6em;
+  border-right: 1px solid #C0C0C0;
+  border-left: 1px solid #C0C0C0;
+}
+
+.svGridPresupuesto .odd
+{
+    background:#FFFFFF;
+}

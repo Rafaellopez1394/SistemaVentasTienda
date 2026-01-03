@@ -1,7 +1,5 @@
-﻿
-
 $(document).ready(function () {
-    activarMenu("Reportes");
+    // activarMenu("Reportes"); // No necesario - el menú se activa automáticamente
 
     //OBTENER Sucursales
     jQuery.ajax({

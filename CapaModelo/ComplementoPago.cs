@@ -212,3 +212,5 @@ namespace CapaModelo
         public bool EsPagada { get; set; }
     }
 }
+
+

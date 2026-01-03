@@ -1,4 +1,4 @@
-﻿// CapaDatos/CD_TipoPrecio.cs
+// CapaDatos/CD_TipoPrecio.cs
 using CapaModelo;
 using System;
 using System.Collections.Generic;

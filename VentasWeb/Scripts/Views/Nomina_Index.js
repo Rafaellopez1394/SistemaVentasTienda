@@ -22,6 +22,15 @@ function cargarNominas() {
             {
                 data: 'FechaPago',
                 render: function (data) {
+                    if (!data) return 'N/A';
+                    if (data.toString().includes('/Date(')) {
+                        var timestamp = parseInt(data.replace(/\/Date\((\d+)\)\//, '$1'));
+                        var fecha = new Date(timestamp);
+                        var dia = ('0' + fecha.getDate()).slice(-2);
+                        var mes = ('0' + (fecha.getMonth() + 1)).slice(-2);
+                        var anio = fecha.getFullYear();
+                        return dia + '/' + mes + '/' + anio;
+                    }
                     return new Date(data).toLocaleDateString('es-MX');
                 }
             },
@@ -74,7 +83,7 @@ function cargarNominas() {
             }
         ],
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
+            url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/es-ES.json'
         },
         order: [[2, 'desc']],
         responsive: true,

@@ -450,6 +450,12 @@ namespace VentasWeb.Controllers
             return View();
         }
 
+        /*
+        // ========================================================================
+        // NOTA: Los siguientes métodos relacionados con certificados digitales
+        // han sido comentados porque ahora se usa CertificadoDigitalController.cs
+        // ========================================================================
+
         // GET: Contador/ObtenerCertificados
         [HttpGet]
         public JsonResult ObtenerCertificados(string tipoCertificado = null)
@@ -767,6 +773,7 @@ namespace VentasWeb.Controllers
                 return passwordEncriptado;
             }
         }
+        */
     }
 }
 

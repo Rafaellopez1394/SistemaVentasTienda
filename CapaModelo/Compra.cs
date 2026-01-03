@@ -1,4 +1,4 @@
-﻿// CapaModelo/Compra.cs
+// CapaModelo/Compra.cs
 using System;
 using System.Collections.Generic;
 
@@ -13,7 +13,7 @@ namespace CapaModelo
         public DateTime FechaCompra { get; set; }
         public decimal Total { get; set; }
         public string Usuario { get; set; }
-        public List<CompraDetalle> Detalle { get; set; } = new List<CompraDetalle>();
+        public List<CompraDetalle> Detalle { get; set; }
     }
 
     public class CompraDetalle
@@ -23,8 +23,10 @@ namespace CapaModelo
         public int Cantidad { get; set; }
         public decimal PrecioCompra { get; set; }
         public decimal PrecioVenta { get; set; }
-        public decimal TasaIVAPorcentaje { get; set; } = 16m;
-        public bool Exento { get; set; } = false;
+        public decimal TasaIVAPorcentaje { get; set; }
+        public bool Exento { get; set; }
     }
 }
+
+
 

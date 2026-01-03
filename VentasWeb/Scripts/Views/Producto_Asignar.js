@@ -1,11 +1,10 @@
-﻿
 var tabladata;
 var tablatienda;
 var tablaproducto;
 
 
 $(document).ready(function () {
-    activarMenu("Compras");
+    // activarMenu("Compras"); // No necesario - el menú se activa automáticamente
 
 
     ////validamos el formulario

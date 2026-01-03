@@ -1,4 +1,4 @@
-﻿using System.Web;
+using System.Web;
 using System.Web.Optimization;
 
 namespace VentasWeb
@@ -70,7 +70,10 @@ namespace VentasWeb
                      "~/Content/Plugins/jquery-loading-overlay/loadingoverlay.min.js",
 
                      // ✅ Select2 JS
-                     "~/Content/Plugins/select2.min.js"
+                     "~/Content/Plugins/select2.min.js",
+
+                     // ✅ Utilidades compartidas
+                     "~/Scripts/Utilidades/FechaUtils.js"
             ));
 
             // ============================

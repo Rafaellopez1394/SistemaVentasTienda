@@ -10,7 +10,7 @@
     <RootNamespace>CapaDatos</RootNamespace>
     <AssemblyName>CapaDatos</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
-    <LangVersion>8.0</LangVersion>
+    <LangVersion>default</LangVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
@@ -32,6 +32,9 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\packages\Newtonsoft.Json.11.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
@@ -46,12 +49,16 @@
     <Compile Include="CD_Catalogo.cs" />
     <Compile Include="CD_Categoria.cs" />
     <Compile Include="CD_CatalogoContable.cs" />
+    <Compile Include="CD_CertificadoDigital.cs" />
     <Compile Include="CD_Cliente.cs" />
     <Compile Include="CD_ComplementoPago.cs" />
     <Compile Include="CD_Compra.cs" />
     <Compile Include="CD_Configuracion.cs" />
     <Compile Include="CD_ConfiguracionContador.cs" />
+    <Compile Include="CD_ConfiguracionSMTP.cs" />
+    <Compile Include="CD_CuentaContable.cs" />
     <Compile Include="CD_CuentasPorPagar.cs" />
+    <Compile Include="CD_DescomposicionProducto.cs" />
     <Compile Include="CD_EmailLog.cs" />
     <Compile Include="CD_Empleado.cs" />
     <Compile Include="CD_Factura.cs" />
@@ -76,8 +83,10 @@
     <Compile Include="PAC\CFDI40XMLGenerator.cs" />
     <Compile Include="PAC\CFDINomina12XMLGenerator.cs" />
     <Compile Include="PAC\ComplementoPago20XMLGenerator.cs" />
-    <Compile Include="PAC\IProveedorPAC.cs" />
+    <Compile Include="PAC\FacturamaPAC.cs" />
     <Compile Include="PAC\FinkokPAC.cs" />
+    <Compile Include="PAC\SimuladorPAC.cs" />
+    <Compile Include="PAC\IProveedorPAC.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Utilidades\CertificadoHelper.cs" />
   </ItemGroup>

@@ -1,5 +1,6 @@
-﻿// Controllers/ProveedorController.cs
+// Controllers/ProveedorController.cs
 using System;
+using System.Collections.Generic;
 using System.Web.Mvc;
 using CapaDatos;
 using CapaModelo;
@@ -18,8 +19,15 @@ namespace VentasWeb.Controllers
         [HttpGet]
         public JsonResult Obtener()
         {
-            var lista = CD_Proveedor.Instancia.ObtenerTodos();
-            return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            try
+            {
+                var lista = CD_Proveedor.Instancia.ObtenerTodos();
+                return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { data = new List<Proveedor>(), error = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
         }
 
         // Guardar nuevo o actualizar proveedor

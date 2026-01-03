@@ -183,13 +183,16 @@ BEGIN
             VentaID, ClienteID, FechaVenta, TipoVenta, 
             FormaPagoID, MetodoPagoID, EfectivoRecibido, Cambio,
             Subtotal, IVA, Total, RequiereFactura, CajaID,
-            Estatus, Usuario, FechaAlta, UltimaAct
+            Estatus, Usuario, FechaAlta, UltimaAct,
+            SaldoPendiente, TotalPagado -- Inicializar campos de pago
         )
         VALUES (
             @VentaID, @ClienteID, GETDATE(), @TipoVenta,
             @FormaPagoID, @MetodoPagoID, @EfectivoRecibido, @Cambio,
             @Subtotal, @IVA, @Total, @RequiereFactura, @CajaID,
-            'COMPLETADA', @Usuario, GETDATE(), GETDATE()
+            'COMPLETADA', @Usuario, GETDATE(), GETDATE(),
+            CASE WHEN @TipoVenta = 'CONTADO' THEN 0 ELSE @Total END, -- SaldoPendiente = 0 si es contado
+            CASE WHEN @TipoVenta = 'CONTADO' THEN @Total ELSE 0 END  -- TotalPagado = Total si es contado
         );
 
         -- Registrar movimiento en caja (solo si es contado)
@@ -211,6 +214,24 @@ BEGIN
                 @CajaID, 'VENTA', GETDATE(),
                 @Total, @SaldoAnterior, @SaldoAnterior + @Total,
                 'Venta ' + @TipoVenta, @VentaID, @Usuario
+            );
+            
+            -- Registrar el pago automáticamente para ventas de contado
+            INSERT INTO PagosClientes (
+                PagoID, VentaID, ClienteID, Monto, FechaPago,
+                FormaPago, Referencia, Comentario,
+                GenerarFactura, GenerarComplemento,
+                FacturaGenerada, ComplementoGenerado,
+                Usuario, FechaRegistro
+            )
+            VALUES (
+                NEWID(), @VentaID, @ClienteID, @Total, GETDATE(),
+                ISNULL((SELECT Clave FROM CatFormasPago WHERE FormaPagoID = @FormaPagoID), '01'),
+                'PAGO CONTADO ' + CAST(@VentaID AS VARCHAR(50)),
+                'Pago automático de venta de contado',
+                @RequiereFactura, 0,
+                0, 0,
+                @Usuario, GETDATE()
             );
         END
 

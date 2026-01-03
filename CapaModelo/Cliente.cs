@@ -1,4 +1,4 @@
-﻿// CapaModelo/Cliente.cs
+// CapaModelo/Cliente.cs
 using System;
 using System.Collections.Generic;
 
@@ -16,13 +16,13 @@ namespace CapaModelo
         public string CorreoElectronico { get; set; }
         public string Telefono { get; set; }
         
-        // Nuevos campos para mejor gestión
+        // Nuevos campos para mejor gesti�n
         public string Direccion { get; set; }
         public string Municipio { get; set; }
         public string Estado { get; set; }
-        public string Pais { get; set; } = "México";
+        public string Pais { get; set; }
         public bool CreditoActivo { get; set; }
-        public decimal LimiteCreditoActual { get; set; }    // Calculado desde tipos de crédito
+        public decimal LimiteCreditoActual { get; set; }    // Calculado desde tipos de cr�dito
         public decimal SaldoCreditoActual { get; set; }     // Calculado desde deudas
         public int DiasVencidos { get; set; }               // Calculado
         
@@ -32,9 +32,10 @@ namespace CapaModelo
         public DateTime UltimaAct { get; set; }
 
         // Solo para mostrar en listas (NO se guarda en BD)
-        public string RegimenFiscal { get; set; }       // ← Solo para mostrar
-        public string UsoCFDI { get; set; }             // ← Solo para mostrar
-        public List<ClienteTipoCredito> TiposCredito { get; set; } = new List<ClienteTipoCredito>();
+        public string RegimenFiscal { get; set; }       // ? Solo para mostrar
+        public string UsoCFDI { get; set; }             // ? Solo para mostrar
+        public List<ClienteTipoCredito> TiposCredito { get; set; }
     }
 
 }
+

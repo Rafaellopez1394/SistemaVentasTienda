@@ -1,0 +1,189 @@
+@{
+    ViewBag.Title = "Descomposición de Productos";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <div class="container-fluid">
+            <div class="row mb-2">
+                <div class="col-sm-6">
+                    <h1>Descomposición de Productos</h1>
+                </div>
+                <div class="col-sm-6">
+                    <ol class="breadcrumb float-sm-right">
+                        <li class="breadcrumb-item"><a href="#">Inicio</a></li>
+                        <li class="breadcrumb-item active">Descomposición</li>
+                    </ol>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="content">
+        <div class="container-fluid">
+            <!-- Formulario de Descomposición -->
+            <div class="card card-primary">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-boxes"></i> Nueva Descomposición</h3>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <!-- Producto Origen -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Producto Origen (a descomponer)</label>
+                                <select id="ddlProductoOrigen" class="form-control select2">
+                                    <option value="">-- Seleccione --</option>
+                                </select>
+                                <small class="form-text text-muted">Seleccione el producto grande que desea descomponer</small>
+                            </div>
+                        </div>
+
+                        <!-- Cantidad a Descomponer -->
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Cantidad a Descomponer</label>
+                                <input type="number" id="txtCantidadOrigen" class="form-control" min="1" step="1" value="1">
+                            </div>
+                        </div>
+
+                        <!-- Stock Disponible -->
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label>Stock Disponible</label>
+                                <input type="text" id="txtStockDisponible" class="form-control" readonly>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label>Observaciones</label>
+                                <textarea id="txtObservaciones" class="form-control" rows="2" placeholder="Ej: Descomposición de costal de 20kg en bolsas menores"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Productos Resultantes -->
+                    <h5><i class="fas fa-cubes"></i> Productos Resultantes</h5>
+                    <p class="text-muted">Agregue los productos que resultarán de la descomposición</p>
+
+                    <div class="row">
+                        <div class="col-md-5">
+                            <div class="form-group">
+                                <label>Producto</label>
+                                <select id="ddlProductoResultante" class="form-control select2">
+                                    <option value="">-- Seleccione --</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Cantidad</label>
+                                <input type="number" id="txtCantidadResultante" class="form-control" min="1" step="1" value="1">
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Peso c/u (kg)</label>
+                                <input type="number" id="txtPesoUnidad" class="form-control" min="0" step="0.001" placeholder="Opcional">
+                                <small class="form-text text-muted">Ej: 1.0, 2.0, 0.5</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn btn-success btn-block" onclick="agregarProductoResultante()">
+                                <i class="fas fa-plus"></i> Agregar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tabla de Productos Resultantes -->
+                    <div class="table-responsive mt-3">
+                        <table class="table table-sm table-bordered table-striped">
+                            <thead class="bg-secondary">
+                                <tr>
+                                    <th>Producto</th>
+                                    <th width="100">Cantidad</th>
+                                    <th width="120">Peso c/u (kg)</th>
+                                    <th width="120">Total Peso (kg)</th>
+                                    <th width="80">Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyProductosResultantes">
+                                <tr id="trNoProductos">
+                                    <td colspan="5" class="text-center text-muted">No se han agregado productos resultantes</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="row mt-4">
+                        <div class="col-md-12 text-right">
+                            <button type="button" class="btn btn-secondary" onclick="limpiarFormulario()">
+                                <i class="fas fa-broom"></i> Limpiar
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="registrarDescomposicion()">
+                                <i class="fas fa-save"></i> Registrar Descomposición
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Historial de Descomposiciones -->
+            <div class="card card-info">
+                <div class="card-header">
+                    <h3 class="card-title"><i class="fas fa-history"></i> Historial de Descomposiciones</h3>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table id="tblHistorial" class="table table-sm table-bordered table-striped">
+                            <thead class="bg-info">
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Usuario</th>
+                                    <th>Producto Origen</th>
+                                    <th>Cantidad</th>
+                                    <th>Productos Resultantes</th>
+                                    <th>Observaciones</th>
+                                    <th>Acción</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Modal Detalle -->
+<div class="modal fade" id="modalDetalle" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-info">
+                <h5 class="modal-title"><i class="fas fa-info-circle"></i> Detalle de Descomposición</h5>
+                <button type="button" class="close" data-dismiss="modal">
+                    <span>&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div id="detalleContent"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/descomposicion-producto.js"></script>
+}

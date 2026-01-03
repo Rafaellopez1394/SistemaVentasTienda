@@ -380,59 +380,100 @@ function mostrarVistaPrevia(contenidoHTML) {
 // USUARIOS
 // ============================================================================
 function cargarUsuarios() {
-    $.get('/Usuario/Listar', function (res) {
-        var tbody = $('#tblUsuarios tbody');
-        tbody.empty();
-        
-        if (res && res.length > 0) {
-            res.forEach(function (u) {
-                var estado = u.Activo !== false ? 
-                    '<span class="badge badge-success">Activo</span>' : 
-                    '<span class="badge badge-danger">Inactivo</span>';
-                
-                // Nombre de usuario: usar Correo como identificador si NombreUsuario es null
-                var nombreUsuario = u.NombreUsuario || u.Correo || 'N/A';
-                
-                // Nombre completo
-                var nombreCompleto = ((u.Nombres || '') + ' ' + (u.Apellidos || '')).trim() || 'Sin nombre';
-                
-                // Rol desde el objeto oRol
-                var rolDescripcion = (u.oRol && u.oRol.Descripcion) ? u.oRol.Descripcion : 'Sin rol';
-                
-                // Ultimo acceso - no existe en el modelo actual
-                var ultimoAcceso = 'N/A';
+    console.log('🔍 Iniciando carga de usuarios...');
+    
+    $.get('/Usuario/Listar')
+        .done(function (res) {
+            console.log('✅ Respuesta recibida de /Usuario/Listar:', res);
+            console.log('   - Tipo de dato:', typeof res);
+            console.log('   - Es array?', Array.isArray(res));
+            console.log('   - Cantidad de elementos:', res ? res.length : 0);
+            
+            var tbody = $('#tblUsuarios tbody');
+            tbody.empty();
+            
+            if (res && res.length > 0) {
+                console.log('📋 Procesando ' + res.length + ' usuarios');
+                res.forEach(function (u) {
+                    var estado = u.Activo !== false ? 
+                        '<span class="badge badge-success">Activo</span>' : 
+                        '<span class="badge badge-danger">Inactivo</span>';
                     
-                tbody.append(
-                    '<tr>' +
-                    '<td>' + nombreUsuario + '</td>' +
-                    '<td>' + nombreCompleto + '</td>' +
-                    '<td><span class="badge badge-info">' + rolDescripcion + '</span></td>' +
-                    '<td>' + estado + '</td>' +
-                    '<td>' + ultimoAcceso + '</td>' +
-                    '<td>' +
-                        '<button class="btn btn-sm btn-primary mr-1" onclick="editarUsuario(' + u.UsuarioID + ')" title="Editar"><i class="fas fa-edit"></i></button>' +
-                        '<button class="btn btn-sm btn-warning" onclick="toggleUsuario(' + u.UsuarioID + ', ' + (u.Activo !== false) + ')" title="Cambiar estado"><i class="fas fa-power-off"></i></button>' +
-                    '</td>' +
-                    '</tr>'
-                );
-            });
-        } else {
-            tbody.append('<tr><td colspan="6" class="text-center">No hay usuarios registrados</td></tr>');
-        }
-    });
+                    // Nombre de usuario: usar Correo como identificador si NombreUsuario es null
+                    var nombreUsuario = u.NombreUsuario || u.Correo || 'N/A';
+                    
+                    // Nombre completo
+                    var nombreCompleto = ((u.Nombres || '') + ' ' + (u.Apellidos || '')).trim() || 'Sin nombre';
+                    
+                    // Rol desde el objeto oRol
+                    var rolDescripcion = (u.oRol && u.oRol.Descripcion) ? u.oRol.Descripcion : 'Sin rol';
+                    
+                    // Ultimo acceso - no existe en el modelo actual
+                    var ultimoAcceso = 'N/A';
+                        
+                    tbody.append(
+                        '<tr>' +
+                        '<td>' + nombreUsuario + '</td>' +
+                        '<td>' + nombreCompleto + '</td>' +
+                        '<td><span class="badge badge-info">' + rolDescripcion + '</span></td>' +
+                        '<td>' + estado + '</td>' +
+                        '<td>' + ultimoAcceso + '</td>' +
+                        '<td>' +
+                            '<button class="btn btn-sm btn-primary mr-1" onclick="editarUsuario(' + u.UsuarioID + ')" title="Editar"><i class="fas fa-edit"></i></button>' +
+                            '<button class="btn btn-sm btn-warning" onclick="toggleUsuario(' + u.UsuarioID + ', ' + (u.Activo !== false) + ')" title="Cambiar estado"><i class="fas fa-power-off"></i></button>' +
+                        '</td>' +
+                        '</tr>'
+                    );
+                });
+                console.log('✅ Tabla de usuarios actualizada correctamente');
+            } else {
+                console.warn('⚠️ No hay usuarios en la respuesta');
+                tbody.append('<tr><td colspan="6" class="text-center">No hay usuarios registrados</td></tr>');
+            }
+        })
+        .fail(function (xhr, status, error) {
+            console.error('❌ Error al cargar usuarios:');
+            console.error('   - Status:', status);
+            console.error('   - Error:', error);
+            console.error('   - Código HTTP:', xhr.status);
+            console.error('   - Respuesta del servidor:', xhr.responseText);
+            
+            var tbody = $('#tblUsuarios tbody');
+            tbody.empty();
+            tbody.append('<tr><td colspan="6" class="text-center text-danger">Error al cargar usuarios. Revise la consola para más detalles.</td></tr>');
+        });
 }
 
 function cargarRoles() {
-    $.get('/Rol/Listar', function (res) {
-        var $combo = $('#cboRol');
-        $combo.empty().append('<option value="">-- Seleccione --</option>');
-        
-        if (res && res.length > 0) {
-            res.forEach(function (r) {
-                $combo.append('<option value="' + r.RolID + '">' + r.Descripcion + '</option>');
-            });
-        }
-    });
+    console.log('🔍 Iniciando carga de roles...');
+    
+    $.get('/Rol/Listar')
+        .done(function (res) {
+            console.log('✅ Respuesta recibida de /Rol/Listar:', res);
+            console.log('   - Tipo de dato:', typeof res);
+            console.log('   - Es array?', Array.isArray(res));
+            console.log('   - Cantidad de elementos:', res ? res.length : 0);
+            
+            var $combo = $('#cboRol');
+            $combo.empty().append('<option value="">-- Seleccione --</option>');
+            
+            if (res && res.length > 0) {
+                console.log('📋 Agregando ' + res.length + ' roles al combo');
+                res.forEach(function (r) {
+                    $combo.append('<option value="' + r.RolID + '">' + r.Descripcion + '</option>');
+                });
+                console.log('✅ Combo de roles actualizado correctamente');
+            } else {
+                console.warn('⚠️ No hay roles en la respuesta');
+            }
+        })
+        .fail(function (xhr, status, error) {
+            console.error('❌ Error al cargar roles:');
+            console.error('   - Status:', status);
+            console.error('   - Error:', error);
+            console.error('   - Código HTTP:', xhr.status);
+            console.error('   - Respuesta del servidor:', xhr.responseText);
+        });
 }
 
 function mostrarModalUsuario(id) {

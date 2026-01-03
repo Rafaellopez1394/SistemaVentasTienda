@@ -1,4 +1,4 @@
-﻿// Controllers/ProductoController.cs
+// Controllers/ProductoController.cs
 using CapaDatos;
 using CapaModelo;
 using System;
@@ -15,49 +15,56 @@ namespace VentasWeb.Controllers
         [HttpGet]
         public JsonResult Obtener()
         {
-            // 1. Obtenemos solo los datos básicos del producto (sin tocar lotes aquí)
-            var productos = CD_Producto.Instancia.ObtenerTodos();
-
-            var listaBase = productos.Select(p => new
+            try
             {
-                p.ProductoID,
-                p.CodigoInterno,
-                p.Nombre,
-                Categoria = p.NombreCategoria ?? "",
-                p.ClaveProdServSATID,
-                UnidadSAT = p.UnidadSAT ?? "",
-                TasaIVA = p.TasaIVAPorcentaje,
-                TasaIEPS = p.TasaIEPSPorcentaje,
-                p.Exento,
-                p.Estatus
-            }).ToList();
+                // 1. Obtenemos solo los datos básicos del producto (sin tocar lotes aquí)
+                var productos = CD_Producto.Instancia.ObtenerTodos();
 
-            // 2. Calculamos el stock por separado (fuera del query de EF → evita el error de "árbol de expresión")
-            var stocks = new Dictionary<int, int>();
-            foreach (var item in listaBase)
-            {
-                int stock = CD_Producto.Instancia.ObtenerLotes(item.ProductoID)
-                                                .Sum(l => l.CantidadDisponible);
-                stocks[item.ProductoID] = stock;
+                var listaBase = productos.Select(p => new
+                {
+                    p.ProductoID,
+                    p.CodigoInterno,
+                    p.Nombre,
+                    Categoria = p.NombreCategoria ?? "",
+                    p.ClaveProdServSATID,
+                    UnidadSAT = p.UnidadSAT ?? "",
+                    TasaIVA = p.TasaIVAPorcentaje,
+                    TasaIEPS = p.TasaIEPSPorcentaje,
+                    p.Exento,
+                    p.Estatus
+                }).ToList();
+
+                // 2. Calculamos el stock por separado (fuera del query de EF → evita el error de "árbol de expresión")
+                var stocks = new Dictionary<int, int>();
+                foreach (var item in listaBase)
+                {
+                    int stock = CD_Producto.Instancia.ObtenerLotes(item.ProductoID)
+                                                    .Sum(l => l.CantidadDisponible);
+                    stocks[item.ProductoID] = stock;
+                }
+
+                // 3. Construimos la lista final con el stock correcto
+                var listaFinal = listaBase.Select(p => new
+                {
+                    p.ProductoID,
+                    p.CodigoInterno,
+                    p.Nombre,
+                    p.Categoria,
+                    p.ClaveProdServSATID,
+                    p.UnidadSAT,
+                    TasaIVA = p.TasaIVA,
+                    TasaIEPS = p.TasaIEPS > 0 ? p.TasaIEPS : (decimal?)null,
+                    Stock = stocks[p.ProductoID],
+                    p.Exento,
+                    p.Estatus
+                }).ToList();
+
+                return Json(new { data = listaFinal }, JsonRequestBehavior.AllowGet);
             }
-
-            // 3. Construimos la lista final con el stock correcto
-            var listaFinal = listaBase.Select(p => new
+            catch (Exception ex)
             {
-                p.ProductoID,
-                p.CodigoInterno,
-                p.Nombre,
-                p.Categoria,
-                p.ClaveProdServSATID,
-                p.UnidadSAT,
-                TasaIVA = p.TasaIVA,
-                TasaIEPS = p.TasaIEPS > 0 ? p.TasaIEPS : (decimal?)null,
-                Stock = stocks[p.ProductoID],
-                p.Exento,
-                p.Estatus
-            }).ToList();
-
-            return Json(new { data = listaFinal }, JsonRequestBehavior.AllowGet);
+                return Json(new { data = new List<object>(), error = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
         }
 
         [HttpGet]
@@ -236,14 +243,14 @@ namespace VentasWeb.Controllers
                     // Incremento: DEBE Inventario, HABER Ajuste Inventario
                     poliza.Detalles.Add(new PolizaDetalle
                     {
-                        CuentaID = 1, // Inventario (Activo)
+                        CuentaID = ConvertirIntAGuid(1), // Inventario (Activo)
                         Debe = costoTotal,
                         Haber = 0,
                         Concepto = $"Incremento inventario: {Math.Abs(diferenciaCantidad)} unidades"
                     });
                     poliza.Detalles.Add(new PolizaDetalle
                     {
-                        CuentaID = 50, // Ajustes de Inventario (Ingresos)
+                        CuentaID = ConvertirIntAGuid(50), // Ajustes de Inventario (Ingresos)
                         Debe = 0,
                         Haber = costoTotal,
                         Concepto = $"Contrapartida ajuste inventario"
@@ -258,14 +265,14 @@ namespace VentasWeb.Controllers
 
                     poliza.Detalles.Add(new PolizaDetalle
                     {
-                        CuentaID = cuentaContrapartida,
+                        CuentaID = ConvertirIntAGuid(cuentaContrapartida),
                         Debe = costoTotal,
                         Haber = 0,
                         Concepto = $"Salida inventario por {tipoPoliza}"
                     });
                     poliza.Detalles.Add(new PolizaDetalle
                     {
-                        CuentaID = 1, // Inventario (Activo)
+                        CuentaID = ConvertirIntAGuid(1), // Inventario (Activo)
                         Debe = 0,
                         Haber = costoTotal,
                         Concepto = $"Disminución inventario: {Math.Abs(diferenciaCantidad)} unidades"
@@ -315,19 +322,19 @@ namespace VentasWeb.Controllers
                 {
                     TipoPoliza = tipo == "MERMA" ? "MERMA" : "AJUSTE",
                     FechaPoliza = DateTime.Now,
-                    Concepto = $"{tipo} de lote {loteId}: {motivo}",
+                    Concepto = string.Format("{0} de lote {1}: {2}", tipo, loteId, motivo),
                     ReferenciaId = loteId,
                     ReferenciaTipo = "LOTE"
                 };
                 poliza.Detalles.Add(new PolizaDetalle
                 {
-                    CuentaID = 1, // ID cuenta 'Inventario'
+                    CuentaID = ConvertirIntAGuid(1), // ID cuenta 'Inventario'
                     Haber = costo,
                     Concepto = "Reducción inventario"
                 });
                 poliza.Detalles.Add(new PolizaDetalle
                 {
-                    CuentaID = 2, // ID cuenta 'Gasto Merma/Ajuste'
+                    CuentaID = ConvertirIntAGuid(2), // ID cuenta 'Gasto Merma/Ajuste'
                     Debe = costo,
                     Concepto = "Gasto por " + tipo
                 });
@@ -336,6 +343,15 @@ namespace VentasWeb.Controllers
                 return Json(new { success = polizaCreada, message = "Ajuste registrado y póliza generada" });
             }
             return Json(new { success = false, message = "Error al registrar ajuste" });
+        }
+
+        // Helper para convertir int a Guid?
+        private Guid? ConvertirIntAGuid(int id)
+        {
+            if (id <= 0) return null;
+            byte[] bytes = new byte[16];
+            BitConverter.GetBytes(id).CopyTo(bytes, 0);
+            return new Guid(bytes);
         }
 
         // Bitácora de movimientos de inventario

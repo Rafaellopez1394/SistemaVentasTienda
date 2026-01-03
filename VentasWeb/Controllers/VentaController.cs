@@ -1,4 +1,4 @@
-﻿// Controllers/VentaController.cs
+// Controllers/VentaController.cs
 using System;
 using System.Web.Mvc;
 using CapaDatos;

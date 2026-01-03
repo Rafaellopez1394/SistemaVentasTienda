@@ -274,7 +274,7 @@ namespace VentasWeb.Controllers
                         c.CuentaID,
                         c.Codigo,
                         c.Nombre,
-                        Display = $"{c.Codigo} - {c.Nombre}"
+                        Display = string.Format("{0} - {1}", c.Codigo, c.Nombre)
                     })
                     .OrderBy(c => c.Codigo)
                     .ToList();

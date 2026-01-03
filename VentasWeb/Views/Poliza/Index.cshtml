@@ -1,12 +1,12 @@
 @{
     Layout = "~/Views/Shared/_Layout.cshtml";
-    ViewBag.Title = "Generar Pé³liza";
+    ViewBag.Title = "Generar Póliza";
 }
 
-<h2>Generar Pé³liza</h2>
+<h2>Generar Póliza</h2>
 
 <div>
-    <label>Tipo de Pé³liza</label>
+    <label>Tipo de Póliza</label>
     <input id="tipo" />
 </div>
 <div>
@@ -27,7 +27,7 @@
 </table>
 
 <button id="addDetalle" class="btn btn-default">Agregar detalle</button>
-<button id="btnCrear" class="btn btn-primary">Crear Pé³liza</button>
+<button id="btnCrear" class="btn btn-primary">Crear Póliza</button>
 
 <div id="resultado" style="margin-top:15px"></div>
 
@@ -79,7 +79,7 @@
                 contentType: 'application/json; charset=utf-8',
                 data: JSON.stringify(poliza),
                 success: function (res) {
-                    if (res.resultado) $('#resultado').html('<div class="alert alert-success">Pé³liza creada</div>');
+                    if (res.resultado) $('#resultado').html('<div class="alert alert-success">Póliza creada</div>');
                     else $('#resultado').html('<div class="alert alert-danger">Error al crear: ' + (res.mensaje || '') + '</div>');
                 },
                 error: function (xhr) {

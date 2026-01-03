@@ -264,6 +264,7 @@ namespace CapaDatos
                 {
                     return new Factura
                     {
+                        Conceptos = new List<FacturaDetalle>(), // Explicit initialization
                         IdFactura = reader.GetInt32(0),
                         UUID = reader.IsDBNull(1) ? null : reader.GetString(1),
                         Serie = reader.IsDBNull(2) ? null : reader.GetString(2),

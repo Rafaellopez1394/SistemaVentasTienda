@@ -1,7 +1,6 @@
-﻿
 var tabladata;
 $(document).ready(function () {
-    activarMenu("Ventas");
+    // activarMenu("Ventas"); // No necesario - el menú se activa automáticamente
 
 
     ////validamos el formulario

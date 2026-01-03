@@ -1,0 +1,293 @@
+@{
+    ViewBag.Title = "Configuración SMTP";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-envelope-open-text"></i> Configuración de Email (SMTP)
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Configuración necesaria para envío de facturas por email.</strong>
+                        <br>
+                        Para Gmail: Usa una <a href="https://myaccount.google.com/apppasswords" target="_blank">contraseña de aplicación</a> (no tu contraseña normal).
+                    </div>
+
+                    <form id="formConfigSMTP">
+                        <input type="hidden" id="ConfigID" value="0" />
+
+                        <div class="row">
+                            <!-- Servidor SMTP -->
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0"><i class="fas fa-server"></i> Servidor SMTP</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label>Host / Servidor <span class="text-danger">*</span></label>
+                                            <input type="text" class="form-control" id="Host" value="smtp.gmail.com" placeholder="smtp.gmail.com" required>
+                                            <small class="text-muted">Gmail: smtp.gmail.com | Outlook: smtp-mail.outlook.com</small>
+                                        </div>
+
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label>Puerto <span class="text-danger">*</span></label>
+                                                    <input type="number" class="form-control" id="Puerto" value="587" required>
+                                                    <small class="text-muted">TLS: 587 | SSL: 465</small>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="form-group">
+                                                    <label>&nbsp;</label>
+                                                    <div class="custom-control custom-checkbox mt-2">
+                                                        <input type="checkbox" class="custom-control-input" id="UsarSSL" checked>
+                                                        <label class="custom-control-label" for="UsarSSL">Usar SSL/TLS</label>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Credenciales -->
+                            <div class="col-md-6">
+                                <div class="card mb-3">
+                                    <div class="card-header bg-light">
+                                        <h6 class="mb-0"><i class="fas fa-key"></i> Credenciales de Acceso</h6>
+                                    </div>
+                                    <div class="card-body">
+                                        <div class="form-group">
+                                            <label>Usuario / Email <span class="text-danger">*</span></label>
+                                            <input type="email" class="form-control" id="Usuario" placeholder="tu-email@gmail.com" required>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label>
+                                                Contraseña de Aplicación <span class="text-danger">*</span>
+                                                <a href="https://myaccount.google.com/apppasswords" target="_blank" class="btn btn-xs btn-link">
+                                                    <i class="fas fa-external-link-alt"></i> ¿Cómo crear?
+                                                </a>
+                                            </label>
+                                            <div class="input-group">
+                                                <input type="password" class="form-control" id="Contrasena" placeholder="●●●●●●●●●●●●●●●●">
+                                                <div class="input-group-append">
+                                                    <button class="btn btn-outline-secondary" type="button" id="btnMostrarPassword">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <small class="text-muted">Para Gmail: Usa contraseña de aplicación de 16 caracteres</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Remitente -->
+                        <div class="card mb-3">
+                            <div class="card-header bg-light">
+                                <h6 class="mb-0"><i class="fas fa-paper-plane"></i> Información del Remitente</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Email Remitente <span class="text-danger">*</span></label>
+                                            <input type="email" class="form-control" id="EmailRemitente" placeholder="tu-email@gmail.com" required>
+                                            <small class="text-muted">Generalmente el mismo que el Usuario</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="form-group">
+                                            <label>Nombre para Mostrar</label>
+                                            <input type="text" class="form-control" id="NombreRemitente" value="Sistema de Facturación" placeholder="Sistema de Facturación">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Estado -->
+                        <div class="card mb-3">
+                            <div class="card-body">
+                                <div class="custom-control custom-switch">
+                                    <input type="checkbox" class="custom-control-input" id="Activo">
+                                    <label class="custom-control-label" for="Activo">
+                                        <strong>Activar envío de emails</strong>
+                                        <small class="d-block text-muted">Debe estar configurado y probado antes de activar</small>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="text-right">
+                            <button type="button" class="btn btn-warning" id="btnProbarConexion">
+                                <i class="fas fa-vial"></i> Probar Conexión
+                            </button>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Guardar Configuración
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+        $(document).ready(function () {
+            cargarConfiguracion();
+
+            // Mostrar/ocultar contraseña
+            $('#btnMostrarPassword').click(function () {
+                var input = $('#Contrasena');
+                var icon = $(this).find('i');
+                if (input.attr('type') === 'password') {
+                    input.attr('type', 'text');
+                    icon.removeClass('fa-eye').addClass('fa-eye-slash');
+                } else {
+                    input.attr('type', 'password');
+                    icon.removeClass('fa-eye-slash').addClass('fa-eye');
+                }
+            });
+
+            // Sincronizar Usuario con EmailRemitente
+            $('#Usuario').on('blur', function () {
+                if ($('#EmailRemitente').val() === '') {
+                    $('#EmailRemitente').val($(this).val());
+                }
+            });
+
+            // Guardar configuración
+            $('#formConfigSMTP').submit(function (e) {
+                e.preventDefault();
+
+                var config = {
+                    ConfigID: parseInt($('#ConfigID').val()),
+                    Host: $('#Host').val(),
+                    Puerto: parseInt($('#Puerto').val()),
+                    UsarSSL: $('#UsarSSL').is(':checked'),
+                    Usuario: $('#Usuario').val(),
+                    EmailRemitente: $('#EmailRemitente').val(),
+                    NombreRemitente: $('#NombreRemitente').val(),
+                    Activo: $('#Activo').is(':checked')
+                };
+
+                var contrasena = $('#Contrasena').val();
+
+                $.ajax({
+                    url: '/ConfiguracionSMTP/Guardar',
+                    type: 'POST',
+                    data: {
+                        config: config,
+                        contrasena: contrasena
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            toastr.success(response.mensaje);
+                            cargarConfiguracion();
+                        } else {
+                            toastr.error(response.mensaje);
+                        }
+                    },
+                    error: function () {
+                        toastr.error('Error al guardar configuración');
+                    }
+                });
+            });
+
+            // Probar conexión
+            $('#btnProbarConexion').click(function () {
+                var btn = $(this);
+                btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Probando...');
+
+                var config = {
+                    ConfigID: parseInt($('#ConfigID').val()),
+                    Host: $('#Host').val(),
+                    Puerto: parseInt($('#Puerto').val()),
+                    UsarSSL: $('#UsarSSL').is(':checked'),
+                    Usuario: $('#Usuario').val(),
+                    EmailRemitente: $('#EmailRemitente').val(),
+                    NombreRemitente: $('#NombreRemitente').val(),
+                    Activo: false
+                };
+
+                var contrasena = $('#Contrasena').val();
+
+                $.ajax({
+                    url: '/ConfiguracionSMTP/ProbarConexion',
+                    type: 'POST',
+                    data: {
+                        config: config,
+                        contrasena: contrasena
+                    },
+                    success: function (response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: '¡Conexión Exitosa!',
+                                html: response.mensaje + '<br><br><small>Revisa tu bandeja de entrada</small>',
+                                confirmButtonColor: '#28a745'
+                            });
+                        } else {
+                            Swal.fire({
+                                icon: 'error',
+                                title: 'Error de Conexión',
+                                html: response.mensaje,
+                                confirmButtonColor: '#dc3545'
+                            });
+                        }
+                    },
+                    error: function () {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: 'Error al probar conexión',
+                            confirmButtonColor: '#dc3545'
+                        });
+                    },
+                    complete: function () {
+                        btn.prop('disabled', false).html('<i class="fas fa-vial"></i> Probar Conexión');
+                    }
+                });
+            });
+        });
+
+        function cargarConfiguracion() {
+            $.ajax({
+                url: '/ConfiguracionSMTP/ObtenerConfiguracion',
+                type: 'GET',
+                success: function (response) {
+                    if (response.success) {
+                        var config = response.data;
+                        $('#ConfigID').val(config.ConfigID);
+                        $('#Host').val(config.Host);
+                        $('#Puerto').val(config.Puerto);
+                        $('#UsarSSL').prop('checked', config.UsarSSL);
+                        $('#Usuario').val(config.Usuario);
+                        $('#EmailRemitente').val(config.EmailRemitente);
+                        $('#NombreRemitente').val(config.NombreRemitente);
+                        $('#Activo').prop('checked', config.Activo);
+
+                        if (config.TieneContrasena) {
+                            $('#Contrasena').attr('placeholder', '●●●●●●●●●●●●●●●● (Configurada)');
+                        }
+                    }
+                }
+            });
+        }
+    </script>
+}

@@ -7,7 +7,6 @@ using System.Web.Mvc;
 
 namespace VentasWeb.Controllers
 {
-    [Authorize]
     public class NominaController : Controller
     {
         // GET: Nomina
@@ -452,6 +451,155 @@ namespace VentasWeb.Controllers
             {
                 TempData["Error"] = ex.Message;
                 return RedirectToAction("Index");
+            }
+        }
+
+        // GET: Nomina/Procesar
+        public ActionResult Procesar()
+        {
+            // Redirigir a Calcular que es la vista de procesamiento
+            return RedirectToAction("Calcular");
+        }
+
+        // GET: Nomina/Consultar
+        public ActionResult Consultar()
+        {
+            // Redirigir a Index que muestra el listado de nóminas
+            return RedirectToAction("Index");
+        }
+
+        // GET: Nomina/Reportes
+        public ActionResult Reportes()
+        {
+            return View();
+        }
+
+        // GET: API para obtener datos de reportes con filtros
+        [HttpGet]
+        public JsonResult ObtenerDatosReportes(string fechaInicio, string fechaFin, string departamento, string puesto)
+        {
+            try
+            {
+                var nominas = CD_Nomina.Instancia.ObtenerTodas();
+                var reportes = new List<object>();
+
+                foreach (var nomina in nominas)
+                {
+                    var nominaCompleta = CD_Nomina.Instancia.ObtenerPorId(nomina.NominaID);
+                    if (nominaCompleta?.Recibos != null)
+                    {
+                        foreach (var recibo in nominaCompleta.Recibos)
+                        {
+                            // Aplicar filtros (simulado - en producción se filtrarían en la consulta SQL)
+                            reportes.Add(new
+                            {
+                                Folio = nomina.Folio,
+                                Periodo = nomina.Periodo,
+                                Departamento = "Ventas", // Obtener del empleado cuando esté implementado
+                                Puesto = "Vendedor", // Obtener del empleado cuando esté implementado
+                                Empleado = recibo.NombreEmpleado,
+                                Percepciones = recibo.TotalPercepciones,
+                                Deducciones = recibo.TotalDeducciones,
+                                Neto = recibo.NetoPagar
+                            });
+                        }
+                    }
+                }
+
+                return Json(new { success = true, data = reportes }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // GET: API para obtener estadísticas
+        [HttpGet]
+        public JsonResult ObtenerEstadisticas(string fechaInicio, string fechaFin, string departamento, string puesto)
+        {
+            try
+            {
+                var nominas = CD_Nomina.Instancia.ObtenerTodas();
+                decimal totalPercepciones = 0;
+                decimal totalDeducciones = 0;
+                decimal totalNeto = 0;
+                int totalEmpleados = 0;
+
+                foreach (var nomina in nominas)
+                {
+                    var nominaCompleta = CD_Nomina.Instancia.ObtenerPorId(nomina.NominaID);
+                    if (nominaCompleta?.Recibos != null)
+                    {
+                        totalPercepciones += nominaCompleta.TotalPercepciones;
+                        totalDeducciones += nominaCompleta.TotalDeducciones;
+                        totalNeto += nominaCompleta.TotalNeto;
+                        totalEmpleados += nominaCompleta.Recibos.Count;
+                    }
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    totalPercepciones = totalPercepciones,
+                    totalDeducciones = totalDeducciones,
+                    totalNeto = totalNeto,
+                    totalEmpleados = totalEmpleados
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // GET: API para obtener datos de gráfica de evolución
+        [HttpGet]
+        public JsonResult ObtenerEvolucionMensual()
+        {
+            try
+            {
+                var nominas = CD_Nomina.Instancia.ObtenerTodas();
+                var datosEvolucion = nominas
+                    .OrderBy(n => n.FechaPago)
+                    .Select(n => new
+                    {
+                        Periodo = n.Periodo,
+                        Percepciones = n.TotalPercepciones,
+                        Deducciones = n.TotalDeducciones,
+                        Neto = n.TotalNeto
+                    })
+                    .ToList();
+
+                return Json(new { success = true, data = datosEvolucion }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // GET: API para obtener distribución por departamento
+        [HttpGet]
+        public JsonResult ObtenerDistribucionDepartamentos()
+        {
+            try
+            {
+                // Cuando se implementen empleados con departamento, se obtendrá de la BD
+                var distribucion = new List<object>
+                {
+                    new { Departamento = "Ventas", Total = 0 },
+                    new { Departamento = "Administración", Total = 0 },
+                    new { Departamento = "Contabilidad", Total = 0 },
+                    new { Departamento = "Almacén", Total = 0 },
+                    new { Departamento = "Sistemas", Total = 0 }
+                };
+
+                return Json(new { success = true, data = distribucion }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
     }

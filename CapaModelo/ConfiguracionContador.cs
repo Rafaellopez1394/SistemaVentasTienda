@@ -63,7 +63,7 @@ namespace CapaModelo
         public DateTime? FechaModificacion { get; set; }
         
         // Navegación
-        public List<CuentaContable> Subcuentas { get; set; } = new List<CuentaContable>();
+        public List<CuentaContable> Subcuentas { get; set; }
     }
 
     /// <summary>
@@ -150,7 +150,7 @@ namespace CapaModelo
         public int PolizasMes { get; set; }
         
         // Alertas
-        public List<AlertaContador> Alertas { get; set; } = new List<AlertaContador>();
+        public List<AlertaContador> Alertas { get; set; }
     }
 
     /// <summary>
@@ -205,90 +205,58 @@ namespace CapaModelo
     }
 
     /// <summary>
-    /// Certificado Digital (CSD o FIEL)
+    /// Configuración de cuentas contables para nómina
     /// </summary>
-    public class CertificadoDigital
+    public class ConfiguracionCuentasNomina
     {
-        public int CertificadoID { get; set; }
-        public string TipoCertificado { get; set; } // CSD, FIEL
-        public string NombreCertificado { get; set; }
-        
-        // Datos del Certificado
-        public string NoCertificado { get; set; }
-        public string RFC { get; set; }
-        public string RazonSocial { get; set; }
-        public DateTime? FechaInicio { get; set; }
-        public DateTime? FechaVencimiento { get; set; }
-        
-        // Archivos
-        public byte[] ArchivoCER { get; set; }
-        public byte[] ArchivoKEY { get; set; }
-        public string PasswordKEY { get; set; }
-        
-        // Nombres originales
-        public string NombreArchivoCER { get; set; }
-        public string NombreArchivoKEY { get; set; }
-        
-        // Estado
-        public bool Activo { get; set; }
-        public bool EsPredeterminado { get; set; }
-        
-        // Uso
-        public bool UsarParaFacturas { get; set; }
-        public bool UsarParaNomina { get; set; }
-        public bool UsarParaCancelaciones { get; set; }
-        
-        // Auditoría
-        public string UsuarioCreacion { get; set; }
-        public DateTime FechaCreacion { get; set; }
-        public string UsuarioModificacion { get; set; }
-        public DateTime? FechaModificacion { get; set; }
-        
-        // Propiedades calculadas
-        public bool EstaVigente
-        {
-            get
-            {
-                if (!FechaVencimiento.HasValue) return false;
-                return FechaVencimiento.Value > DateTime.Now;
-            }
-        }
-        
-        public int DiasParaVencer
-        {
-            get
-            {
-                if (!FechaVencimiento.HasValue) return 0;
-                return (FechaVencimiento.Value - DateTime.Now).Days;
-            }
-        }
+        public string CuentaSueldosYSalarios { get; set; }
+        public string CuentaPremioPuntualidad { get; set; }
+        public string CuentaPremioAsistencia { get; set; }
+        public string CuentaVacaciones { get; set; }
+        public string CuentaPrimaVacacional { get; set; }
+        public string CuentaAguinaldo { get; set; }
+        public string CuentaPTU { get; set; }
+        public string CuentaISRRetenido { get; set; }
+        public string CuentaIMSSObrero { get; set; }
+        public string CuentaInfonavit { get; set; }
+        public string CuentaInfonavitCreditos { get; set; }
+        public string CuentaFonacot { get; set; }
+        public string CuentaBancosNomina { get; set; }
+        public string CuentaIMSSPatronal { get; set; }
+        public string CuentaSARPatronal { get; set; }
+        public string CuentaInfonavitPatronal { get; set; }
     }
 
     /// <summary>
-    /// Request para subir certificado
+    /// Resumen contable de nómina
     /// </summary>
-    public class SubirCertificadoRequest
+    public class ResumenNominaContable
     {
-        public string TipoCertificado { get; set; } // CSD, FIEL
-        public string NombreCertificado { get; set; }
-        public string PasswordKEY { get; set; }
-        public bool UsarParaFacturas { get; set; }
-        public bool UsarParaNomina { get; set; }
-        public bool UsarParaCancelaciones { get; set; }
-        public bool EsPredeterminado { get; set; }
-    }
-
-    /// <summary>
-    /// Información extraída de un certificado
-    /// </summary>
-    public class InfoCertificado
-    {
-        public string NoCertificado { get; set; }
-        public string RFC { get; set; }
-        public string RazonSocial { get; set; }
-        public DateTime FechaInicio { get; set; }
-        public DateTime FechaVencimiento { get; set; }
-        public bool EsValido { get; set; }
-        public string MensajeError { get; set; }
+        public int NominaID { get; set; }
+        public DateTime FechaPago { get; set; }
+        public int TotalEmpleados { get; set; }
+        public decimal Sueldos { get; set; }
+        public decimal SueldosYSalarios { get { return Sueldos; } set { Sueldos = value; } }
+        public decimal PremioPuntualidad { get; set; }
+        public decimal PremioAsistencia { get; set; }
+        public decimal Vacaciones { get; set; }
+        public decimal PrimaVacacional { get; set; }
+        public decimal Aguinaldo { get; set; }
+        public decimal PTU { get; set; }
+        public decimal ISRRetenido { get; set; }
+        public decimal IMSSObrero { get; set; }
+        public decimal Infonavit { get; set; }
+        public decimal InfonavitCreditos { get; set; }
+        public decimal Fonacot { get; set; }
+        public decimal IMSSPatronal { get; set; }
+        public decimal SARPatronal { get; set; }
+        public decimal InfonavitPatronal { get; set; }
+        public decimal TotalPercepciones { get; set; }
+        public decimal TotalDeducciones { get; set; }
+        public decimal TotalNeto { get; set; }
+        public decimal TotalCuotasPatronales { get; set; }
+        public decimal NetoAPagar { get; set; }
     }
 }
+
+

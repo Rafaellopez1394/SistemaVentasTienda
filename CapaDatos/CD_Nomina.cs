@@ -725,7 +725,7 @@ namespace CapaDatos
             }
         }
 
-        private int ObtenerCuentaContable(string codigoCuenta)
+        private Guid? ObtenerCuentaContable(string codigoCuenta)
         {
             using (SqlConnection conn = new SqlConnection(Conexion.CN))
             {
@@ -737,7 +737,11 @@ namespace CapaDatos
                     var result = cmd.ExecuteScalar();
                     if (result == null)
                         throw new Exception($"Cuenta contable {codigoCuenta} no encontrada");
-                    return Convert.ToInt32(result);
+                    // Convertir int a Guid
+                    int id = Convert.ToInt32(result);
+                    byte[] bytes = new byte[16];
+                    BitConverter.GetBytes(id).CopyTo(bytes, 0);
+                    return new Guid(bytes);
                 }
             }
         }

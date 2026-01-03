@@ -46,12 +46,19 @@ function inicializarTabla() {
             { data: 'Estatus', render: d => d ? '<span class="badge badge-success">Activo</span>' : '<span class="badge badge-secondary">Inactivo</span>' },
             {
                 data: null, orderable: false, render: function (data) {
+                    // Contenedor con pequeña separación para evitar iconos encimados
                     return `
-                        <button class="btn btn-warning btn-sm" onclick="abrirModal(${data.ProductoID})"><i class="fas fa-edit"></i></button>
-                        <button class="btn btn-info btn-sm" onclick="verLotes(${data.ProductoID}, '${data.Nombre.replace(/'/g, "\\'")}')"><i class="fas fa-cubes"></i></button>
-                        <button class="btn btn-${data.Estatus ? 'danger' : 'success'} btn-sm" onclick="CambiarEstatus(${data.ProductoID}, ${data.Estatus})">
-                            <i class="fas ${data.Estatus ? 'fa-ban' : 'fa-check'}"></i>
-                        </button>`;
+                        <div class="d-inline-flex align-items-center" style="gap:6px;">
+                            <button class="btn btn-warning btn-sm" style="padding:4px 8px;" title="Editar" onclick="abrirModal(${data.ProductoID})">
+                                <i class="fas fa-edit"></i>
+                            </button>
+                            <button class="btn btn-info btn-sm" style="padding:4px 8px;" title="Lotes" onclick="verLotes(${data.ProductoID}, '${data.Nombre.replace(/'/g, "\\'")}')">
+                                <i class="fas fa-cubes"></i>
+                            </button>
+                            <button class="btn btn-${data.Estatus ? 'danger' : 'success'} btn-sm" style="padding:4px 8px;" title="${data.Estatus ? 'Desactivar' : 'Activar'}" onclick="CambiarEstatus(${data.ProductoID}, ${data.Estatus})">
+                                <i class="fas ${data.Estatus ? 'fa-ban' : 'fa-check'}"></i>
+                            </button>
+                        </div>`;
                 }
             }
         ],

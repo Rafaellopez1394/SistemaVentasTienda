@@ -45,8 +45,8 @@ namespace CapaModelo
         public decimal PrecioCompra { get; set; }
         public decimal TasaIVA { get; set; }
         public decimal MontoIVA { get; set; }
-        public decimal Subtotal => Cantidad * PrecioVenta;
-        public decimal Total => Subtotal + MontoIVA;
+        public decimal Subtotal { get { return Cantidad * PrecioVenta; } }
+        public decimal Total { get { return Subtotal + MontoIVA; } }
         
         // Datos del producto
         public string Nombre { get; set; }
@@ -70,6 +70,11 @@ namespace CapaModelo
         // Lote activo con stock
         public int LoteID { get; set; }
         public decimal PrecioCompra { get; set; }
+        
+        // Venta por gramaje
+        public bool VentaPorGramaje { get; set; }
+        public decimal? PrecioPorKilo { get; set; }
+        public string UnidadMedidaBase { get; set; }
     }
 
     // Forma de pago
@@ -165,3 +170,5 @@ namespace CapaModelo
         public Guid? PolizaID { get; set; }
     }
 }
+
+

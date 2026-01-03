@@ -1,6 +1,29 @@
 // Scripts/Views/Venta_Consultar.js
 var tabladata;
 
+// Función para convertir fechas .NET /Date(timestamp)/ a formato legible
+function convertirFechaDotNet(fechaDotNet) {
+    if (!fechaDotNet) return 'N/A';
+    
+    // Si ya es una fecha normal, retornarla
+    if (!fechaDotNet.toString().includes('/Date(')) {
+        return fechaDotNet;
+    }
+    
+    // Extraer el timestamp del formato /Date(1234567890)/
+    var timestamp = parseInt(fechaDotNet.replace(/\/Date\((\d+)\)\//, '$1'));
+    var fecha = new Date(timestamp);
+    
+    // Formatear como DD/MM/YYYY HH:mm
+    var dia = ('0' + fecha.getDate()).slice(-2);
+    var mes = ('0' + (fecha.getMonth() + 1)).slice(-2);
+    var anio = fecha.getFullYear();
+    var horas = ('0' + fecha.getHours()).slice(-2);
+    var minutos = ('0' + fecha.getMinutes()).slice(-2);
+    
+    return dia + '/' + mes + '/' + anio + ' ' + horas + ':' + minutos;
+}
+
 $(document).ready(function () {
     // Inicializar tabla
     tabladata = $('#tbVentas').DataTable({
@@ -47,7 +70,12 @@ $(document).ready(function () {
                     return data.substring(0, 8) + '...'; // Mostrar solo primeros 8 caracteres del GUID
                 }
             },
-            { "data": "FechaCreacion" },
+            { 
+                "data": "FechaCreacion",
+                "render": function(data) {
+                    return convertirFechaDotNet(data);
+                }
+            },
             { "data": "DocumentoCliente" },
             { "data": "NombreCliente" },
             {
@@ -84,8 +112,8 @@ $(document).ready(function () {
                 }
             }
         ],
-        "language": {
-            "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
+        language: {
+            "url": "https://cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
         },
         "order": [[3, "desc"]], // Ordenar por fecha descendente
         "pageLength": 25,
@@ -156,9 +184,9 @@ function mostrarModalDetalle(venta) {
     html += '</div>';
     html += '<div class="modal-body">';
     html += '<p><strong>Cliente:</strong> ' + venta.RazonSocial + '</p>';
-    html += '<p><strong>Fecha:</strong> ' + venta.FechaVenta + '</p>';
-    html += '<p><strong>Total:</strong> $' + venta.Total.toFixed(2) + '</p>';
-    html += '<p><strong>Estatus:</strong> ' + venta.Estatus + '</p>';
+    html += '<p><strong>Fecha:</strong> ' + convertirFechaDotNet(venta.FechaVenta) + '</p>';
+    html += '<p><strong>Total:</strong> $' + (venta.Total || 0).toFixed(2) + '</p>';
+    html += '<p><strong>Estatus:</strong> ' + (venta.Estatus || 'N/A') + '</p>';
     
     if (venta.Detalle && venta.Detalle.length > 0) {
         html += '<h6 class="mt-3">Productos:</h6>';
@@ -166,11 +194,15 @@ function mostrarModalDetalle(venta) {
         html += '<thead><tr><th>Producto</th><th>Cantidad</th><th>Precio</th><th>Subtotal</th></tr></thead>';
         html += '<tbody>';
         venta.Detalle.forEach(function(d) {
+            var cantidad = parseFloat(d.Cantidad) || 0;
+            var precio = parseFloat(d.PrecioVenta) || 0; // Backend usa PrecioVenta, no Precio
+            var subtotal = cantidad * precio;
+            
             html += '<tr>';
-            html += '<td>' + d.NombreProducto + '</td>';
-            html += '<td>' + d.Cantidad + '</td>';
-            html += '<td>$' + d.Precio.toFixed(2) + '</td>';
-            html += '<td>$' + (d.Cantidad * d.Precio).toFixed(2) + '</td>';
+            html += '<td>' + (d.Producto || 'Sin nombre') + '</td>'; // Backend usa Producto, no NombreProducto
+            html += '<td>' + cantidad + '</td>';
+            html += '<td>$' + precio.toFixed(2) + '</td>';
+            html += '<td>$' + subtotal.toFixed(2) + '</td>';
             html += '</tr>';
         });
         html += '</tbody></table>';

@@ -1,0 +1,290 @@
+# ============================================================================
+# PASOS DE INSTALACION - VENTA POR GRAMAJE Y DESCOMPOSICION
+# Base de datos: DB_TIENDA
+# ============================================================================
+
+## PASO 1: EJECUTAR SCRIPTS SQL (5 minutos)
+
+Abrir SQL Server Management Studio (SSMS) y conectar a su servidor.
+
+### Script 1 - Instalar tablas y stored procedures:
+```
+Ubicacion: Utilidad\SQL Server\024_VENTA_POR_GRAMAJE_Y_DESCOMPOSICION.sql
+
+Que hace:
+- Agrega campos VentaPorGramaje, PrecioPorKilo, UnidadMedidaBase a tabla Productos
+- Agrega campos Gramos, PrecioCalculado a tabla DetalleVenta
+- Crea tabla DescomposicionProducto
+- Crea tabla DetalleDescomposicion
+- Crea SP_RegistrarDescomposicionProducto
+- Crea SP_CalcularPrecioPorGramaje
+- Crea vista vw_HistorialDescomposiciones
+```
+
+**Como ejecutar:**
+1. Archivo > Abrir > Archivo
+2. Seleccionar: 024_VENTA_POR_GRAMAJE_Y_DESCOMPOSICION.sql
+3. Presionar F5 o clic en Ejecutar
+4. Verificar que aparezca "Script completado exitosamente"
+
+---
+
+### Script 2 - Actualizar busqueda de productos:
+```
+Ubicacion: Utilidad\SQL Server\024b_ACTUALIZAR_SP_BUSCAR_PRODUCTO_POS.sql
+
+Que hace:
+- Actualiza stored procedure BuscarProductoPOS para incluir campos de gramaje
+```
+
+**Como ejecutar:**
+1. Archivo > Abrir > Archivo
+2. Seleccionar: 024b_ACTUALIZAR_SP_BUSCAR_PRODUCTO_POS.sql
+3. Presionar F5 o clic en Ejecutar
+4. Verificar que aparezca "Stored Procedure BuscarProductoPOS actualizado"
+
+---
+
+### Script 3 (OPCIONAL) - Datos de ejemplo:
+```
+Ubicacion: Utilidad\SQL Server\DATOS_EJEMPLO_GRAMAJE_Y_DESCOMPOSICION.sql
+
+Que hace:
+- Crea productos de ejemplo para probar venta por gramaje
+- Crea productos para probar descomposicion
+- Agrega stock inicial
+```
+
+**Como ejecutar:**
+1. Archivo > Abrir > Archivo
+2. Seleccionar: DATOS_EJEMPLO_GRAMAJE_Y_DESCOMPOSICION.sql
+3. Presionar F5 o clic en Ejecutar
+4. Verificar mensajes de productos creados
+
+---
+
+## PASO 2: VERIFICAR INSTALACION SQL (2 minutos)
+
+```
+Ubicacion: Utilidad\SQL Server\VERIFICAR_INSTALACION.sql
+```
+
+**Como ejecutar:**
+1. Archivo > Abrir > Archivo
+2. Seleccionar: VERIFICAR_INSTALACION.sql
+3. Presionar F5
+4. Verificar que aparezca: "INSTALACION COMPLETADA EXITOSAMENTE"
+
+Si hay errores, revise los mensajes y vuelva a ejecutar los scripts que fallaron.
+
+---
+
+## PASO 3: COMPILAR PROYECTO EN VISUAL STUDIO (2 minutos)
+
+1. Abrir Visual Studio
+2. Abrir solucion: VentasWeb.sln
+3. Compilar:
+   - Presionar: **Ctrl + Shift + B**
+   - O Menu: Compilar > Recompilar solucion
+4. Verificar que compile sin errores
+
+**Si hay errores:**
+- Verificar que todos los archivos .cs esten incluidos en el proyecto
+- Si falta Newtonsoft.Json: Instalar via NuGet
+
+---
+
+## PASO 4: CONFIGURAR PRODUCTOS (3 minutos)
+
+### Opcion A - Usar script de configuracion:
+```
+Ubicacion: Utilidad\SQL Server\CONFIGURAR_PRODUCTOS.sql
+```
+
+Ejecutar este script para configurar productos existentes.
+
+### Opcion B - Configurar manualmente:
+```sql
+-- Ejemplo: Configurar producto para venta por gramaje
+UPDATE Productos 
+SET VentaPorGramaje = 1, 
+    PrecioPorKilo = 25.00,
+    UnidadMedidaBase = 'KILO'
+WHERE ProductoID = [ID_DEL_PRODUCTO]
+
+-- O por nombre
+UPDATE Productos 
+SET VentaPorGramaje = 1, 
+    PrecioPorKilo = 25.00,
+    UnidadMedidaBase = 'KILO'
+WHERE Nombre LIKE '%Azucar%'
+```
+
+---
+
+## PASO 5: PROBAR FUNCIONALIDADES (10 minutos)
+
+### 5.1 Probar Venta por Gramaje:
+
+1. Ejecutar el sistema
+2. Ir a: **Punto de Venta (POS)**
+3. Buscar un producto configurado para gramaje (ej: Azucar)
+4. Al hacer clic en el producto:
+   - **Debe aparecer un modal pidiendo gramos**
+5. Ingresar cantidad (ej: 500g)
+6. Verificar que calcule el precio automaticamente
+7. Agregar al carrito
+8. Verificar que aparezca con badge mostrando los gramos
+9. Finalizar venta normalmente
+
+**Que esperar:**
+- Modal con campo para ingresar gramos
+- Botones rapidos (250g, 500g, 1kg, 2kg, 5kg)
+- Precio calculado en tiempo real
+- Badge en el carrito mostrando peso
+
+---
+
+### 5.2 Probar Descomposicion:
+
+**Pre-requisito:** Necesita tener creados:
+- 1 producto origen (grande, ej: Costal 20kg)
+- 2+ productos resultantes (pequeños, ej: Bolsas 2kg y 1kg)
+
+**Pasos:**
+1. Ir a: **Descomposicion de Productos** (o agregarlo al menu)
+2. Seleccionar producto origen con stock
+3. Cantidad a descomponer: 1
+4. Agregar productos resultantes:
+   - Producto: Bolsa 2kg
+   - Cantidad: 5
+   - Peso c/u: 2.0
+   - Clic en Agregar
+   
+   - Producto: Bolsa 1kg
+   - Cantidad: 10
+   - Peso c/u: 1.0
+   - Clic en Agregar
+5. Clic en "Registrar Descomposicion"
+6. Verificar mensaje de exito
+7. Verificar inventario:
+```sql
+-- Ver cambios en inventario
+SELECT p.Nombre, ps.Stock
+FROM ProductosSucursal ps
+INNER JOIN Productos p ON ps.ProductoID = p.ProductoID
+WHERE p.Nombre LIKE '%[nombre_producto]%'
+```
+
+**Que esperar:**
+- Producto origen: -1 unidad
+- Productos resultantes: +cantidades especificadas
+- Registro en historial de descomposiciones
+
+---
+
+## PASO 6: AGREGAR AL MENU (OPCIONAL - 2 minutos)
+
+Si desea agregar el modulo de Descomposicion al menu del sistema:
+
+```sql
+-- 1. Buscar ID del menu de Inventario
+SELECT MenuID, Nombre FROM MENU WHERE Nombre LIKE '%Inventario%'
+
+-- 2. Agregar submenu (ajustar @MenuID)
+DECLARE @MenuID INT = [ID_DEL_MENU_INVENTARIO]
+
+INSERT INTO SUBMENU (MenuID, Nombre, Controlador, Vista, Icono, Activo)
+VALUES (@MenuID, 'Descomposicion', 'DescomposicionProducto', 'Index', 'fas fa-boxes', 1)
+
+-- 3. Dar permisos a Administrador
+INSERT INTO PERMISOS (RolID, SubMenuID, Activo)
+SELECT 
+    (SELECT RolID FROM ROL WHERE Descripcion = 'Administrador'),
+    (SELECT SubMenuID FROM SUBMENU WHERE Nombre = 'Descomposicion'),
+    1
+```
+
+---
+
+## RESUMEN DE TIEMPOS
+
+- Ejecutar scripts SQL: 5 minutos
+- Verificar instalacion: 2 minutos
+- Compilar proyecto: 2 minutos
+- Configurar productos: 3 minutos
+- Probar funcionalidades: 10 minutos
+- (Opcional) Agregar al menu: 2 minutos
+
+**TOTAL: ~22 minutos**
+
+---
+
+## ARCHIVOS IMPORTANTES
+
+### Scripts SQL (en orden de ejecucion):
+1. 024_VENTA_POR_GRAMAJE_Y_DESCOMPOSICION.sql (REQUERIDO)
+2. 024b_ACTUALIZAR_SP_BUSCAR_PRODUCTO_POS.sql (REQUERIDO)
+3. DATOS_EJEMPLO_GRAMAJE_Y_DESCOMPOSICION.sql (Opcional)
+4. VERIFICAR_INSTALACION.sql (Verificacion)
+5. CONFIGURAR_PRODUCTOS.sql (Configuracion)
+
+### Documentacion:
+- README_GRAMAJE_DESCOMPOSICION.md (Indice general)
+- IMPLEMENTACION_RAPIDA.md (Guia detallada)
+- GUIA_VENTA_GRAMAJE_Y_DESCOMPOSICION.md (Manual de usuario)
+- RESUMEN_GRAMAJE_Y_DESCOMPOSICION.md (Resumen tecnico)
+
+---
+
+## SOLUCION DE PROBLEMAS
+
+### Error: "Invalid object name 'DescomposicionProducto'"
+**Solucion:** No se ejecuto el script principal.
+Ejecutar: 024_VENTA_POR_GRAMAJE_Y_DESCOMPOSICION.sql
+
+### Error: "Invalid column name 'VentaPorGramaje'"
+**Solucion:** No se ejecuto el script principal.
+Ejecutar: 024_VENTA_POR_GRAMAJE_Y_DESCOMPOSICION.sql
+
+### Modal de gramaje no aparece
+**Solucion:** 
+1. Verificar que el producto tenga VentaPorGramaje = 1
+2. Verificar que VentaPOS_Gramaje.js este cargando
+3. Verificar consola del navegador (F12) para errores
+
+### No compila el proyecto
+**Solucion:**
+1. Verificar que todos los archivos .cs esten incluidos
+2. Instalar Newtonsoft.Json via NuGet
+3. Limpiar y recompilar solucion
+
+---
+
+## CONTACTO Y SOPORTE
+
+Para consultas o problemas:
+1. Revisar la documentacion en archivos .md
+2. Ejecutar VERIFICAR_INSTALACION.sql
+3. Revisar logs de SQL Server
+4. Revisar consola del navegador (F12)
+
+---
+
+## CHECKLIST DE INSTALACION
+
+- [ ] Ejecutado: 024_VENTA_POR_GRAMAJE_Y_DESCOMPOSICION.sql
+- [ ] Ejecutado: 024b_ACTUALIZAR_SP_BUSCAR_PRODUCTO_POS.sql
+- [ ] Ejecutado: VERIFICAR_INSTALACION.sql (sin errores)
+- [ ] Compilado proyecto sin errores
+- [ ] Configurado al menos 1 producto para gramaje
+- [ ] Probado venta por gramaje en POS
+- [ ] (Opcional) Creado productos para descomposicion
+- [ ] (Opcional) Probado descomposicion
+- [ ] (Opcional) Agregado menu de Descomposicion
+
+---
+
+LISTO PARA USAR
+Base de datos: DB_TIENDA
+Fecha: 29 de Diciembre de 2025

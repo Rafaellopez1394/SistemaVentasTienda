@@ -1,0 +1,9 @@
+CodigoInterno                                      Nombre                                                                                               Descripcion                                                                                         
+-------------------------------------------------- ---------------------------------------------------------------------------------------------------- ----------------------------------------------------------------------------------------------------
+NULL                                               Coka pola                                                                                            botella 1.5 Lts                                                                                     
+NULL                                               Inca Koala                                                                                           botela 3Lts                                                                                         
+NULL                                               Mantequilla toria                                                                                    bote de 500 mg                                                                                      
+NULL                                               Mermelada Fans                                                                                       Bote 310g                                                                                           
+NULL                                               Queso imperfecta                                                                                     Empaque 350g                                                                                        
+
+(5 rows affected)

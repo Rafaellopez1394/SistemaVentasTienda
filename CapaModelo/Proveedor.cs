@@ -1,4 +1,4 @@
-﻿// CapaModelo/Proveedor.cs
+// CapaModelo/Proveedor.cs
 using System;
 
 namespace CapaModelo
@@ -29,3 +29,4 @@ namespace CapaModelo
         public DateTime UltimaAct { get; set; }
     }
 }
+

@@ -1,4 +1,4 @@
-﻿using CapaModelo;
+using CapaModelo;
 using System;
 using System.Collections.Generic;
 using System.Data;
@@ -152,7 +152,9 @@ namespace CapaDatos
 
                 try
                 {
+                    System.Diagnostics.Debug.WriteLine("Abriendo conexión...");
                     oConexion.Open();
+                    System.Diagnostics.Debug.WriteLine("Ejecutando reader...");
                     SqlDataReader dr = cmd.ExecuteReader();
 
                     while (dr.Read())
@@ -172,14 +174,15 @@ namespace CapaDatos
                         });
                     }
                     dr.Close();
-
+                    
+                    System.Diagnostics.Debug.WriteLine($"Total usuarios leídos: {rptListaUsuario.Count}");
                     return rptListaUsuario;
 
                 }
                 catch (Exception ex)
                 {
-                    rptListaUsuario = null;
-                    return rptListaUsuario;
+                    System.Diagnostics.Debug.WriteLine($"ERROR en ObtenerUsuarios: {ex.Message}");
+                    return new List<Usuario>(); // Retornar lista vacía en lugar de null
                 }
             }
         }

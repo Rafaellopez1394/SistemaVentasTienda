@@ -40,7 +40,11 @@ namespace CapaDatos
                             DescripcionIVA = dr["DescripcionIVA"] == DBNull.Value ? "" : dr["DescripcionIVA"].ToString(),
                             StockDisponible = Convert.ToInt32(dr["StockDisponible"]),
                             Estatus = Convert.ToBoolean(dr["Estatus"]),
-                            Categoria = dr["Categoria"].ToString()
+                            Categoria = dr["Categoria"].ToString(),
+                            // Campos para venta por gramaje
+                            VentaPorGramaje = dr["VentaPorGramaje"] != DBNull.Value && Convert.ToBoolean(dr["VentaPorGramaje"]),
+                            PrecioPorKilo = dr["PrecioPorKilo"] == DBNull.Value ? (decimal?)null : Convert.ToDecimal(dr["PrecioPorKilo"]),
+                            UnidadMedidaBase = dr["UnidadMedidaBase"] == DBNull.Value ? null : dr["UnidadMedidaBase"].ToString()
                         });
                     }
                 }
@@ -604,7 +608,7 @@ namespace CapaDatos
         }
 
         // Método auxiliar para obtener CuentaID desde CatalogoContable
-        private int ObtenerCuentaID(string codigoCuenta, SqlConnection cnx, SqlTransaction tran)
+        private Guid? ObtenerCuentaID(string codigoCuenta, SqlConnection cnx, SqlTransaction tran)
         {
             string query = "SELECT CuentaID FROM CatalogoContable WHERE CodigoCuenta = @Codigo AND Activo = 1";
             SqlCommand cmd = new SqlCommand(query, cnx, tran);
@@ -614,7 +618,11 @@ namespace CapaDatos
             if (result == null)
                 throw new Exception($"Cuenta contable {codigoCuenta} no encontrada");
 
-            return Convert.ToInt32(result);
+            // Convertir int a Guid
+            int id = Convert.ToInt32(result);
+            byte[] bytes = new byte[16];
+            BitConverter.GetBytes(id).CopyTo(bytes, 0);
+            return new Guid(bytes);
         }
     }
 }

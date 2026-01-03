@@ -45,6 +45,8 @@
     <Compile Include="Catalogos.cs" />
     <Compile Include="Categoria.cs" />
     <Compile Include="CatalogoContable.cs" />
+    <Compile Include="CertificadoDigital.cs" />
+    <Compile Include="ClasesTemporales.cs" />
     <Compile Include="Cliente.cs" />
     <Compile Include="ClienteSavePayload.cs" />
     <Compile Include="ClienteTipoCredito.cs" />
@@ -53,8 +55,10 @@
     <Compile Include="Configuracion.cs" />
     <Compile Include="ConfiguracionContador.cs" />
     <Compile Include="ConfiguracionEmpresa.cs" />
+    <Compile Include="ConfiguracionSMTP.cs" />
     <Compile Include="CreditoClienteInfo.cs" />
     <Compile Include="CuentaPorPagar.cs" />
+    <Compile Include="DescomposicionProducto.cs" />
     <Compile Include="DetalleCompra.cs" />
     <Compile Include="DetalleVenta.cs" />
     <Compile Include="EmailLog.cs" />

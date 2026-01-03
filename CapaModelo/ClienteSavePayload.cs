@@ -18,3 +18,5 @@ namespace CapaModelo
         public int? plazoDias { get; set; }
     }
 }
+
+

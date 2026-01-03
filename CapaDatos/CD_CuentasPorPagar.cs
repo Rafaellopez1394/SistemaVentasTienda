@@ -347,7 +347,7 @@ namespace CapaDatos
                         SUM(CASE WHEN DATEDIFF(DAY, cpp.FechaVencimiento, GETDATE()) BETWEEN 61 AND 90 THEN cpp.SaldoPendiente ELSE 0 END) AS Dias90,
                         SUM(CASE WHEN DATEDIFF(DAY, cpp.FechaVencimiento, GETDATE()) > 90 THEN cpp.SaldoPendiente ELSE 0 END) AS Mas120,
                         COUNT(CASE WHEN cpp.Estado = 'VENCIDA' THEN 1 END) AS CuentasVencidas
-                    FROM PROVEEDOR p
+                    FROM Proveedores p
                     LEFT JOIN CuentasPorPagar cpp ON p.ProveedorID = cpp.ProveedorID AND cpp.SaldoPendiente > 0
                     GROUP BY p.ProveedorID, p.RazonSocial, p.RFC
                     HAVING SUM(cpp.SaldoPendiente) > 0

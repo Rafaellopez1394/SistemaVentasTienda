@@ -42,12 +42,12 @@ namespace CapaModelo
         
         // Información de vencimiento
         public DateTime? FechaVencimiento { get; set; }      // Para "Tiempo"
-        public bool VencidoAutomatico { get; set; } = false; // Vence cada cierto tiempo
+        public bool VencidoAutomatico { get; set; } // Vence cada cierto tiempo
         
         // Estado actual
         public DateTime FechaAsignacion { get; set; }
         public bool Activo { get; set; }
-        public bool Suspendido { get; set; } = false;
+        public bool Suspendido { get; set; }
         
         // Cálculos en tiempo real
         public decimal SaldoUtilizado { get; set; }
@@ -58,8 +58,8 @@ namespace CapaModelo
         
         // Información de límites
         public decimal? PorcentajeUtilizado { get; set; }
-        public bool ExcedeLimit { get; set; } = false;
-        public int DiasVencidos { get; set; } = 0;
+        public bool ExcedeLimit { get; set; }
+        public int DiasVencidos { get; set; }
         
         public string Usuario { get; set; }
         public DateTime UltimaAct { get; set; }
@@ -88,10 +88,12 @@ namespace CapaModelo
         // Estado crítico
         public decimal SaldoVencido { get; set; }
         public int DiasMaximoVencidos { get; set; }
-        public List<CreditoClienteInfo> TiposAsignados { get; set; } = new List<CreditoClienteInfo>();
+        public List<CreditoClienteInfo> TiposAsignados { get; set; }
         
         // Indicadores
         public bool EnAlarma { get; set; }  // Si está en límite o vencido
         public string Estado { get; set; }  // "NORMAL", "ALERTA", "CRÍTICO", "VENCIDO"
     }
 }
+
+

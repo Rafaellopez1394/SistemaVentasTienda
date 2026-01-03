@@ -1,4 +1,4 @@
-﻿// CapaDatos/CD_Venta.cs
+// CapaDatos/CD_Venta.cs
 using CapaModelo;
 using System;
 using System.Collections.Generic;
@@ -104,6 +104,13 @@ namespace CapaDatos
                     int cuentaVentas = cuentaVentasObj.CuentaID;
                     int cuentaCosto = cuentaCostoObj.CuentaID;
                     int cuentaInventario = cuentaInventarioObj.CuentaID;
+                    
+                    // Convertir a Guid
+                    Guid? cuentaClientesGuid = ConvertirIntAGuid(cuentaClientes);
+                    Guid? cuentaCajaGuid = ConvertirIntAGuid(cuentaCaja);
+                    Guid? cuentaVentasGuid = ConvertirIntAGuid(cuentaVentas);
+                    Guid? cuentaCostoGuid = ConvertirIntAGuid(cuentaCosto);
+                    Guid? cuentaInventarioGuid = ConvertirIntAGuid(cuentaInventario);
 
                     var poliza = new Poliza
                     {
@@ -115,7 +122,7 @@ namespace CapaDatos
                     };
 
                     // 1. DÉBITO: Cliente/Caja (monto total con IVA)
-                    int cuentaDeudora = (venta.Estatus ?? string.Empty).ToUpper() == "CREDITO" ? cuentaClientes : cuentaCaja;
+                    Guid? cuentaDeudora = (venta.Estatus ?? string.Empty).ToUpper() == "CREDITO" ? cuentaClientesGuid : cuentaCajaGuid;
                     poliza.Detalles.Add(new PolizaDetalle 
                     { 
                         CuentaID = cuentaDeudora, 
@@ -128,7 +135,7 @@ namespace CapaDatos
                     if (totalCOGS > 0)
                         poliza.Detalles.Add(new PolizaDetalle 
                         { 
-                            CuentaID = cuentaCosto, 
+                            CuentaID = cuentaCostoGuid, 
                             Debe = totalCOGS, 
                             Haber = 0, 
                             Concepto = "Costo de ventas" 
@@ -137,7 +144,7 @@ namespace CapaDatos
                     // 3. CRÉDITO: Ventas (solo la base)
                     poliza.Detalles.Add(new PolizaDetalle 
                     { 
-                        CuentaID = cuentaVentas, 
+                        CuentaID = cuentaVentasGuid, 
                         Debe = 0, 
                         Haber = totalBase, 
                         Concepto = "Ingresos por ventas (neto)" 
@@ -158,7 +165,7 @@ namespace CapaDatos
                             {
                                 poliza.Detalles.Add(new PolizaDetalle
                                 {
-                                    CuentaID = mapeo.CuentaAcreedora,
+                                    CuentaID = ConvertirIntAGuid(mapeo.CuentaAcreedora),
                                     Debe = 0,
                                     Haber = breakdown.IVA,
                                     Concepto = $"IVA cobrado ({mapeo.Descripcion})"
@@ -171,7 +178,7 @@ namespace CapaDatos
                     if (totalCOGS > 0)
                         poliza.Detalles.Add(new PolizaDetalle 
                         { 
-                            CuentaID = cuentaInventario, 
+                            CuentaID = cuentaInventarioGuid, 
                             Debe = 0, 
                             Haber = totalCOGS, 
                             Concepto = "Reducción inventario" 
@@ -368,7 +375,9 @@ namespace CapaDatos
                                 LoteID = Convert.ToInt32(dr["LoteID"]),
                                 Cantidad = Convert.ToInt32(dr["Cantidad"]),
                                 PrecioVenta = Convert.ToDecimal(dr["PrecioVenta"]),
-                                PrecioCompra = Convert.ToDecimal(dr["PrecioCompra"])
+                                PrecioCompra = Convert.ToDecimal(dr["PrecioCompra"]),
+                                TasaIVAPorcentaje = Convert.ToDecimal(dr["TasaIVA"]),
+                                Exento = Convert.ToBoolean(dr["Exento"])
                             });
                         }
                     }
@@ -400,32 +409,123 @@ namespace CapaDatos
         public bool RegistrarPago(PagoCliente pago, out string mensajeDetallado)
         {
             mensajeDetallado = string.Empty;
-            
-            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            try
             {
-                SqlCommand cmd = new SqlCommand("sp_RegistrarPagoCliente", cnx) { CommandType = CommandType.StoredProcedure };
-                cmd.Parameters.AddWithValue("@VentaID", pago.VentaID);
-                cmd.Parameters.AddWithValue("@ClienteID", pago.ClienteID);
-                cmd.Parameters.AddWithValue("@Monto", pago.Monto);
-                cmd.Parameters.AddWithValue("@FormaPago", pago.FormaPago);
-                cmd.Parameters.AddWithValue("@Referencia", (object)pago.Referencia ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@Comentario", (object)pago.Comentario ?? DBNull.Value);
-                cmd.Parameters.AddWithValue("@GenerarFactura", pago.GenerarFactura);
-                cmd.Parameters.AddWithValue("@GenerarComplemento", pago.GenerarComplemento);
-                cmd.Parameters.AddWithValue("@Usuario", pago.Usuario ?? "system");
-                
-                cnx.Open();
-                
-                // Ejecutar y leer el resultado
-                using (SqlDataReader reader = cmd.ExecuteReader())
+                using (SqlConnection cnx = new SqlConnection(Conexion.CN))
                 {
-                    if (reader.Read())
-                    {
-                        mensajeDetallado = reader["Mensaje"].ToString();
-                    }
+                    // Logic from sp_RegistrarPagoCliente embedded directly to ensure SET options apply
+                    string commandText = @"
+                        SET ARITHABORT ON;
+                        SET CONCAT_NULL_YIELDS_NULL ON;
+                        SET QUOTED_IDENTIFIER ON;
+                        SET ANSI_NULLS ON;
+                        SET ANSI_PADDING ON;
+                        SET ANSI_WARNINGS ON;
+                        SET NUMERIC_ROUNDABORT OFF;
+                        SET NOCOUNT ON;
+                        SET XACT_ABORT ON;
+
+                        BEGIN TRY
+                            BEGIN TRANSACTION;
+                            
+                            DECLARE @SaldoPendiente DECIMAL(18,2);
+                            DECLARE @NuevoSaldo DECIMAL(18,2);
+                            DECLARE @TotalPagado DECIMAL(18,2);
+                            
+                            -- Obtener saldo pendiente actual
+                            SELECT 
+                                @SaldoPendiente = ISNULL(SaldoPendiente, Total), 
+                                @TotalPagado = ISNULL(TotalPagado, 0)
+                            FROM VentasClientes
+                            WHERE VentaID = @VentaID;
+                            
+                            IF @SaldoPendiente IS NULL
+                            BEGIN
+                                ;THROW 51000, 'No se encontro la venta especificada', 1;
+                            END
+                            
+                            -- Validar que el monto no exceda el saldo pendiente
+                            IF @Monto > @SaldoPendiente
+                            BEGIN
+                                ;THROW 51000, 'El monto del pago excede el saldo pendiente', 1;
+                            END
+                            
+                            -- Calcular nuevo saldo
+                            SET @NuevoSaldo = @SaldoPendiente - @Monto;
+                            SET @TotalPagado = @TotalPagado + @Monto;
+                            
+                            -- Registrar el pago
+                            INSERT INTO PagosClientes (
+                                PagoID, VentaID, ClienteID, Monto, FechaPago, FormaPago, 
+                                Referencia, Comentario, GenerarFactura, GenerarComplemento, 
+                                Usuario, FechaRegistro
+                            )
+                            VALUES (
+                                @PagoID, @VentaID, @ClienteID, @Monto, @FechaPago, @FormaPago,
+                                @Referencia, @Comentario, @GenerarFactura, @GenerarComplemento,
+                                @Usuario, GETDATE()
+                            );
+                            
+                            -- Actualizar el saldo de la venta
+                            UPDATE VentasClientes
+                            SET SaldoPendiente = @NuevoSaldo,
+                                TotalPagado = @TotalPagado,
+                                Estatus = CASE WHEN @NuevoSaldo = 0 THEN '2' ELSE '1' END, -- 2 = Pagado, 1 = Pendiente
+                                RequiereFactura = CASE 
+                                    WHEN @GenerarFactura = 1 AND @NuevoSaldo = 0 THEN 1  -- Solo permitir facturar si se pagó todo
+                                    ELSE RequiereFactura 
+                                END
+                            WHERE VentaID = @VentaID;
+                            
+                            COMMIT TRANSACTION;
+                            
+                            -- Mensaje de retorno
+                            SET @Mensaje = 'Pago registrado correctamente';
+                            
+                            IF @GenerarFactura = 1 AND @NuevoSaldo = 0
+                                SET @Mensaje = @Mensaje + '. Venta lista para facturar';
+                            ELSE IF @GenerarFactura = 1 AND @NuevoSaldo > 0
+                                SET @Mensaje = @Mensaje + '. La factura se generará cuando se liquide el saldo';
+                                
+                            IF @GenerarComplemento = 1
+                                SET @Mensaje = @Mensaje + '. Complemento de pago registrado';
+                        END TRY
+                        BEGIN CATCH
+                            IF @@TRANCOUNT > 0
+                                ROLLBACK TRANSACTION;
+                            
+                            DECLARE @ErrorMessage NVARCHAR(4000) = ERROR_MESSAGE();
+                            ;THROW 51000, @ErrorMessage, 1;
+                        END CATCH
+                    ";
+
+                    SqlCommand cmd = new SqlCommand(commandText, cnx);
+                    cmd.CommandType = CommandType.Text;
+
+                    cmd.Parameters.AddWithValue("@PagoID", pago.PagoID == Guid.Empty ? Guid.NewGuid() : pago.PagoID);
+                    cmd.Parameters.AddWithValue("@VentaID", pago.VentaID);
+                    cmd.Parameters.AddWithValue("@ClienteID", pago.ClienteID);
+                    cmd.Parameters.AddWithValue("@Monto", pago.Monto);
+                    cmd.Parameters.AddWithValue("@FechaPago", pago.FechaPago);
+                    cmd.Parameters.AddWithValue("@FormaPago", pago.FormaPago);
+                    cmd.Parameters.AddWithValue("@Referencia", (object)pago.Referencia ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Comentario", (object)pago.Comentario ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Usuario", pago.Usuario);
+                    cmd.Parameters.AddWithValue("@GenerarFactura", pago.GenerarFactura);
+                    cmd.Parameters.AddWithValue("@GenerarComplemento", pago.GenerarComplemento);
+                    cmd.Parameters.Add(new SqlParameter("@Mensaje", SqlDbType.NVarChar, 500) { Direction = ParameterDirection.Output });
+
+                    cnx.Open();
+                    cmd.ExecuteNonQuery();
+
+                    mensajeDetallado = cmd.Parameters["@Mensaje"].Value.ToString();
                 }
-                
                 return true;
+            }
+            catch (Exception ex)
+            {
+                mensajeDetallado = ex.Message;
+                return false;
             }
         }
 
@@ -495,6 +595,17 @@ namespace CapaDatos
             }
 
             return saldo;
+        }
+        
+        /// <summary>
+        /// Convierte un CuentaID int a Guid de forma determinística
+        /// </summary>
+        private Guid? ConvertirIntAGuid(int id)
+        {
+            if (id <= 0) return null;
+            byte[] bytes = new byte[16];
+            BitConverter.GetBytes(id).CopyTo(bytes, 0);
+            return new Guid(bytes);
         }
     }
 }

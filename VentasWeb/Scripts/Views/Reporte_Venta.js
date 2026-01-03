@@ -24,7 +24,7 @@ $(document).ready(function () {
 
 
     $.datepicker.setDefaults($.datepicker.regional['es']);
-    activarMenu("Reportes");
+    // activarMenu("Reportes"); // No necesario - el menú se activa automáticamente
 
     $("#txtFechaInicio").datepicker();
     $("#txtFechaFin").datepicker();
@@ -78,18 +78,29 @@ $('#btnBuscar').on('click', function () {
 
                 $.each(data, function (i, row) {
 
-                    $("<tr>").append(
-                        $("<td>").text(row["FechaVenta"]),
-                        $("<td>").text(row["NumeroDocumento"]),
-                        $("<td>").text(row["TipoDocumento"]),
-                        $("<td>").text(row["NombreSucursal"]),
-                        $("<td>").text(row["RucSucursal"]),
-                        $("<td>").text(row["NombreEmpleado"]),
-                        $("<td>").text(row["CantidadUnidadesVendidas"]),
-                        $("<td>").text(row["CantidadProductos"]),
-                        $("<td>").text(row["TotalVenta"])
+                    // Convertir fecha .NET
+                    var fechaFormateada = row["FechaVenta"];
+                    if (fechaFormateada && fechaFormateada.includes('/Date(')) {
+                        var timestamp = parseInt(fechaFormateada.replace(/\/Date\((\d+)\)\//, '$1'));
+                        var fecha = new Date(timestamp);
+                        var dia = ('0' + fecha.getDate()).slice(-2);
+                        var mes = ('0' + (fecha.getMonth() + 1)).slice(-2);
+                        var anio = fecha.getFullYear();
+                        fechaFormateada = dia + '/' + mes + '/' + anio;
+                    }
 
-                    ).appendTo("#tbReporte tbody");
+                    $('<tr>').append(
+                        $('<td>').text(fechaFormateada),
+                        $('<td>').text(row['NumeroDocumento']),
+                        $('<td>').text(row['TipoDocumento']),
+                        $('<td>').text(row['NombreSucursal']),
+                        $('<td>').text(row['RucSucursal']),
+                        $('<td>').text(row['NombreEmpleado']),
+                        $('<td>').text(row['CantidadUnidadesVendidas']),
+                        $('<td>').text(row['CantidadProductos']),
+                        $('<td>').text(row['TotalVenta'])
+
+                    ).appendTo('#tbReporte tbody');
 
                 })
 

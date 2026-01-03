@@ -66,7 +66,7 @@ function cargarCatalogos() {
             // Usos CFDI
             const $uso = $('#cboUsoCFDI').empty().append('<option value="">Seleccionar...</option>');
             res.usosCFDI.forEach(u => {
-                $uso.append(`<option value="${u.UsoCFDIID}">${u.UsoCFDIID} - ${u.Descripcion}</option>`);
+                $uso.append(`<option value="${u.Value}">${u.Value} - ${u.Text}</option>`);
             });
         } else {
             toastr.error('Error al cargar catálogos');
@@ -542,7 +542,18 @@ function procesarVenta(tipoVenta, totales, clienteID) {
                     }, 500);
                 }
 
-                limpiarFormulario();
+                // Si requiere factura, redirigir a la página de facturación
+                if (requiereFactura) {
+                    setTimeout(() => {
+                        if (confirm('¿Desea generar la factura ahora?\n\nVentaID: ' + res.ventaId)) {
+                            window.location.href = '/Factura/Index?ventaId=' + res.ventaId;
+                        } else {
+                            limpiarFormulario();
+                        }
+                    }, 1000);
+                } else {
+                    limpiarFormulario();
+                }
             } else {
                 toastr.error(res.mensaje || 'Error al registrar la venta');
             }

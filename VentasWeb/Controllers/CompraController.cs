@@ -1,4 +1,4 @@
-﻿// Controllers/CompraController.cs
+// Controllers/CompraController.cs
 using System;
 using System.Web.Mvc;
 using CapaDatos;
@@ -18,8 +18,15 @@ namespace VentasWeb.Controllers
         [HttpGet]
         public JsonResult Obtener()
         {
-            var lista = CD_Compra.Instancia.ObtenerTodas();
-            return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            try
+            {
+                var lista = CD_Compra.Instancia.ObtenerTodas();
+                return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { data = new List<Compra>(), error = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
         }
 
         // Buscar proveedor por RFC o Razón Social

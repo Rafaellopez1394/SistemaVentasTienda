@@ -1,0 +1,22 @@
+﻿body {
+}
+.aceptar{
+    color:green;
+    padding: 10px;
+    cursor:pointer;
+    font-size:18px;
+}
+
+.rechazar{
+    color:red;
+    padding: 10px;
+    cursor:pointer;
+    font-size:18px;
+}
+
+.mapa{
+    color:black;
+    padding: 10px;
+    cursor:pointer;
+    font-size:18px;
+}
