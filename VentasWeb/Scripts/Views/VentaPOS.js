@@ -7,6 +7,16 @@ let clienteActual = null;
 let catalogos = {};
 const CLIENTE_GENERAL_ID = '00000000-0000-0000-0000-000000000000';
 
+// Configuración básica para códigos de barras de balanza (EAN-13)
+// Torrey suele usar EAN-13 con prefijos configurables (común: '27' para peso)
+// Dígitos: 3-7 PLU y 8-12 peso (varía por configuración de la balanza)
+const SCALE_BARCODE = {
+    prefixWeightList: ['27'],      // Ajustar según Torrey (puede ser '26'-'29' según modo)
+    productDigits: [2, 7],         // índice inicial (incl) y final (excl) del código producto (PLU)
+    weightDigits: [7, 12],         // índice inicial (incl) y final (excl) del peso
+    weightMultiplier: 1            // 1 si los dígitos representan gramos directamente
+};
+
 // ============================================================================
 // INICIALIZACIÓN
 // ============================================================================
@@ -26,6 +36,10 @@ function configurarEventos() {
         if (e.which === 13) {
             buscarProducto();
         }
+    });
+    // Click en botón buscar
+    $('#btnBuscarProducto').on('click', function(){
+        window.buscarProducto();
     });
 
     // Enter en búsqueda de cliente
@@ -68,10 +82,10 @@ function cargarCatalogos() {
             res.usosCFDI.forEach(u => {
                 $uso.append(`<option value="${u.Value}">${u.Value} - ${u.Text}</option>`);
             });
-        } else {
-            toastr.error('Error al cargar catálogos');
-        }
-    });
+            } else {
+                toastr.error('Error al cargar catálogos');
+            }
+        });
 }
 
 // ============================================================================
@@ -84,6 +98,50 @@ function buscarProducto() {
         return;
     }
 
+    // Decodificación de código de balanza: intenta extraer producto + gramos o precio
+    if (/^\d{13}$/.test(texto) && SCALE_BARCODE.prefixWeightList.some(p => texto.startsWith(p))) {
+        const parsed = decodeScaleBarcode(texto);
+        if (parsed) {
+            // Buscar por código interno PLU
+            $.get('/VentaPOS/BuscarProducto', { texto: parsed.productCode }, function (res) {
+                if (res.success && res.data.length > 0) {
+                    const producto = res.data.find(p => (p.CodigoInterno || '') === parsed.productCode) || res.data[0];
+                    if (producto.VentaPorGramaje && producto.PrecioPorKilo) {
+                        if (parsed.grams && parsed.grams > 0) {
+                            agregarPorGramajeAutomatico(producto, parsed.grams);
+                            $('#txtBuscarProducto').val('').focus();
+                            $('#resultadosBusqueda').empty();
+                            return;
+                        } else if (parsed.totalPrice && parsed.totalPrice > 0) {
+                            const gramos = Math.round((parsed.totalPrice / (producto.PrecioPorKilo / 1000)));
+                            agregarPorGramajeAutomatico(producto, gramos);
+                            $('#txtBuscarProducto').val('').focus();
+                            $('#resultadosBusqueda').empty();
+                            return;
+                        } else {
+                            mostrarModalGramaje(producto);
+                            $('#txtBuscarProducto').val('').focus();
+                            $('#resultadosBusqueda').empty();
+                            return;
+                        }
+                    }
+                }
+                continueStandardSearch(texto);
+            });
+            return; // evitar doble request
+        }
+    }
+
+    continueStandardSearch(texto);
+}
+
+// Exponer función para uso desde atributos onclick en la vista
+window.buscarProducto = buscarProducto;
+window.finalizarVenta = finalizarVenta;
+window.cancelarVenta = cancelarVenta;
+window.limpiarCarrito = limpiarCarrito;
+
+function continueStandardSearch(texto) {
     $.get('/VentaPOS/BuscarProducto', { texto: texto }, function (res) {
         if (res.success && res.data.length > 0) {
             let html = '';
@@ -110,6 +168,58 @@ function buscarProducto() {
         }
     });
 }
+
+function decodeScaleBarcode(code) {
+    try {
+        const pStart = SCALE_BARCODE.productDigits[0];
+        const pEnd = SCALE_BARCODE.productDigits[1];
+        const wStart = SCALE_BARCODE.weightDigits[0];
+        const wEnd = SCALE_BARCODE.weightDigits[1];
+        const productCode = code.substring(pStart, pEnd);
+        const digitsRaw = code.substring(wStart, wEnd);
+        if (SCALE_BARCODE.mode === 'weight' || SCALE_BARCODE.mode === 'auto') {
+            const grams = parseInt(digitsRaw, 10) * SCALE_BARCODE.weightMultiplier;
+            if (productCode && !isNaN(grams) && grams > 0) return { productCode, grams };
+        }
+        if (SCALE_BARCODE.mode === 'price' || SCALE_BARCODE.mode === 'auto') {
+            const cents = parseInt(digitsRaw, 10);
+            const totalPrice = (isNaN(cents) ? NaN : (cents * SCALE_BARCODE.priceMultiplier));
+            if (productCode && !isNaN(totalPrice) && totalPrice > 0) return { productCode, totalPrice };
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function agregarPorGramajeAutomatico(producto, gramos) {
+    if (!gramos || gramos <= 0) {
+        mostrarToast('Cantidad de gramos inválida', 'warning');
+        return;
+    }
+    const kilogramos = gramos / 1000;
+    const precioCalculado = (producto.PrecioPorKilo / 1000) * gramos;
+    carrito.push({
+        ProductoID: producto.ProductoID,
+        LoteID: producto.LoteID,
+        Nombre: producto.Nombre,
+        CodigoInterno: producto.CodigoInterno,
+        Cantidad: 1,
+        PrecioVenta: precioCalculado,
+        PrecioCompra: producto.PrecioCompra,
+        TasaIVA: producto.TasaIVA || 0,
+        StockDisponible: producto.StockDisponible,
+        VentaPorGramaje: true,
+        Gramos: gramos,
+        Kilogramos: kilogramos,
+        PrecioPorKilo: producto.PrecioPorKilo,
+        PrecioCalculado: precioCalculado
+    });
+    actualizarCarrito();
+    toastr.success(`${gramos}g de ${producto.Nombre} agregado al carrito`);
+}
+
+// (Nota) `decodeWeightBarcode` se reemplazó por `decodeScaleBarcode` arriba
 
 // ============================================================================
 // CARRITO DE COMPRA
@@ -501,7 +611,11 @@ function procesarVenta(tipoVenta, totales, clienteID) {
         PrecioVenta: item.PrecioVenta,
         PrecioCompra: item.PrecioCompra,
         TasaIVA: item.TasaIVA,
-        MontoIVA: (item.Cantidad * item.PrecioVenta) * (item.TasaIVA / 100)
+        MontoIVA: (item.Cantidad * item.PrecioVenta) * (item.TasaIVA / 100),
+        // Campos de gramaje si existen
+        Gramos: typeof item.Gramos !== 'undefined' ? item.Gramos : undefined,
+        Kilogramos: typeof item.Kilogramos !== 'undefined' ? item.Kilogramos : undefined,
+        PrecioPorKilo: typeof item.PrecioPorKilo !== 'undefined' ? item.PrecioPorKilo : undefined
     }));
 
     const payload = {

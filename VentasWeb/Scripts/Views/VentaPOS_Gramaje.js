@@ -44,6 +44,12 @@ function mostrarModalGramaje(producto) {
                             <small class="form-text text-muted">
                                 Equivalente: <strong id="lblEquivalenteKg">0.500</strong> kg
                             </small>
+                            <div class="mt-2">
+                                <button type="button" id="btnConectarBascula" class="btn btn-sm btn-outline-secondary">
+                                    <i class="fas fa-plug"></i> Conectar báscula Torrey
+                                </button>
+                                <small id="lblBasculaEstado" class="text-muted ml-2">No conectada</small>
+                            </div>
                         </div>
 
                         <div class="alert alert-info mt-3">
@@ -88,12 +94,91 @@ function mostrarModalGramaje(producto) {
     
     // Configurar eventos
     $('#txtGramos').on('input', calcularPrecioPorGramaje);
+    $('#btnConectarBascula').on('click', conectarBasculaTorrey);
     
     // Calcular precio inicial
     calcularPrecioPorGramaje();
     
     // Focus en el input
     setTimeout(() => $('#txtGramos').focus().select(), 500);
+}
+
+// ===============================
+// Integración Web Serial (Torrey)
+// ===============================
+let basculaPort = null;
+let basculaReader = null;
+
+async function conectarBasculaTorrey() {
+    if (!('serial' in navigator)) {
+        toastr.error('Este navegador no soporta Web Serial');
+        return;
+    }
+    try {
+        if (!basculaPort) {
+            basculaPort = await navigator.serial.requestPort();
+            await basculaPort.open({ baudRate: 9600, dataBits: 8, stopBits: 1, parity: 'none' });
+            $('#lblBasculaEstado').text('Conectada');
+            leerPesoBascula();
+        } else {
+            $('#lblBasculaEstado').text('Conectada');
+            leerPesoBascula();
+        }
+    } catch (e) {
+        console.error('Error conectando a la báscula:', e);
+        toastr.error('No se pudo conectar a la báscula');
+        $('#lblBasculaEstado').text('No conectada');
+    }
+}
+
+async function leerPesoBascula() {
+    if (!basculaPort) return;
+    const textDecoder = new TextDecoderStream();
+    const readableStreamClosed = basculaPort.readable.pipeTo(textDecoder.writable);
+    const reader = textDecoder.readable.getReader();
+    basculaReader = reader;
+    try {
+        while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            if (value) {
+                const gramos = parsePesoTorrey(value);
+                if (gramos && gramos > 0) {
+                    $('#txtGramos').val(Math.round(gramos));
+                    $('#txtGramos').trigger('input');
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error leyendo peso:', e);
+    } finally {
+        reader.releaseLock();
+    }
+}
+
+// Intenta parsear líneas comunes de Torrey: "   0.345 kg" o "000345 g" o "W:000.345kg"
+function parsePesoTorrey(linea) {
+    try {
+        const s = (linea || '').toString().trim().toLowerCase();
+        // Buscar número y unidad
+        const match = s.match(/([0-9]+(?:\.[0-9]+)?)\s*(kg|g)/);
+        if (match) {
+            const valor = parseFloat(match[1]);
+            const unidad = match[2];
+            if (unidad === 'kg') return Math.round(valor * 1000);
+            if (unidad === 'g') return Math.round(valor);
+        }
+        // Alterno: extraer dígitos y asumir kg con 3 decimales
+        const digits = s.replace(/[^0-9]/g, '');
+        if (digits.length >= 5) {
+            // Ej: 000345 => 345g
+            const num = parseInt(digits, 10);
+            if (!isNaN(num)) return num; // Asumir gramos
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
 }
 
 // Establecer gramos rápidos

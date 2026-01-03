@@ -103,8 +103,33 @@ namespace VentasWeb.Controllers
                 // Contar productos
                 var productos = CD_Producto.Instancia.ObtenerTodos();
                 int productosStock = productos?.Count ?? 0;
+
+                // Detectar productos con stock bajo o sin stock (sumando por sucursales)
                 int productosStockBajo = 0;
-                System.Diagnostics.Debug.WriteLine($"Productos en stock: {productosStock}");
+                try
+                {
+                    using (var cnxStock = new System.Data.SqlClient.SqlConnection(Conexion.CN))
+                    {
+                        cnxStock.Open();
+                        var cmdLow = new System.Data.SqlClient.SqlCommand(@"
+                            SELECT COUNT(*)
+                            FROM (
+                                SELECT p.ProductoID, SUM(ISNULL(ps.Stock,0)) AS StockTotal
+                                FROM Productos p
+                                LEFT JOIN ProductosSucursal ps ON p.ProductoID = ps.ProductoID
+                                WHERE p.Estatus = 1
+                                GROUP BY p.ProductoID
+                            ) t
+                            WHERE t.StockTotal <= 0", cnxStock);
+                        productosStockBajo = Convert.ToInt32(cmdLow.ExecuteScalar());
+                    }
+                    System.Diagnostics.Debug.WriteLine($"Productos con stock bajo/sin stock: {productosStockBajo}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Error calculando stock bajo: {ex.Message}");
+                }
+                System.Diagnostics.Debug.WriteLine($"Productos en catálogo: {productosStock}");
 
                 // Top 5 productos más vendidos (últimos 7 días)
                 var topProductos = new List<object>();

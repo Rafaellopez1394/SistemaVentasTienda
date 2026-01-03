@@ -10,6 +10,10 @@
     </ol>
 </nav>
 
+@{
+    var nominaEnabled = string.Equals(System.Configuration.ConfigurationManager.AppSettings["NominaEnabled"], "true", StringComparison.OrdinalIgnoreCase);
+}
+
 <div class="card shadow">
     <div class="card-header bg-success text-white">
         <h4 class="mb-0"><i class="fas fa-book"></i> Consultar Pólizas Contables</h4>
@@ -30,7 +34,10 @@
                     <option value="">Todos</option>
                     <option value="VENTA">VENTA</option>
                     <option value="COMPRA">COMPRA</option>
-                    <option value="NOMINA">NÓMINA</option>
+                    @if (nominaEnabled)
+                    {
+                        <option value="NOMINA">NÓMINA</option>
+                    }
                     <option value="AJUSTE_INVENTARIO">AJUSTE INVENTARIO</option>
                     <option value="DIARIO">DIARIO</option>
                 </select>

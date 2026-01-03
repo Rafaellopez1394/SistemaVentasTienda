@@ -51,6 +51,11 @@ namespace CapaModelo
         // Datos del producto
         public string Nombre { get; set; }
         public string CodigoInterno { get; set; }
+
+        // Venta por gramaje (opcional)
+        public decimal Gramos { get; set; }           // gramos vendidos
+        public decimal Kilogramos { get; set; }        // kilogramos vendidos
+        public decimal PrecioPorKilo { get; set; }     // precio por kilo usado en la venta
     }
 
     // Producto para búsqueda en POS

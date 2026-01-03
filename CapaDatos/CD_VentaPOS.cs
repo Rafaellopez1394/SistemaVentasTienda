@@ -27,8 +27,25 @@ namespace CapaDatos
                 cnx.Open();
                 using (SqlDataReader dr = cmd.ExecuteReader())
                 {
+                    // Resolver índices opcionales para columnas de gramaje (si DB aún no las tiene)
+                    int idxVentaPorGramaje = -1, idxPrecioPorKilo = -1, idxUnidadMedidaBase = -1;
+                    try { idxVentaPorGramaje = dr.GetOrdinal("VentaPorGramaje"); } catch (IndexOutOfRangeException) { idxVentaPorGramaje = -1; }
+                    try { idxPrecioPorKilo = dr.GetOrdinal("PrecioPorKilo"); } catch (IndexOutOfRangeException) { idxPrecioPorKilo = -1; }
+                    try { idxUnidadMedidaBase = dr.GetOrdinal("UnidadMedidaBase"); } catch (IndexOutOfRangeException) { idxUnidadMedidaBase = -1; }
+
                     while (dr.Read())
                     {
+                        bool ventaPorGramaje = false;
+                        decimal? precioPorKilo = null;
+                        string unidadMedidaBase = null;
+
+                        if (idxVentaPorGramaje >= 0)
+                            ventaPorGramaje = !dr.IsDBNull(idxVentaPorGramaje) && Convert.ToBoolean(dr.GetValue(idxVentaPorGramaje));
+                        if (idxPrecioPorKilo >= 0)
+                            precioPorKilo = dr.IsDBNull(idxPrecioPorKilo) ? (decimal?)null : Convert.ToDecimal(dr.GetValue(idxPrecioPorKilo));
+                        if (idxUnidadMedidaBase >= 0)
+                            unidadMedidaBase = dr.IsDBNull(idxUnidadMedidaBase) ? null : dr.GetString(idxUnidadMedidaBase);
+
                         lista.Add(new ProductoPOS
                         {
                             ProductoID = Convert.ToInt32(dr["ProductoID"]),
@@ -41,10 +58,10 @@ namespace CapaDatos
                             StockDisponible = Convert.ToInt32(dr["StockDisponible"]),
                             Estatus = Convert.ToBoolean(dr["Estatus"]),
                             Categoria = dr["Categoria"].ToString(),
-                            // Campos para venta por gramaje
-                            VentaPorGramaje = dr["VentaPorGramaje"] != DBNull.Value && Convert.ToBoolean(dr["VentaPorGramaje"]),
-                            PrecioPorKilo = dr["PrecioPorKilo"] == DBNull.Value ? (decimal?)null : Convert.ToDecimal(dr["PrecioPorKilo"]),
-                            UnidadMedidaBase = dr["UnidadMedidaBase"] == DBNull.Value ? null : dr["UnidadMedidaBase"].ToString()
+                            // Campos para venta por gramaje (opcionales)
+                            VentaPorGramaje = ventaPorGramaje,
+                            PrecioPorKilo = precioPorKilo,
+                            UnidadMedidaBase = unidadMedidaBase
                         });
                     }
                 }
@@ -174,6 +191,17 @@ namespace CapaDatos
                         cmdDetalle.Parameters.AddWithValue("@PrecioCompra", detalle.PrecioCompra);
                         cmdDetalle.Parameters.AddWithValue("@TasaIVA", detalle.TasaIVA);
                         cmdDetalle.Parameters.AddWithValue("@MontoIVA", detalle.MontoIVA);
+
+                        // Enviar parámetros de gramaje si aplica
+                        if (detalle is VentaDetallePOS dv)
+                        {
+                            if (dv.Gramos > 0)
+                                cmdDetalle.Parameters.AddWithValue("@Gramos", dv.Gramos);
+                            if (dv.Kilogramos > 0)
+                                cmdDetalle.Parameters.AddWithValue("@Kilogramos", dv.Kilogramos);
+                            if (dv.PrecioPorKilo > 0)
+                                cmdDetalle.Parameters.AddWithValue("@PrecioPorKilo", dv.PrecioPorKilo);
+                        }
 
                         cmdDetalle.ExecuteNonQuery();
                     }

@@ -524,12 +524,17 @@
                 </ul>
             </li>
 
-            <li class="sidebar-nav-item">
-                <a href="@Url.Action("Consultar", "Poliza")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Poliza" ? "active" : "")">
-                    <i class="fas fa-book"></i>
-                    <span>Pólizas</span>
-                </a>
-            </li>
+            var polizaEnabled = System.Configuration.ConfigurationManager.AppSettings["PolizaEnabled"];
+            bool mostrarPoliza = !string.Equals(polizaEnabled, "false", StringComparison.OrdinalIgnoreCase);
+            if (mostrarPoliza)
+            {
+                <li class="sidebar-nav-item">
+                    <a href="@Url.Action("Consultar", "Poliza")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Poliza" ? "active" : "")">
+                        <i class="fas fa-book"></i>
+                        <span>Pólizas</span>
+                    </a>
+                </li>
+            }
             }
 
             @* MENÚ REPORTES - Visible para TODOS *@
@@ -540,42 +545,44 @@
                 </a>
             </li>
 
-            @* MENÚ NÓMINA - Solo ADMIN y CONTADOR *@
+            @* MENÚ NÓMINA temporalmente oculto *@
+            @* 
             @if (PermisoHelper.TienePermiso("ADMINISTRADOR", "CONTADOR"))
             {
-            <li class="sidebar-nav-item">
-                <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#nominaDropdown">
-                    <i class="fas fa-money-check-alt"></i>
-                    <span>Nómina</span>
-                </a>
-                <ul class="sidebar-dropdown collapse" id="nominaDropdown">
-                    <li class="sidebar-nav-item sidebar-dropdown-item">
-                        <a href="@Url.Action("Index","Empleado")" class="sidebar-nav-link">
-                            <i class="fas fa-users"></i>
-                            <span>Empleados</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item sidebar-dropdown-item">
-                        <a href="@Url.Action("Procesar","Nomina")" class="sidebar-nav-link">
-                            <i class="fas fa-calculator"></i>
-                            <span>Procesar Nómina</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item sidebar-dropdown-item">
-                        <a href="@Url.Action("Consultar","Nomina")" class="sidebar-nav-link">
-                            <i class="fas fa-list-alt"></i>
-                            <span>Consultar Recibos</span>
-                        </a>
-                    </li>
-                    <li class="sidebar-nav-item sidebar-dropdown-item">
-                        <a href="@Url.Action("Reportes","Nomina")" class="sidebar-nav-link">
-                            <i class="fas fa-file-alt"></i>
-                            <span>Reportes</span>
-                        </a>
-                    </li>
-                </ul>
-            </li>
+                <li class="sidebar-nav-item">
+                    <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#nominaDropdown">
+                        <i class="fas fa-money-check-alt"></i>
+                        <span>Nómina</span>
+                    </a>
+                    <ul class="sidebar-dropdown collapse" id="nominaDropdown">
+                        <li class="sidebar-nav-item sidebar-dropdown-item">
+                            <a href="@Url.Action("Index","Empleado")" class="sidebar-nav-link">
+                                <i class="fas fa-users"></i>
+                                <span>Empleados</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-nav-item sidebar-dropdown-item">
+                            <a href="@Url.Action("Procesar","Nomina")" class="sidebar-nav-link">
+                                <i class="fas fa-calculator"></i>
+                                <span>Procesar Nómina</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-nav-item sidebar-dropdown-item">
+                            <a href="@Url.Action("Consultar","Nomina")" class="sidebar-nav-link">
+                                <i class="fas fa-list-alt"></i>
+                                <span>Consultar Recibos</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-nav-item sidebar-dropdown-item">
+                            <a href="@Url.Action("Reportes","Nomina")" class="sidebar-nav-link">
+                                <i class="fas fa-file-alt"></i>
+                                <span>Reportes</span>
+                            </a>
+                        </li>
+                    </ul>
+                </li>
             }
+            *@
 
             @* MENÚ ADMINISTRACIÓN - Solo ADMIN *@
             @if (PermisoHelper.EsAdministrador())

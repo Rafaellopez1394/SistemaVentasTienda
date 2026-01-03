@@ -3,12 +3,26 @@ using CapaModelo;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Configuration;
 using System.Web.Mvc;
 
 namespace VentasWeb.Controllers
 {
     public class NominaController : Controller
     {
+        protected override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            // Bloqueo temporal de la funcionalidad de nómina usando appSettings
+            var enabled = ConfigurationManager.AppSettings["NominaEnabled"];
+            bool nominaEnabled = string.Equals(enabled, "true", StringComparison.OrdinalIgnoreCase);
+            if (!nominaEnabled)
+            {
+                filterContext.Result = new HttpNotFoundResult();
+                return;
+            }
+            base.OnActionExecuting(filterContext);
+        }
+
         // GET: Nomina
         public ActionResult Index()
         {

@@ -1,6 +1,7 @@
 using System;
 using System.Linq;
 using System.Web.Mvc;
+using System.Configuration;
 using CapaDatos;
 using CapaModelo;
 
@@ -9,6 +10,17 @@ namespace VentasWeb.Controllers
     [CustomAuthorize]
     public class PolizaController : Controller
     {
+        protected override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            var enabled = ConfigurationManager.AppSettings["PolizaEnabled"];
+            if (string.Equals(enabled, "false", StringComparison.OrdinalIgnoreCase))
+            {
+                filterContext.Result = new HttpNotFoundResult();
+                return;
+            }
+            base.OnActionExecuting(filterContext);
+        }
+
         // GET: Poliza
         public ActionResult Index()
         {

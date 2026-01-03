@@ -84,10 +84,13 @@
                     <div class="input-group input-group-lg">
                         <span class="input-group-text"><i class="fas fa-barcode"></i></span>
                         <input type="text" class="form-control" id="txtBuscarProducto" placeholder="Buscar por nombre o Código..." autofocus />
-                        <button class="btn btn-primary" onclick="buscarProducto()">
+                        <button id="btnBuscarProducto" class="btn btn-primary" onclick="window.buscarProducto()">
                             <i class="fas fa-search"></i> Buscar
                         </button>
                     </div>
+                    <small class="text-muted d-block mt-1">
+                        Consejo: escanee el código EAN-13 de la balanza Torrey para agregar automáticamente productos por gramaje.
+                    </small>
                     <div id="resultadosBusqueda" class="mt-2" style="max-height: 200px; overflow-y: auto;"></div>
                 </div>
             </div>

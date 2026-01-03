@@ -27,16 +27,21 @@ function convertirFechaDotNet(fechaDotNet) {
 $(document).ready(function () {
     // Inicializar tabla
     tabladata = $('#tbVentas').DataTable({
+        processing: true,
         "ajax": {
             "url": "/Venta/ObtenerTodasVentas",
             "type": "GET",
             "datatype": "json",
+            "dataSrc": "data",
             "data": function(d) {
                 d.fechaInicio = $("#txtFechaInicio").val();
                 d.fechaFin = $("#txtFechaFin").val();
                 d.codigoVenta = $("#txtCodigoVenta").val();
                 d.documentoCliente = $("#txtDocumentoCliente").val();
                 d.nombreCliente = $("#txtNombreCliente").val();
+            },
+            "error": function(xhr, error, thrown) {
+                toastr.error('Error cargando ventas: ' + (xhr.responseJSON?.error || xhr.statusText || 'Desconocido'));
             }
         },
         "columns": [
@@ -92,9 +97,15 @@ $(document).ready(function () {
                 }
             },
             {
+                // Mostrar estado de pago en lugar de solo el monto
                 "data": "TotalPagado",
-                "render": function(data) {
-                    return '$' + parseFloat(data).toFixed(2).replace(/\d(?=(\d{3})+\.)/g, '$&,');
+                "render": function(data, type, row) {
+                    var total = parseFloat(row.TotalVenta) || 0;
+                    var pagado = parseFloat(row.TotalPagado) || 0;
+                    var saldo = parseFloat(row.SaldoPendiente) || 0;
+                    var estado = (total > 0 && saldo <= 0) ? 'Pagada' : (pagado > 0 ? 'Parcial' : 'Pendiente');
+                    var clase = estado === 'Pagada' ? 'badge-success' : (estado === 'Parcial' ? 'badge-warning' : 'badge-secondary');
+                    return '<span class="badge ' + clase + '" title="Pagado: $' + pagado.toFixed(2) + '">' + estado + '</span>';
                 }
             },
             {

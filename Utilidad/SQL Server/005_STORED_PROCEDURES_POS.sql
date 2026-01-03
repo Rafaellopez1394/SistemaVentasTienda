@@ -27,7 +27,11 @@ BEGIN
         ti.Descripcion AS DescripcionIVA,
         ISNULL(SUM(l.CantidadDisponible), 0) AS StockDisponible,
         p.Estatus,
-        c.Nombre AS Categoria
+        c.Nombre AS Categoria,
+        -- Nuevos campos para gramaje
+        p.VentaPorGramaje,
+        p.PrecioPorKilo,
+        p.UnidadMedidaBase
     FROM Productos p
     INNER JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
     LEFT JOIN CatTasaIVA ti ON p.TasaIVAID = ti.TasaIVAID
@@ -35,7 +39,8 @@ BEGIN
     WHERE p.Estatus = 1
       AND (p.Nombre LIKE '%' + @Texto + '%' 
            OR p.CodigoInterno LIKE '%' + @Texto + '%')
-    GROUP BY p.ProductoID, p.Nombre, p.CodigoInterno, p.TasaIVAID, ti.Porcentaje, ti.Descripcion, p.Estatus, c.Nombre, l.PrecioVenta
+    GROUP BY p.ProductoID, p.Nombre, p.CodigoInterno, p.TasaIVAID, ti.Porcentaje, ti.Descripcion, p.Estatus, c.Nombre, l.PrecioVenta,
+             p.VentaPorGramaje, p.PrecioPorKilo, p.UnidadMedidaBase
     ORDER BY p.Nombre
 END
 GO
@@ -263,7 +268,11 @@ CREATE PROCEDURE RegistrarDetalleVentaPOS
     @PrecioVenta DECIMAL(18,2),
     @PrecioCompra DECIMAL(18,2),
     @TasaIVA DECIMAL(5,2),
-    @MontoIVA DECIMAL(18,2)
+    @MontoIVA DECIMAL(18,2),
+    -- Opcionales para gramaje
+    @Gramos INT = NULL,
+    @Kilogramos DECIMAL(10,3) = NULL,
+    @PrecioPorKilo DECIMAL(18,2) = NULL
 )
 AS
 BEGIN
@@ -273,18 +282,30 @@ BEGIN
         INSERT INTO VentasDetalleClientes (
             VentaID, ProductoID, LoteID, Cantidad, 
             PrecioVenta, PrecioCompra,
-            TasaIVA, MontoIVA
+            TasaIVA, MontoIVA,
+            Gramos, Kilogramos, PrecioPorKilo
         )
         VALUES (
             @VentaID, @ProductoID, @LoteID, @Cantidad,
             @PrecioVenta, @PrecioCompra,
-            @TasaIVA, @MontoIVA
+            @TasaIVA, @MontoIVA,
+            @Gramos, @Kilogramos, @PrecioPorKilo
         );
 
-        -- Descontar del lote
-        UPDATE LotesProducto
-        SET CantidadDisponible = CantidadDisponible - @Cantidad
-        WHERE LoteID = @LoteID;
+        -- Descontar del lote:
+        -- Si hay peso disponible configurado y se especificó gramaje, decrementar por peso (KG).
+        IF @Kilogramos IS NOT NULL
+        BEGIN
+            UPDATE LotesProducto
+            SET PesoDisponible = ISNULL(PesoDisponible, 0) - @Kilogramos
+            WHERE LoteID = @LoteID;
+        END
+        ELSE
+        BEGIN
+            UPDATE LotesProducto
+            SET CantidadDisponible = CantidadDisponible - @Cantidad
+            WHERE LoteID = @LoteID;
+        END
 
     END TRY
     BEGIN CATCH
