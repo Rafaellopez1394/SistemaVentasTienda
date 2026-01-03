@@ -229,7 +229,7 @@ namespace CapaDatos
 
         private int ObtenerCuentaContable(SqlConnection cnx, SqlTransaction transaction, string nombre, string tipo)
         {
-            var query = "SELECT TOP 1 CuentaID FROM CatalogoContable WHERE Nombre LIKE @Nombre AND Tipo = @Tipo AND Activo = 1";
+            var query = "SELECT TOP 1 CuentaID FROM CatalogoContable WHERE NombreCuenta LIKE @Nombre AND TipoCuenta = @Tipo AND Activo = 1";
             SqlCommand cmd = new SqlCommand(query, cnx, transaction);
             cmd.Parameters.AddWithValue("@Nombre", $"%{nombre}%");
             cmd.Parameters.AddWithValue("@Tipo", tipo);

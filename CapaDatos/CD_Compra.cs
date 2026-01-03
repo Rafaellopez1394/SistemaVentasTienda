@@ -49,6 +49,27 @@ namespace CapaDatos
                     
                     int compraId = Convert.ToInt32(outputCompraId.Value);
 
+                    // ===== ACTUALIZAR INVENTARIO POR LOTES =====
+                    // Por cada detalle de la compra, crear un nuevo lote con la cantidad ingresada
+                    foreach (var d in compra.Detalle)
+                    {
+                        var cmdLote = new SqlCommand(@"
+                            INSERT INTO LotesProducto (
+                                ProductoID, FechaEntrada, CantidadTotal, CantidadDisponible,
+                                PrecioCompra, PrecioVenta, Usuario, UltimaAct, Estatus
+                            ) VALUES (
+                                @ProductoID, GETDATE(), @Cantidad, @Cantidad,
+                                @PrecioCompra, @PrecioVenta, @Usuario, GETDATE(), 1
+                            )", cnx, tran);
+
+                        cmdLote.Parameters.AddWithValue("@ProductoID", d.ProductoID);
+                        cmdLote.Parameters.AddWithValue("@Cantidad", d.Cantidad);
+                        cmdLote.Parameters.AddWithValue("@PrecioCompra", d.PrecioCompra);
+                        cmdLote.Parameters.AddWithValue("@PrecioVenta", d.PrecioVenta);
+                        cmdLote.Parameters.AddWithValue("@Usuario", usuario ?? (object)DBNull.Value);
+                        cmdLote.ExecuteNonQuery();
+                    }
+
                     // ===== GENERAR PÓLIZA CON DESGLOSE DE IVA =====
                     var detallesIVA = new Dictionary<string, IVABreakdown>();
                     decimal totalBase = 0, totalIVA = 0, totalInventario = 0;

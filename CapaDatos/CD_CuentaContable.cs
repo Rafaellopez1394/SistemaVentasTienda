@@ -21,11 +21,10 @@ namespace CapaDatos
             {
                 try
                 {
-                    string query = @"SELECT CuentaID, Codigo, Nombre, Nivel, AceptaMovimientos, Activo, 
-                                    Descripcion, CodigoSAT, Tipo, Naturaleza 
-                                    FROM CatCuentas 
+                    string query = @"SELECT CuentaID, CodigoCuenta, NombreCuenta, TipoCuenta, Descripcion, Activo 
+                                    FROM CatalogoContable 
                                     WHERE Activo = 1 
-                                    ORDER BY Codigo";
+                                    ORDER BY CodigoCuenta";
 
                     SqlCommand cmd = new SqlCommand(query, conn);
                     conn.Open();
@@ -37,15 +36,16 @@ namespace CapaDatos
                             lista.Add(new CuentaContable
                             {
                                 CuentaID = Convert.ToInt32(dr["CuentaID"]),
-                                Codigo = dr["Codigo"].ToString(),
-                                Nombre = dr["Nombre"].ToString(),
-                                Nivel = Convert.ToInt32(dr["Nivel"]),
-                                AceptaMovimientos = Convert.ToBoolean(dr["AceptaMovimientos"]),
+                                Codigo = dr["CodigoCuenta"].ToString(),
+                                Nombre = dr["NombreCuenta"].ToString(),
+                                // Campos no presentes en CatalogoContable: usar valores por defecto
+                                Nivel = 0,
+                                AceptaMovimientos = true,
                                 Activo = Convert.ToBoolean(dr["Activo"]),
                                 Descripcion = dr["Descripcion"] != DBNull.Value ? dr["Descripcion"].ToString() : "",
-                                CodigoSAT = dr["CodigoSAT"] != DBNull.Value ? dr["CodigoSAT"].ToString() : "",
-                                Tipo = dr["Tipo"] != DBNull.Value ? dr["Tipo"].ToString() : "",
-                                Naturaleza = dr["Naturaleza"] != DBNull.Value ? dr["Naturaleza"].ToString() : ""
+                                CodigoSAT = "",
+                                Tipo = dr["TipoCuenta"] != DBNull.Value ? dr["TipoCuenta"].ToString() : "",
+                                Naturaleza = ""
                             });
                         }
                     }
@@ -71,10 +71,9 @@ namespace CapaDatos
             {
                 try
                 {
-                    string query = @"SELECT TOP 1 CuentaID, Codigo, Nombre, Nivel, AceptaMovimientos, Activo, 
-                                    Descripcion, CodigoSAT, Tipo, Naturaleza 
-                                    FROM CatCuentas 
-                                    WHERE Codigo = @Codigo AND Activo = 1";
+                    string query = @"SELECT TOP 1 CuentaID, CodigoCuenta, NombreCuenta, TipoCuenta, Descripcion, Activo 
+                                    FROM CatalogoContable 
+                                    WHERE CodigoCuenta = @Codigo AND Activo = 1";
 
                     SqlCommand cmd = new SqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@Codigo", codigo);
@@ -87,15 +86,15 @@ namespace CapaDatos
                             cuenta = new CuentaContable
                             {
                                 CuentaID = Convert.ToInt32(dr["CuentaID"]),
-                                Codigo = dr["Codigo"].ToString(),
-                                Nombre = dr["Nombre"].ToString(),
-                                Nivel = Convert.ToInt32(dr["Nivel"]),
-                                AceptaMovimientos = Convert.ToBoolean(dr["AceptaMovimientos"]),
+                                Codigo = dr["CodigoCuenta"].ToString(),
+                                Nombre = dr["NombreCuenta"].ToString(),
+                                Nivel = 0,
+                                AceptaMovimientos = true,
                                 Activo = Convert.ToBoolean(dr["Activo"]),
                                 Descripcion = dr["Descripcion"] != DBNull.Value ? dr["Descripcion"].ToString() : "",
-                                CodigoSAT = dr["CodigoSAT"] != DBNull.Value ? dr["CodigoSAT"].ToString() : "",
-                                Tipo = dr["Tipo"] != DBNull.Value ? dr["Tipo"].ToString() : "",
-                                Naturaleza = dr["Naturaleza"] != DBNull.Value ? dr["Naturaleza"].ToString() : ""
+                                CodigoSAT = "",
+                                Tipo = dr["TipoCuenta"] != DBNull.Value ? dr["TipoCuenta"].ToString() : "",
+                                Naturaleza = ""
                             };
                         }
                     }
@@ -120,22 +119,21 @@ namespace CapaDatos
             {
                 try
                 {
-                    string query = @"SELECT CuentaID, Codigo, Nombre, Nivel, AceptaMovimientos, Activo, 
-                                    Descripcion, CodigoSAT, Tipo, Naturaleza 
-                                    FROM CatCuentas 
-                                    WHERE Activo = 1 AND AceptaMovimientos = 1";
+                    string query = @"SELECT CuentaID, CodigoCuenta, NombreCuenta, TipoCuenta, Descripcion, Activo 
+                                    FROM CatalogoContable 
+                                    WHERE Activo = 1";
 
                     if (nivel > 0)
                     {
-                        query += " AND Nivel = @Nivel";
+                        // CatalogoContable no maneja niveles; filtro ignorado
                     }
 
-                    query += " ORDER BY Codigo";
+                    query += " ORDER BY CodigoCuenta";
 
                     SqlCommand cmd = new SqlCommand(query, conn);
                     if (nivel > 0)
                     {
-                        cmd.Parameters.AddWithValue("@Nivel", nivel);
+                        // Sin parámetro de nivel
                     }
 
                     conn.Open();
@@ -147,15 +145,15 @@ namespace CapaDatos
                             lista.Add(new CuentaContable
                             {
                                 CuentaID = Convert.ToInt32(dr["CuentaID"]),
-                                Codigo = dr["Codigo"].ToString(),
-                                Nombre = dr["Nombre"].ToString(),
-                                Nivel = Convert.ToInt32(dr["Nivel"]),
-                                AceptaMovimientos = Convert.ToBoolean(dr["AceptaMovimientos"]),
+                                Codigo = dr["CodigoCuenta"].ToString(),
+                                Nombre = dr["NombreCuenta"].ToString(),
+                                Nivel = 0,
+                                AceptaMovimientos = true,
                                 Activo = Convert.ToBoolean(dr["Activo"]),
                                 Descripcion = dr["Descripcion"] != DBNull.Value ? dr["Descripcion"].ToString() : "",
-                                CodigoSAT = dr["CodigoSAT"] != DBNull.Value ? dr["CodigoSAT"].ToString() : "",
-                                Tipo = dr["Tipo"] != DBNull.Value ? dr["Tipo"].ToString() : "",
-                                Naturaleza = dr["Naturaleza"] != DBNull.Value ? dr["Naturaleza"].ToString() : ""
+                                CodigoSAT = "",
+                                Tipo = dr["TipoCuenta"] != DBNull.Value ? dr["TipoCuenta"].ToString() : "",
+                                Naturaleza = ""
                             });
                         }
                     }
@@ -229,8 +227,8 @@ namespace CapaDatos
             {
                 try
                 {
-                    string query = @"SELECT TOP 1 CuentaID FROM CatCuentas 
-                                    WHERE Codigo = @Codigo AND Activo = 1";
+                    string query = @"SELECT TOP 1 CuentaID FROM CatalogoContable 
+                                    WHERE CodigoCuenta = @Codigo AND Activo = 1";
 
                     SqlCommand cmd = new SqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@Codigo", codigo);
@@ -272,8 +270,8 @@ namespace CapaDatos
             {
                 try
                 {
-                    string query = @"SELECT COUNT(*) FROM CatCuentas 
-                                    WHERE Codigo = @Codigo AND Activo = 1 AND AceptaMovimientos = 1";
+                    string query = @"SELECT COUNT(*) FROM CatalogoContable 
+                                    WHERE CodigoCuenta = @Codigo AND Activo = 1";
 
                     SqlCommand cmd = new SqlCommand(query, conn);
                     cmd.Parameters.AddWithValue("@Codigo", codigo);

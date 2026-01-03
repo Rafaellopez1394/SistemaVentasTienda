@@ -2,12 +2,23 @@ using CapaDatos;
 using CapaModelo;
 using System;
 using System.Linq;
+using System.Configuration;
 using System.Web.Mvc;
 
 namespace VentasWeb.Controllers
 {
     public class ContabilidadController : Controller
     {
+        protected override void OnActionExecuting(ActionExecutingContext filterContext)
+        {
+            var enabled = ConfigurationManager.AppSettings["ContabilidadEnabled"];
+            if (string.Equals(enabled, "false", StringComparison.OrdinalIgnoreCase))
+            {
+                filterContext.Result = new HttpNotFoundResult();
+                return;
+            }
+            base.OnActionExecuting(filterContext);
+        }
         // GET: Contabilidad
         public ActionResult Index()
         {

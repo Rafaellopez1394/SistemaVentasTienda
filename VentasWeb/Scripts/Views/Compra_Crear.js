@@ -88,6 +88,21 @@ $(document).ready(function () {
 
 })
 
+// Helper seguro para mostrar mensajes (SweetAlert2 / SweetAlert / alert)
+function mostrarMensaje(titulo, texto, tipo) {
+    try {
+        if (window.Swal && typeof Swal.fire === 'function') {
+            Swal.fire(titulo || '', texto || '', tipo || 'info');
+            return;
+        }
+        if (typeof swal === 'function') {
+            swal(titulo || '', texto || '', tipo || 'info');
+            return;
+        }
+    } catch (e) { /* ignorar y hacer fallback */ }
+    alert(((titulo ? (titulo + ': ') : '') + (texto || '')));
+}
+
 function buscarProveedor() {
     tablaproveedor.ajax.reload();
     $('#modalProveedor').modal('show');
@@ -101,7 +116,7 @@ function buscarSucursal() {
 
 function buscarProducto() {
     if (parseInt($("#txtsucursalid").val()) == 0) {
-        swal("Mensaje", "Debe seleccionar una tienda primero", "warning")
+        mostrarMensaje("Mensaje", "Debe seleccionar una tienda primero", "warning")
         return;
     }
     tablaproducto.ajax.url($.MisUrls.url._ObtenerProductosPorSucursal + "?SucursalID=" + $("#txtsucursalid").val()).load();
@@ -220,7 +235,7 @@ $('#btnAgregarCompra').on('click', function () {
         parseFloat($("#txtPrecioCompraProducto").val()) == 0 ||
         parseFloat($("#txtPrecioVentaProducto").val()) == 0
     ) {
-        swal("Mensaje", "Debe completar todos los campos", "warning")
+        mostrarMensaje("Mensaje", "Debe completar todos los campos", "warning")
         return;
     }
 
@@ -257,7 +272,7 @@ $('#btnAgregarCompra').on('click', function () {
         $("#txtPrecioVentaProducto").val("0");
 
     } else {
-        swal("Mensaje", "El producto ya existe en la compra", "warning")
+        mostrarMensaje("Mensaje", "El producto ya existe en la compra", "warning")
     }
 })
 
@@ -271,7 +286,7 @@ $('#btnTerminarGuardarCompra').on('click', function () {
 
 
     if ($('#tbCompra > tbody  > tr').length == 0) {
-        swal("Mensaje", "No existen detalles", "warning")
+        mostrarMensaje("Mensaje", "No existen detalles", "warning")
         return;
     }
 
@@ -349,10 +364,10 @@ $('#btnTerminarGuardarCompra').on('click', function () {
 
                 $("#tbCompra tbody").html("");
 
-                swal("Mensaje", "Se registro la compra", "success")
+                mostrarMensaje("Mensaje", "Se registro la compra", "success")
             } else {
 
-                swal("Mensaje", "No se pudo registrar la compra", "warning")
+                mostrarMensaje("Mensaje", "No se pudo registrar la compra", "warning")
             }
         },
         error: function (error) {

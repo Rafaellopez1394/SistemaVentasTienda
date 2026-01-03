@@ -488,8 +488,10 @@
             </li>
             }
 
-            @* MENÚ CONTABILIDAD - Solo ADMIN y CONTADOR *@
-            @if (PermisoHelper.TienePermiso("ADMINISTRADOR", "CONTADOR"))
+            @* MENÚ CONTABILIDAD - Solo ADMIN y CONTADOR, controlado por flag *@
+            @{ var contabEnabled = System.Configuration.ConfigurationManager.AppSettings["ContabilidadEnabled"]; 
+               bool mostrarContab = !string.Equals(contabEnabled, "false", StringComparison.OrdinalIgnoreCase); }
+            @if (mostrarContab && PermisoHelper.TienePermiso("ADMINISTRADOR", "CONTADOR"))
             {
             <li class="sidebar-nav-item">
                 <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#contabilidadDropdown">

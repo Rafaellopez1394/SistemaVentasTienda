@@ -359,9 +359,10 @@ namespace CapaDatos
             {
                 using (SqlConnection cnx = new SqlConnection(Conexion.CN))
                 {
-                    string query = "SELECT * FROM CatalogoCuentas";
+                    string query = @"SELECT CuentaID, CodigoCuenta, NombreCuenta, TipoCuenta, Descripcion, Activo
+                                      FROM CatalogoContable";
                     if (soloActivas) query += " WHERE Activo = 1";
-                    query += " ORDER BY Codigo";
+                    query += " ORDER BY CodigoCuenta";
 
                     SqlCommand cmd = new SqlCommand(query, cnx);
                     cnx.Open();
@@ -372,16 +373,17 @@ namespace CapaDatos
                         cuentas.Add(new CuentaContable
                         {
                             CuentaID = Convert.ToInt32(dr["CuentaID"]),
-                            Codigo = dr["Codigo"].ToString(),
-                            Nombre = dr["Nombre"].ToString(),
-                            Nivel = Convert.ToInt32(dr["Nivel"]),
-                            CuentaPadre = dr["CuentaPadre"]?.ToString(),
-                            Tipo = dr["Tipo"].ToString(),
-                            Naturaleza = dr["Naturaleza"].ToString(),
-                            AceptaMovimientos = Convert.ToBoolean(dr["AceptaMovimientos"]),
+                            Codigo = dr["CodigoCuenta"].ToString(),
+                            Nombre = dr["NombreCuenta"].ToString(),
+                            // Campos no presentes: valores por defecto
+                            Nivel = 0,
+                            CuentaPadre = null,
+                            Tipo = dr["TipoCuenta"].ToString(),
+                            Naturaleza = "",
+                            AceptaMovimientos = true,
                             Activo = Convert.ToBoolean(dr["Activo"]),
                             Descripcion = dr["Descripcion"]?.ToString(),
-                            CodigoSAT = dr["CodigoSAT"]?.ToString()
+                            CodigoSAT = null
                         });
                     }
                     dr.Close();
