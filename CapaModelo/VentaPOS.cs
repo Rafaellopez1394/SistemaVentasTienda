@@ -10,11 +10,14 @@ namespace CapaModelo
         public Guid VentaID { get; set; }
         public Guid ClienteID { get; set; }
         public DateTime FechaVenta { get; set; }
-        public string TipoVenta { get; set; } // CONTADO, CREDITO
+        public string TipoVenta { get; set; } // CONTADO, CREDITO, PARCIAL
         public int? FormaPagoID { get; set; }
         public int? MetodoPagoID { get; set; }
         public decimal? EfectivoRecibido { get; set; }
         public decimal? Cambio { get; set; }
+        public decimal? MontoPagado { get; set; } // Monto pagado inicial (para pagos parciales)
+        public decimal SaldoPendiente { get; set; } // Saldo por pagar
+        public bool EsPagado { get; set; } // Indica si está totalmente pagado
         public decimal Subtotal { get; set; }
         public decimal IVA { get; set; }
         public decimal Total { get; set; }
@@ -40,7 +43,7 @@ namespace CapaModelo
         public Guid VentaID { get; set; }
         public int ProductoID { get; set; }
         public int LoteID { get; set; }
-        public int Cantidad { get; set; }
+        public decimal Cantidad { get; set; } // ✅ Cambiado a decimal para soportar kg/gramos
         public decimal PrecioVenta { get; set; }
         public decimal PrecioCompra { get; set; }
         public decimal TasaIVA { get; set; }
@@ -150,6 +153,8 @@ namespace CapaModelo
         public decimal SaldoActual { get; set; }
         public int NumeroVentas { get; set; }
         public decimal TotalVentas { get; set; }
+        public decimal FondoInicial { get; set; }
+        public decimal TotalGastos { get; set; }
     }
 
     // Corte de caja (cierre con arqueo)
@@ -174,6 +179,60 @@ namespace CapaModelo
         public string UsuarioCierre { get; set; }
         public Guid? PolizaID { get; set; }
     }
+
+    // ===== NUEVAS CLASES PARA PAGOS PARCIALES =====
+    
+    // Pago parcial de una venta
+    public class VentaPago
+    {
+        public int PagoID { get; set; }
+        public Guid VentaID { get; set; }
+        public int FormaPagoID { get; set; }
+        public string FormaPagoDescripcion { get; set; }
+        public int MetodoPagoID { get; set; }
+        public string MetodoPagoDescripcion { get; set; }
+        public decimal Monto { get; set; }
+        public DateTime FechaPago { get; set; }
+        public string Referencia { get; set; }
+        public string Observaciones { get; set; }
+        public string Usuario { get; set; }
+        public int? ComplementoPagoID { get; set; } // Vincula con complemento de pago timbrado
+        public DateTime FechaAlta { get; set; }
+    }
+
+    // Venta pendiente de pago
+    public class VentaPendientePago
+    {
+        public Guid VentaID { get; set; }
+        public Guid ClienteID { get; set; }
+        public string Cliente { get; set; }
+        public string RFC { get; set; }
+        public DateTime FechaVenta { get; set; }
+        public decimal Total { get; set; }
+        public decimal MontoPagado { get; set; }
+        public decimal SaldoPendiente { get; set; }
+        public bool EsPagado { get; set; }
+        public bool RequiereFactura { get; set; }
+        public int? IdFactura { get; set; }
+        public Guid? FacturaUUID { get; set; }
+        public string FacturaSerieFolio { get; set; }
+        public int NumeroPagos { get; set; } // Número de pagos realizados
+        public string ClienteRazonSocial { get; set; }
+        public string ClienteRFC { get; set; }
+    }
+
+    // Request para registrar un nuevo pago de venta
+    public class RegistrarPagoVentaRequest
+    {
+        public Guid VentaID { get; set; }
+        public int FormaPagoID { get; set; }
+        public int MetodoPagoID { get; set; }
+        public decimal Monto { get; set; }
+        public string Referencia { get; set; }
+        public string Observaciones { get; set; }
+        public bool GenerarComplementoPago { get; set; } // Si debe generar y timbrar complemento de pago
+    }
 }
+
 
 

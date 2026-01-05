@@ -2,6 +2,7 @@
 using CapaDatos;
 using CapaModelo;
 using System;
+using System.Linq;
 using System.Web;
 using System.Web.Mvc;
 
@@ -22,7 +23,25 @@ namespace VentasWeb.Controllers
             try
             {
                 var certificados = CD_CertificadoDigital.Instancia.ObtenerTodos();
-                return Json(new { success = true, data = certificados }, JsonRequestBehavior.AllowGet);
+                
+                // Formatear fechas para JSON
+                var certificadosFormateados = certificados.Select(c => new
+                {
+                    c.CertificadoID,
+                    c.NombreCertificado,
+                    c.NoCertificado,
+                    c.RFC,
+                    c.RazonSocial,
+                    FechaVigenciaInicio = c.FechaVigenciaInicio.ToString("yyyy-MM-dd"),
+                    FechaVigenciaFin = c.FechaVigenciaFin.ToString("yyyy-MM-dd"),
+                    c.Activo,
+                    c.EsPredeterminado,
+                    EstadoVigencia = c.FechaVigenciaFin < DateTime.Now ? "VENCIDO" :
+                                     c.FechaVigenciaFin < DateTime.Now.AddDays(30) ? "POR VENCER" : "VIGENTE",
+                    DiasRestantes = (int)(c.FechaVigenciaFin - DateTime.Now).TotalDays
+                }).ToList();
+                
+                return Json(new { success = true, data = certificadosFormateados }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {

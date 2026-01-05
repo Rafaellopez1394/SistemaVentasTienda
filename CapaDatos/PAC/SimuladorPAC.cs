@@ -192,5 +192,11 @@ namespace CapaDatos.PAC
 
             return xmlConTimbre;
         }
+
+        public async Task<RespuestaTimbrado> TimbrarComplementoPagoAsync(string xmlSinTimbrar, ConfiguracionPAC config)
+        {
+            // Para el simulador, reutilizamos la misma lógica de timbrado
+            return await TimbrarAsync(xmlSinTimbrar, config);
+        }
     }
 }

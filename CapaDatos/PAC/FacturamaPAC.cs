@@ -319,5 +319,11 @@ namespace CapaDatos.PAC
 
             return respuesta;
         }
+
+        public async Task<RespuestaTimbrado> TimbrarComplementoPagoAsync(string xmlSinTimbrar, ConfiguracionPAC config)
+        {
+            // Facturama usa el mismo endpoint para complementos de pago
+            return await TimbrarAsync(xmlSinTimbrar, config);
+        }
     }
 }

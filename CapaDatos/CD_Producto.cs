@@ -122,16 +122,26 @@ namespace CapaDatos
             }
         }
 
-        public List<LoteProducto> ObtenerLotes(int productoId)
+        public List<LoteProducto> ObtenerLotes(int productoId, int sucursalID = 0)
         {
             var lista = new List<LoteProducto>();
             using (var cnx = new SqlConnection(Conexion.CN))
             {
-                var cmd = new SqlCommand(@"
-                    SELECT LoteID, ProductoID, FechaEntrada, FechaCaducidad,
+                string query = @"
+                    SELECT LoteID, ProductoID, SucursalID, FechaEntrada, FechaCaducidad,
                            CantidadTotal, CantidadDisponible, PrecioCompra, PrecioVenta
-                    FROM LotesProducto WHERE ProductoID = @id ORDER BY FechaEntrada DESC", cnx);
+                    FROM LotesProducto 
+                    WHERE ProductoID = @id";
+                
+                if (sucursalID > 0)
+                    query += " AND SucursalID = @sucursalID";
+                    
+                query += " ORDER BY FechaEntrada DESC";
+                
+                var cmd = new SqlCommand(query, cnx);
                 cmd.Parameters.AddWithValue("@id", productoId);
+                if (sucursalID > 0)
+                    cmd.Parameters.AddWithValue("@sucursalID", sucursalID);
                 cnx.Open();
                 using (var dr = cmd.ExecuteReader())
                 {
@@ -141,6 +151,7 @@ namespace CapaDatos
                         {
                             LoteID = (int)dr["LoteID"],
                             ProductoID = (int)dr["ProductoID"],
+                            SucursalID = (int)dr["SucursalID"],
                             FechaEntrada = (DateTime)dr["FechaEntrada"],
                             FechaCaducidad = dr["FechaCaducidad"] as DateTime?,
                             CantidadTotal = (int)dr["CantidadTotal"],
@@ -158,12 +169,23 @@ namespace CapaDatos
         {
             using (var cnx = new SqlConnection(Conexion.CN))
             {
-                var cmd = new SqlCommand("sp_AltaLote", cnx) { CommandType = CommandType.StoredProcedure };
+                // Usar INSERT directo en lugar de SP inexistente
+                var cmd = new SqlCommand(@"
+                    INSERT INTO LotesProducto (
+                        ProductoID, SucursalID, FechaEntrada, CantidadTotal, CantidadDisponible,
+                        PrecioCompra, PrecioVenta, Usuario, UltimaAct, Estatus
+                    ) VALUES (
+                        @ProductoID, @SucursalID, GETDATE(), @CantidadTotal, @CantidadTotal,
+                        @PrecioCompra, @PrecioVenta, @Usuario, GETDATE(), 1
+                    )", cnx);
+                
                 cmd.Parameters.AddWithValue("@ProductoID", lote.ProductoID);
+                cmd.Parameters.AddWithValue("@SucursalID", lote.SucursalID > 0 ? lote.SucursalID : 1); // Default sucursal 1
                 cmd.Parameters.AddWithValue("@CantidadTotal", lote.CantidadTotal);
                 cmd.Parameters.AddWithValue("@PrecioCompra", lote.PrecioCompra);
                 cmd.Parameters.AddWithValue("@PrecioVenta", lote.PrecioVenta);
                 cmd.Parameters.AddWithValue("@Usuario", lote.Usuario ?? "system");
+                
                 try { cnx.Open(); cmd.ExecuteNonQuery(); return true; }
                 catch { return false; }
             }
@@ -218,22 +240,28 @@ namespace CapaDatos
         }
 
         // Obtener solo lotes con stock disponible (para ventas, salidas, etc.)
-        public List<LoteProducto> ObtenerLotesDisponibles(int productoId)
+        public List<LoteProducto> ObtenerLotesDisponibles(int productoId, int sucursalID = 0)
         {
             var lista = new List<LoteProducto>();
             using (var cnx = new SqlConnection(Conexion.CN))
             {
                 string query = @"
-            SELECT LoteID, ProductoID, FechaEntrada, FechaCaducidad,
+            SELECT LoteID, ProductoID, SucursalID, FechaEntrada, FechaCaducidad,
                    CantidadDisponible, PrecioCompra, PrecioVenta, Estatus
             FROM LotesProducto
             WHERE ProductoID = @ProductoID 
               AND CantidadDisponible > 0
-              AND Estatus = 1
-            ORDER BY ISNULL(FechaCaducidad, '2099-12-31') ASC, FechaEntrada ASC";
+              AND Estatus = 1";
+              
+                if (sucursalID > 0)
+                    query += " AND SucursalID = @SucursalID";
+                    
+                query += " ORDER BY ISNULL(FechaCaducidad, '2099-12-31') ASC, FechaEntrada ASC";
 
                 var cmd = new SqlCommand(query, cnx);
                 cmd.Parameters.AddWithValue("@ProductoID", productoId);
+                if (sucursalID > 0)
+                    cmd.Parameters.AddWithValue("@SucursalID", sucursalID);
 
                 cnx.Open();
                 using (var dr = cmd.ExecuteReader())
@@ -244,6 +272,7 @@ namespace CapaDatos
                         {
                             LoteID = (int)dr["LoteID"],
                             ProductoID = (int)dr["ProductoID"],
+                            SucursalID = (int)dr["SucursalID"],
                             FechaEntrada = (DateTime)dr["FechaEntrada"],
                             FechaCaducidad = dr["FechaCaducidad"] as DateTime?,
                             CantidadDisponible = (int)dr["CantidadDisponible"],
@@ -480,6 +509,7 @@ namespace CapaDatos
                         {
                             LoteID = (int)dr["LoteID"],
                             ProductoID = (int)dr["ProductoID"],
+                            SucursalID = (int)dr["SucursalID"],
                             FechaEntrada = (DateTime)dr["FechaEntrada"],
                             FechaCaducidad = dr["FechaCaducidad"] as DateTime?,
                             CantidadTotal = (int)dr["CantidadTotal"],
@@ -509,6 +539,7 @@ namespace CapaDatos
                             {
                                 LoteID = Convert.ToInt32(reader["LoteID"]),
                                 ProductoID = Convert.ToInt32(reader["ProductoID"]),
+                                SucursalID = Convert.ToInt32(reader["SucursalID"]),
                                 FechaEntrada = Convert.ToDateTime(reader["FechaEntrada"]),
                                 FechaCaducidad = reader["FechaCaducidad"] as DateTime?,
                                 CantidadTotal = Convert.ToInt32(reader["CantidadTotal"]),
@@ -874,6 +905,137 @@ namespace CapaDatos
                 byte[] bytes = new byte[16];
                 BitConverter.GetBytes(id).CopyTo(bytes, 0);
                 return new Guid(bytes);
+            }
+        }
+
+        // ==========================================
+        // HISTORIAL DE CAMBIOS DE PRECIOS
+        // ==========================================
+
+        public int ObtenerStockPorSucursal(int productoID, int sucursalID)
+        {
+            int stock = 0;
+            using (var cnx = new SqlConnection(Conexion.CN))
+            {
+                var cmd = new SqlCommand(@"
+                    SELECT ISNULL(SUM(lp.CantidadDisponible), 0) AS Stock
+                    FROM LotesProducto lp
+                    WHERE lp.ProductoID = @ProductoID 
+                      AND lp.SucursalID = @SucursalID
+                      AND lp.Estatus = 1 
+                      AND lp.CantidadDisponible > 0", cnx);
+                
+                cmd.Parameters.AddWithValue("@ProductoID", productoID);
+                cmd.Parameters.AddWithValue("@SucursalID", sucursalID);
+                
+                cnx.Open();
+                var result = cmd.ExecuteScalar();
+                stock = result != null ? Convert.ToInt32(result) : 0;
+            }
+            return stock;
+        }
+
+        public List<Producto> BuscarProductosPorSucursal(string termino, int sucursalID)
+        {
+            var lista = new List<Producto>();
+            using (var cnx = new SqlConnection(Conexion.CN))
+            {
+                var cmd = new SqlCommand(@"
+                    SELECT DISTINCT p.ProductoID, p.Nombre, p.CodigoInterno, p.Descripcion,
+                           p.CategoriaID, c.Nombre AS NombreCategoria
+                    FROM Productos p
+                    LEFT JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
+                    WHERE p.Estatus = 1
+                      AND (p.Nombre LIKE '%' + @Termino + '%' 
+                           OR p.CodigoInterno LIKE '%' + @Termino + '%'
+                           OR p.Descripcion LIKE '%' + @Termino + '%')
+                    ORDER BY p.Nombre", cnx);
+                
+                cmd.Parameters.AddWithValue("@Termino", termino ?? "");
+                cmd.Parameters.AddWithValue("@SucursalID", sucursalID);
+                
+                cnx.Open();
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(new Producto
+                        {
+                            ProductoID = (int)dr["ProductoID"],
+                            Nombre = dr["Nombre"].ToString(),
+                            CodigoInterno = dr["CodigoInterno"]?.ToString(),
+                            Descripcion = dr["Descripcion"]?.ToString(),
+                            CategoriaID = dr["CategoriaID"] == DBNull.Value ? 0 : (int)dr["CategoriaID"],
+                            NombreCategoria = dr["NombreCategoria"]?.ToString()
+                        });
+                    }
+                }
+            }
+            return lista;
+        }
+
+        public List<CambioPrecio> ObtenerCambiosPreciosRecientes(int horas = 24)
+        {
+            var lista = new List<CambioPrecio>();
+            using (var cnx = new SqlConnection(Conexion.CN))
+            {
+                var cmd = new SqlCommand("sp_ObtenerCambiosPreciosRecientes", cnx)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.AddWithValue("@Horas", horas);
+
+                cnx.Open();
+                using (var dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        lista.Add(new CambioPrecio
+                        {
+                            CambioID = (int)dr["CambioID"],
+                            ProductoID = (int)dr["ProductoID"],
+                            NombreProducto = dr["NombreProducto"].ToString(),
+                            TipoPrecio = dr["TipoPrecio"].ToString(),
+                            PrecioAnterior = (decimal)dr["PrecioAnterior"],
+                            PrecioNuevo = (decimal)dr["PrecioNuevo"],
+                            DiferenciaPorcentaje = dr["DiferenciaPorcentaje"] == DBNull.Value ? 0 : (decimal)dr["DiferenciaPorcentaje"],
+                            Usuario = dr["Usuario"].ToString(),
+                            FechaCambio = (DateTime)dr["FechaCambio"],
+                            NombreSucursal = dr["NombreSucursal"] == DBNull.Value ? null : dr["NombreSucursal"].ToString()
+                        });
+                    }
+                }
+            }
+            return lista;
+        }
+
+        public bool RegistrarCambioPrecio(int productoID, string tipoPrecio, decimal precioAnterior, 
+            decimal precioNuevo, string usuario, int? sucursalID = null, string observaciones = null)
+        {
+            using (var cnx = new SqlConnection(Conexion.CN))
+            {
+                var cmd = new SqlCommand("sp_RegistrarCambioPrecio", cnx)
+                {
+                    CommandType = CommandType.StoredProcedure
+                };
+                cmd.Parameters.AddWithValue("@ProductoID", productoID);
+                cmd.Parameters.AddWithValue("@TipoPrecio", tipoPrecio);
+                cmd.Parameters.AddWithValue("@PrecioAnterior", precioAnterior);
+                cmd.Parameters.AddWithValue("@PrecioNuevo", precioNuevo);
+                cmd.Parameters.AddWithValue("@Usuario", usuario);
+                cmd.Parameters.AddWithValue("@SucursalID", sucursalID ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@Observaciones", observaciones ?? (object)DBNull.Value);
+
+                try
+                {
+                    cnx.Open();
+                    cmd.ExecuteNonQuery();
+                    return true;
+                }
+                catch
+                {
+                    return false;
+                }
             }
         }
     }

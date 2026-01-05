@@ -50,24 +50,30 @@
                     <div class="col-sm-6">
                         <div class="card border-info">
                             <div class="card-body p-2">
-                                <h6 class="card-title mb-1 text-info">Detalle Sucursal Destino</h6>
-                                <div class="row  align-items-end">
+                                <h6 class="card-title mb-1 text-info">
+                                    <i class="fas fa-store"></i> Sucursal Destino 
+                                    <span class="badge badge-danger" id="badgeSucursalRequerida">REQUERIDO</span>
+                                </h6>
+                                <div class="row align-items-end">
                                     <input id="txtsucursalid" type="hidden" value="0" />
                                     <div class="col-sm-4">
                                         <div class="form-group mb-0">
                                             <label for="txtRucSucursal" class="col-form-label col-form-label-sm">RFC:</label>
-                                            <input type="text" class="form-control form-control-sm model" readonly id="txtRucSucursal" name="RFC">
+                                            <input type="text" class="form-control form-control-sm model" readonly id="txtRucSucursal" name="RFC" placeholder="Sin seleccionar">
                                         </div>
                                     </div>
-                                    <div class="col-sm-4">
+                                    <div class="col-sm-5">
                                         <div class="form-group mb-0">
                                             <label for="txtNombreSucursal" class="col-form-label col-form-label-sm">Nombre:</label>
-                                            <input type="text" class="form-control form-control-sm model" readonly id="txtNombreSucursal" name="NombreSucursal">
+                                            <input type="text" class="form-control form-control-sm model" readonly id="txtNombreSucursal" name="NombreSucursal" placeholder="Sin seleccionar">
                                         </div>
                                     </div>
-                                    <div class="col-sm-4">
+                                    <div class="col-sm-3">
                                         <div class="form-group mb-0">
-                                            <button id="btnBuscarSucursal" type="button" class="btn btn-sm btn-success btn-block" onclick="buscarSucursal()"><i class="fas fa-search"></i> Buscar</button>
+                                            <label class="col-form-label col-form-label-sm">&nbsp;</label>
+                                            <button id="btnBuscarSucursal" type="button" class="btn btn-sm btn-success btn-block" onclick="buscarSucursal()">
+                                                <i class="fas fa-search"></i> Seleccionar
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

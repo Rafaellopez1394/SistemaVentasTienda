@@ -88,7 +88,11 @@ namespace VentasWeb.Controllers
         [HttpGet]
         public JsonResult ObtenerLotesProducto(int productoId)
         {
-            var lotes = CD_Producto.Instancia.ObtenerLotesDisponibles(productoId); // FEFO
+            int sucursalID = Session["SucursalActiva"] != null 
+                ? (int)Session["SucursalActiva"] 
+                : 1;
+            
+            var lotes = CD_Producto.Instancia.ObtenerLotesDisponibles(productoId, sucursalID); // FEFO
             return Json(lotes, JsonRequestBehavior.AllowGet);
         }
 
@@ -259,7 +263,12 @@ namespace VentasWeb.Controllers
         [HttpGet]
         public JsonResult ObtenerProductos(string termino = "")
         {
-            var productos = CD_Producto.Instancia.BuscarProductos(termino);
+            // Obtener sucursal activa
+            int sucursalID = Session["SucursalActiva"] != null 
+                ? (int)Session["SucursalActiva"] 
+                : 1;
+                
+            var productos = CD_Producto.Instancia.BuscarProductosPorSucursal(termino, sucursalID);
             return Json(productos, JsonRequestBehavior.AllowGet);
         }
     }

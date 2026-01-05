@@ -419,6 +419,34 @@
             </li>
 
             <li class="sidebar-nav-item">
+                <a href="@Url.Action("GestionarPagosVentas", "Pagos")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Pagos" && ViewContext.RouteData.Values["action"].ToString() == "GestionarPagosVentas" ? "active" : "")">
+                    <i class="fas fa-hand-holding-usd"></i>
+                    <span>Gestión de Pagos</span>
+                </a>
+            </li>
+
+            <li class="sidebar-nav-item">
+                <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#gastosDropdown">
+                    <i class="fas fa-money-bill-wave"></i>
+                    <span>Gastos</span>
+                </a>
+                <ul class="sidebar-dropdown collapse" id="gastosDropdown">
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Registrar","Gastos")" class="sidebar-nav-link">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Registrar Gasto</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("CierreCaja","Gastos")" class="sidebar-nav-link">
+                            <i class="fas fa-calculator"></i>
+                            <span>Cierre de Caja</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="sidebar-nav-item">
                 <a href="@Url.Action("Index", "Producto")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Producto" ? "active" : "")">
                     <i class="fas fa-box"></i>
                     <span>Productos</span>
@@ -468,8 +496,14 @@
                 <ul class="sidebar-dropdown collapse" id="comprasDropdown">
                     <li class="sidebar-nav-item sidebar-dropdown-item">
                         <a href="@Url.Action("Index","Compra")" class="sidebar-nav-link">
-                            <i class="fas fa-file-invoice"></i>
-                            <span>Registrar Compra</span>
+                            <i class="fas fa-edit"></i>
+                            <span>Registrar Manual</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("CargarXML","Compra")" class="sidebar-nav-link">
+                            <i class="fas fa-file-code"></i>
+                            <span>Cargar Factura XML</span>
                         </a>
                     </li>
                     <li class="sidebar-nav-item sidebar-dropdown-item">
@@ -482,6 +516,31 @@
                         <a href="@Url.Action("Index","CuentasPorPagar")" class="sidebar-nav-link">
                             <i class="fas fa-file-invoice-dollar"></i>
                             <span>Cuentas por Pagar</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+            }
+
+            @* MENÚ TRASPASOS - Solo ADMIN y EMPLEADO *@
+            @if (PermisoHelper.TienePermiso("ADMINISTRADOR", "EMPLEADO"))
+            {
+            <li class="sidebar-nav-item">
+                <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#traspasosDropdown">
+                    <i class="fas fa-exchange-alt"></i>
+                    <span>Traspasos</span>
+                </a>
+                <ul class="sidebar-dropdown collapse" id="traspasosDropdown">
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Index","Traspaso")" class="sidebar-nav-link">
+                            <i class="fas fa-list"></i>
+                            <span>Ver Traspasos</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Registrar","Traspaso")" class="sidebar-nav-link">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Nuevo Traspaso</span>
                         </a>
                     </li>
                 </ul>
@@ -648,6 +707,14 @@
                 <h2 class="page-title d-inline-block ml-2">@ViewBag.Title</h2>
             </div>
             <div class="user-info">
+                <!-- Selector de Sucursal -->
+                <div class="sucursal-selector d-none d-md-flex align-items-center mr-3">
+                    <i class="fas fa-store text-primary mr-2"></i>
+                    <select id="ddlSucursalActiva" class="form-control form-control-sm" style="width: 180px;" onchange="cambiarSucursal()">
+                        <option value="">Cargando...</option>
+                    </select>
+                </div>
+                
                 <div class="user-avatar">
                     @if (!string.IsNullOrEmpty(User.Identity.Name))
                     {
@@ -757,7 +824,138 @@
                     $('#sidebar').removeClass('show');
                 }
             });
+
+            // Cargar sucursales al iniciar
+            cargarSucursales();
+            
+            // Verificar cambios de precio recientes
+            verificarCambiosPrecios();
         });
+
+        // Función para cargar sucursales en el selector
+        function cargarSucursales() {
+            $.ajax({
+                url: '@Url.Action("Obtener", "Sucursal")',
+                type: 'GET',
+                success: function(response) {
+                    const select = $('#ddlSucursalActiva');
+                    select.empty();
+                    
+                    if (response.data && response.data.length > 0) {
+                        $.each(response.data, function(i, sucursal) {
+                            select.append($('<option>', {
+                                value: sucursal.SucursalID,
+                                text: sucursal.Nombre
+                            }));
+                        });
+                        
+                        // Obtener sucursal guardada en sesión
+                        $.ajax({
+                            url: '@Url.Action("ObtenerSucursalActiva", "Home")',
+                            type: 'GET',
+                            success: function(sucursalID) {
+                                if (sucursalID) {
+                                    select.val(sucursalID);
+                                } else if (response.data.length > 0) {
+                                    // Si no hay sucursal guardada, usar la primera
+                                    select.val(response.data[0].SucursalID);
+                                    cambiarSucursal();
+                                }
+                            }
+                        });
+                    } else {
+                        select.append('<option value="">Sin sucursales</option>');
+                    }
+                },
+                error: function() {
+                    $('#ddlSucursalActiva').html('<option value="">Error al cargar</option>');
+                }
+            });
+        }
+
+        // Función para cambiar la sucursal activa
+        function cambiarSucursal() {
+            const sucursalID = $('#ddlSucursalActiva').val();
+            
+            if (!sucursalID) return;
+            
+            $.ajax({
+                url: '@Url.Action("CambiarSucursalActiva", "Home")',
+                type: 'POST',
+                data: { sucursalID: sucursalID },
+                success: function(response) {
+                    if (response.success) {
+                        toastr.success('Sucursal cambiada correctamente');
+                        
+                        // Recargar la página si estamos en un módulo que depende de sucursal
+                        const modulosDependientes = ['/VentaPOS', '/Producto', '/Inventario', '/Venta', '/Compra'];
+                        const rutaActual = window.location.pathname;
+                        
+                        if (modulosDependientes.some(modulo => rutaActual.includes(modulo))) {
+                            setTimeout(function() {
+                                location.reload();
+                            }, 800);
+                        }
+                    } else {
+                        toastr.error('Error al cambiar sucursal');
+                    }
+                },
+                error: function() {
+                    toastr.error('Error de conexión');
+                }
+            });
+        }
+
+        // Función para verificar cambios de precios recientes
+        function verificarCambiosPrecios() {
+            $.ajax({
+                url: '@Url.Action("ObtenerCambiosPreciosRecientes", "Home")',
+                type: 'GET',
+                success: function(response) {
+                    if (response.success && response.data && response.data.length > 0) {
+                        // Mostrar notificación con los cambios
+                        const cantidad = response.data.length;
+                        const mensaje = cantidad === 1 
+                            ? '1 producto ha cambiado de precio' 
+                            : cantidad + ' productos han cambiado de precio';
+                        
+                        toastr.warning(mensaje, 'Alerta de Precios', {
+                            timeOut: 10000,
+                            onclick: function() {
+                                mostrarModalCambiosPrecios(response.data);
+                            }
+                        });
+                    }
+                }
+            });
+        }
+
+        // Función para mostrar modal con detalles de cambios de precios
+        function mostrarModalCambiosPrecios(cambios) {
+            let html = '<div class="table-responsive"><table class="table table-sm table-striped">';
+            html += '<thead><tr><th>Producto</th><th>Anterior</th><th>Nuevo</th><th>Fecha</th></tr></thead><tbody>';
+            
+            $.each(cambios, function(i, cambio) {
+                const diferencia = cambio.PrecioNuevo - cambio.PrecioAnterior;
+                const icono = diferencia > 0 ? '<i class="fas fa-arrow-up text-danger"></i>' : '<i class="fas fa-arrow-down text-success"></i>';
+                
+                html += '<tr>';
+                html += '<td>' + cambio.NombreProducto + '</td>';
+                html += '<td>$' + cambio.PrecioAnterior.toFixed(2) + '</td>';
+                html += '<td>' + icono + ' $' + cambio.PrecioNuevo.toFixed(2) + '</td>';
+                html += '<td>' + new Date(cambio.FechaCambio).toLocaleString('es-MX') + '</td>';
+                html += '</tr>';
+            });
+            
+            html += '</tbody></table></div>';
+            
+            Swal.fire({
+                title: 'Cambios de Precios Recientes',
+                html: html,
+                width: 700,
+                confirmButtonText: 'Entendido'
+            });
+        }
     </script>
 
     @RenderSection("scripts", required: false)

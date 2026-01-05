@@ -52,6 +52,14 @@ namespace CapaDatos.PAC
                 writer.WriteAttributeString("TipoDeComprobante", factura.TipoComprobante);
                 writer.WriteAttributeString("Exportacion", "01"); // No aplica
                 writer.WriteAttributeString("MetodoPago", factura.MetodoPago);
+                
+                // Si es PPD (Pago en Parcialidades o Diferido), agregar información de condiciones
+                if (factura.MetodoPago == "PPD" && factura.SaldoPendiente > 0)
+                {
+                    writer.WriteAttributeString("CondicionesDePago", 
+                        $"Pago en parcialidades - Saldo pendiente: {FormatDecimal(factura.SaldoPendiente)}");
+                }
+                
                 writer.WriteAttributeString("LugarExpedicion", factura.ReceptorDomicilioFiscalCP);
 
                 // Emisor

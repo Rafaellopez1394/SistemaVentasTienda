@@ -14,6 +14,27 @@ namespace VentasWeb.Controllers
         // GET: VentaPOS
         public ActionResult Index()
         {
+            // Establecer caja activa en sesión si hay una caja abierta
+            try
+            {
+                int cajaID = 1; // Por defecto usamos caja 1
+                var estado = CD_VentaPOS.Instancia.ObtenerEstadoCaja(cajaID);
+                
+                if (estado != null && estado.EstaAbierta)
+                {
+                    Session["CajaActiva"] = cajaID;
+                }
+                else
+                {
+                    Session["CajaActiva"] = null;
+                }
+            }
+            catch
+            {
+                // En caso de error, no hacer nada
+                Session["CajaActiva"] = null;
+            }
+
             return View();
         }
 
@@ -26,14 +47,19 @@ namespace VentasWeb.Controllers
                 if (string.IsNullOrWhiteSpace(texto))
                     return Json(new { success = false, data = new List<ProductoPOS>() }, JsonRequestBehavior.AllowGet);
 
-                var productos = CD_VentaPOS.Instancia.BuscarProducto(texto);
+                // Obtener sucursal activa
+                int sucursalID = Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 1; // Por defecto sucursal 1
+
+                var productos = CD_VentaPOS.Instancia.BuscarProducto(texto, sucursalID);
 
                 // Agregar información de lote a cada producto
                 foreach (var producto in productos)
                 {
                     int loteID;
                     decimal precioCompra;
-                    if (CD_VentaPOS.Instancia.ObtenerLoteActivo(producto.ProductoID, out loteID, out precioCompra))
+                    if (CD_VentaPOS.Instancia.ObtenerLoteActivo(producto.ProductoID, sucursalID, out loteID, out precioCompra))
                     {
                         producto.LoteID = loteID;
                         producto.PrecioCompra = precioCompra;
@@ -169,6 +195,16 @@ namespace VentasWeb.Controllers
                     }, JsonRequestBehavior.AllowGet);
                 }
 
+                // ✅ VALIDACIÓN: Pago parcial
+                if (payload.Venta.TipoVenta == "PARCIAL")
+                {
+                    if (!payload.Venta.MontoPagado.HasValue || payload.Venta.MontoPagado.Value <= 0)
+                        return Json(new { success = false, mensaje = "Debe especificar el monto pagado" }, JsonRequestBehavior.AllowGet);
+                    
+                    if (payload.Venta.MontoPagado.Value > payload.Venta.Total)
+                        return Json(new { success = false, mensaje = "El monto pagado no puede ser mayor al total" }, JsonRequestBehavior.AllowGet);
+                }
+
                 // Registrar venta
                 string mensaje;
                 Guid ventaID;
@@ -203,6 +239,12 @@ namespace VentasWeb.Controllers
                 string mensaje;
                 bool exito = CD_VentaPOS.Instancia.AperturaCaja(cajaID, montoInicial, User.Identity.Name ?? "system", out mensaje);
 
+                if (exito)
+                {
+                    // Guardar caja activa en sesión
+                    Session["CajaActiva"] = cajaID;
+                }
+
                 return Json(new { success = exito, mensaje = mensaje }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
@@ -221,6 +263,12 @@ namespace VentasWeb.Controllers
                 string mensaje;
                 
                 bool exito = CD_VentaPOS.Instancia.CierreCaja(cajaID, User.Identity.Name ?? "system", out saldoFinal, out totalVentas, out mensaje);
+
+                if (exito)
+                {
+                    // Limpiar caja activa de sesión
+                    Session["CajaActiva"] = null;
+                }
 
                 return Json(new
                 {

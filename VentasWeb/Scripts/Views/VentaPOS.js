@@ -276,6 +276,10 @@ function actualizarCarrito() {
         const subtotal = item.Cantidad * item.PrecioVenta;
         const montoIVA = subtotal * (item.TasaIVA / 100);
         const total = subtotal + montoIVA;
+        
+        // Formatear cantidad: mostrar hasta 3 decimales si es necesario
+        const cantidadFormateada = item.Cantidad % 1 === 0 ? item.Cantidad : item.Cantidad.toFixed(3).replace(/\.?0+$/, '');
+        const unidad = item.Cantidad !== Math.floor(item.Cantidad) ? ' kg' : '';
 
         html += `
             <div class="carrito-item">
@@ -284,15 +288,16 @@ function actualizarCarrito() {
                         <strong>${item.Nombre}</strong>
                         <br><small class="text-muted">${item.CodigoInterno || ''}</small>
                         <br><small class="text-info">IVA ${item.TasaIVA}%</small>
+                        ${unidad ? '<br><small class="text-warning"><i class="fas fa-weight"></i> Peso variable</small>' : ''}
                     </div>
                     <div class="col-3">
                         <div class="input-group input-group-sm">
                             <button class="btn btn-outline-secondary" onclick="cambiarCantidad(${index}, -1)">-</button>
                             <input type="number" class="form-control cantidad-input" value="${item.Cantidad}" 
-                                   onchange="cambiarCantidadDirecta(${index}, this.value)" min="1" max="${item.StockDisponible}" />
+                                   onchange="cambiarCantidadDirecta(${index}, this.value)" min="0.001" max="${item.StockDisponible}" step="0.001" />
                             <button class="btn btn-outline-secondary" onclick="cambiarCantidad(${index}, 1)">+</button>
                         </div>
-                        <small class="text-muted">$${item.PrecioVenta.toFixed(2)} c/u</small>
+                        <small class="text-muted">$${item.PrecioVenta.toFixed(2)}${unidad ? '/kg' : ' c/u'}</small>
                     </div>
                     <div class="col-3 text-end">
                         <strong class="text-success">$${total.toFixed(2)}</strong>
@@ -313,9 +318,11 @@ function actualizarCarrito() {
 
 function cambiarCantidad(index, delta) {
     const item = carrito[index];
-    const nuevaCantidad = item.Cantidad + delta;
+    // Permitir incrementos/decrementos de 0.1 para productos fraccionados
+    const incremento = delta > 0 ? 0.1 : -0.1;
+    const nuevaCantidad = Math.round((item.Cantidad + incremento) * 1000) / 1000;
 
-    if (nuevaCantidad < 1) {
+    if (nuevaCantidad <= 0) {
         eliminarDelCarrito(index);
         return;
     }
@@ -330,22 +337,25 @@ function cambiarCantidad(index, delta) {
 }
 
 function cambiarCantidadDirecta(index, valor) {
-    const cantidad = parseInt(valor);
+    const cantidad = parseFloat(valor);
     const item = carrito[index];
 
-    if (isNaN(cantidad) || cantidad < 1) {
+    if (isNaN(cantidad) || cantidad <= 0) {
         toastr.warning('Cantidad no válida');
         actualizarCarrito();
         return;
     }
 
-    if (cantidad > item.StockDisponible) {
+    // Redondear a 3 decimales para evitar problemas de precisión
+    const cantidadRedondeada = Math.round(cantidad * 1000) / 1000;
+
+    if (cantidadRedondeada > item.StockDisponible) {
         toastr.warning('Cantidad mayor al stock disponible');
         actualizarCarrito();
         return;
     }
 
-    item.Cantidad = cantidad;
+    item.Cantidad = cantidadRedondeada;
     actualizarCarrito();
 }
 
@@ -441,11 +451,13 @@ function seleccionarCliente(clienteID) {
                     </div>
                 `);
 
-                // Habilitar opción de crédito
+                // Habilitar opción de crédito y pago parcial
                 $('#rdCredito').prop('disabled', false);
+                $('#rdParcial').prop('disabled', false);
             } else {
                 $('#clienteCredito').html('<small class="text-muted">Sin línea de crédito</small>');
                 $('#rdCredito').prop('disabled', true);
+                $('#rdParcial').prop('disabled', false); // Pago parcial disponible aunque no tenga crédito
                 $('#rdContado').prop('checked', true);
             }
 
@@ -471,6 +483,7 @@ function seleccionarClienteGeneral() {
     $('#clienteInfo').hide();
     $('#panelFacturacion').hide();
     $('#rdCredito').prop('disabled', true);
+    $('#rdParcial').prop('disabled', true);
     $('#rdContado').prop('checked', true);
     cambiarTipoVenta();
 }
@@ -484,12 +497,31 @@ function cambiarTipoVenta() {
     if (tipoVenta === 'CONTADO') {
         $('#panelFormaPago').show();
         $('#panelFacturacion').show();
+        $('#panelMontoParcial').hide();
+    } else if (tipoVenta === 'PARCIAL') {
+        // Pago parcial: mostrar panel de monto pagado, forma de pago obligatoria
+        $('#panelFormaPago').show();
+        $('#panelFacturacion').show();
+        $('#panelMontoParcial').show();
+        $('#panelEfectivo').hide();
+        $('#panelCambio').hide();
+        
+        // Actualizar total en panel parcial
+        const totales = actualizarTotales();
+        $('#lblTotalVentaParcial').text('$' + totales.total.toFixed(2));
+        $('#txtMontoPagado').val('');
+        $('#panelSaldoPendiente').hide();
+        
+        // Factura siempre requerida en PARCIAL con PPD
+        $('#chkRequiereFactura').prop('checked', true);
+        $('#datosFacturacion').show();
     } else {
         // Crédito: ocultar pago y facturación
         $('#panelFormaPago').hide();
         $('#panelEfectivo').hide();
         $('#panelCambio').hide();
         $('#panelFacturacion').hide();
+        $('#panelMontoParcial').hide();
         $('#chkRequiereFactura').prop('checked', false);
         $('#datosFacturacion').hide();
     }
@@ -523,6 +555,28 @@ function calcularCambio() {
         $('#panelCambio').show();
     } else {
         $('#panelCambio').hide();
+    }
+}
+
+function calcularSaldoPendiente() {
+    const totales = actualizarTotales();
+    const montoPagado = parseFloat($('#txtMontoPagado').val()) || 0;
+    const saldoPendiente = totales.total - montoPagado;
+    const porcentaje = totales.total > 0 ? ((montoPagado / totales.total) * 100).toFixed(1) : 0;
+    
+    if (montoPagado > 0) {
+        $('#lblSaldoPendiente').text('$' + saldoPendiente.toFixed(2));
+        $('#lblPorcentajePagado').text(porcentaje + '%');
+        $('#panelSaldoPendiente').show();
+        
+        // Cambiar color según el saldo
+        if (saldoPendiente <= 0.01) {
+            $('#lblSaldoPendiente').removeClass('text-danger').addClass('text-success');
+        } else {
+            $('#lblSaldoPendiente').removeClass('text-success').addClass('text-danger');
+        }
+    } else {
+        $('#panelSaldoPendiente').hide();
     }
 }
 
@@ -580,11 +634,34 @@ function finalizarVenta() {
         return;
     }
 
+    // Validaciones específicas para PARCIAL
+    if (tipoVenta === 'PARCIAL') {
+        const montoPagado = parseFloat($('#txtMontoPagado').val()) || 0;
+        
+        if (montoPagado <= 0) {
+            toastr.warning('Ingrese el monto a pagar ahora');
+            $('#txtMontoPagado').focus();
+            return;
+        }
+        
+        if (montoPagado > totales.total) {
+            toastr.warning('El monto pagado no puede ser mayor al total de la venta');
+            $('#txtMontoPagado').focus();
+            return;
+        }
+        
+        // Confirmar pago parcial
+        const saldoPendiente = totales.total - montoPagado;
+        if (!confirm(`¿Confirmar pago parcial?\n\nTotal: $${totales.total.toFixed(2)}\nPago ahora: $${montoPagado.toFixed(2)}\nSaldo pendiente: $${saldoPendiente.toFixed(2)}`)) {
+            return;
+        }
+    }
+
     // Validar efectivo recibido si es necesario
     const option = $('#cboFormaPago option:selected');
     const requiereCambio = option.data('cambio');
     
-    if (requiereCambio) {
+    if (requiereCambio && tipoVenta === 'CONTADO') {
         const efectivo = parseFloat($('#txtEfectivoRecibido').val()) || 0;
         if (efectivo < totales.total) {
             toastr.warning('El efectivo recibido es menor al total');
@@ -602,7 +679,13 @@ function procesarVenta(tipoVenta, totales, clienteID) {
     const efectivoRecibido = parseFloat($('#txtEfectivoRecibido').val()) || null;
     const cambio = efectivoRecibido ? efectivoRecibido - totales.total : null;
 
-    const requiereFactura = tipoVenta === 'CONTADO' && $('#chkRequiereFactura').is(':checked');
+    const requiereFactura = (tipoVenta === 'CONTADO' && $('#chkRequiereFactura').is(':checked')) || tipoVenta === 'PARCIAL';
+    
+    // Capturar MontoPagado para ventas parciales
+    let montoPagado = null;
+    if (tipoVenta === 'PARCIAL') {
+        montoPagado = parseFloat($('#txtMontoPagado').val()) || null;
+    }
 
     const detalle = carrito.map(item => ({
         ProductoID: item.ProductoID,
@@ -629,6 +712,7 @@ function procesarVenta(tipoVenta, totales, clienteID) {
             Subtotal: totales.subtotal,
             IVA: totales.iva,
             Total: totales.total,
+            MontoPagado: montoPagado,
             RequiereFactura: requiereFactura,
             CajaID: 1
         },

@@ -19,19 +19,25 @@ function verificarEstadoCaja() {
         type: 'GET',
         data: { cajaID: CAJA_ID },
         success: function(response) {
+            console.log('Respuesta de ObtenerEstadoCaja:', response);
             if (response.success) {
                 estadoCajaActual = response.data;
+                console.log('Estado de caja actualizado:', estadoCajaActual);
                 actualizarUICaja(response.data);
+            } else {
+                console.error('Error en respuesta:', response.mensaje);
             }
         },
-        error: function() {
-            console.error('Error al verificar estado de caja');
+        error: function(xhr, status, error) {
+            console.error('Error al verificar estado de caja:', error, xhr.status);
         }
     });
 }
 
 // Actualizar interfaz según estado de caja
 function actualizarUICaja(estado) {
+    console.log('Actualizando UI de caja con estado:', estado);
+    
     const panel = $('#estadoCajaPanel');
     const btnAbrir = $('#btnAbrirCaja');
     const btnCerrar = $('#btnCerrarCaja');
@@ -46,10 +52,27 @@ function actualizarUICaja(estado) {
         btnCerrar.show();
         detalles.show();
 
-        // Actualizar detalles
+        // Actualizar detalles con todos los datos
+        const fondoInicial = estado.FondoInicial || 0;
+        const totalVentas = estado.TotalVentas || 0;
+        const totalGastos = estado.TotalGastos || 0;
+        const saldoEsperado = fondoInicial + totalVentas - totalGastos;
+        
+        console.log('Valores calculados:', {
+            fondoInicial,
+            totalVentas,
+            totalGastos,
+            saldoEsperado
+        });
+        
         $('#cajaFechaApertura').text(moment(estado.FechaApertura).format('DD/MM/YYYY HH:mm'));
+        $('#cajaFondoInicial').text(fondoInicial.toFixed(2));
         $('#cajaNumVentas').text(estado.NumeroVentas);
-        $('#cajaTotalVentas').text(estado.TotalVentas.toFixed(2));
+        $('#cajaTotalVentas').text(totalVentas.toFixed(2));
+        $('#cajaTotalGastos').text(totalGastos.toFixed(2));
+        $('#cajaSaldoEsperado').text(saldoEsperado.toFixed(2));
+        
+        console.log('UI actualizada. FondoInicial:', fondoInicial, 'TotalGastos:', totalGastos, 'Esperado:', saldoEsperado);
     } else {
         // Caja CERRADA
         panel.removeClass('caja-abierta').addClass('caja-cerrada');
@@ -57,6 +80,7 @@ function actualizarUICaja(estado) {
         btnAbrir.show();
         btnCerrar.hide();
         detalles.hide();
+        console.log('Caja cerrada');
     }
 }
 
@@ -108,12 +132,17 @@ function mostrarModalCierre() {
         return;
     }
 
-    // Llenar datos del resumen
-    // Nota: En producción, obtener fondo inicial desde base de datos
-    $('#cierreFondoInicial').text('0.00'); // TODO: Obtener de MovimientosCaja
-    $('#cierreTotalVentas').text(estadoCajaActual.TotalVentas.toFixed(2));
+    // Llenar datos del resumen con valores reales
+    const fondoInicial = estadoCajaActual.FondoInicial || 0;
+    const totalVentas = estadoCajaActual.TotalVentas || 0;
+    const totalGastos = estadoCajaActual.TotalGastos || 0;
+    const montoEsperado = fondoInicial + totalVentas - totalGastos;
+    
+    $('#cierreFondoInicial').text(fondoInicial.toFixed(2));
+    $('#cierreTotalVentas').text(totalVentas.toFixed(2));
     $('#cierreNumVentas').text(estadoCajaActual.NumeroVentas);
-    $('#cierreMontoEsperado').text(estadoCajaActual.TotalVentas.toFixed(2));
+    $('#cierreTotalGastos').text(totalGastos.toFixed(2));
+    $('#cierreMontoEsperado').text(montoEsperado.toFixed(2));
 
     // Limpiar campos
     $('#txtMontoEfectivo').val('');

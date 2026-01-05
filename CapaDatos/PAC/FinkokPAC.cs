@@ -518,6 +518,12 @@ namespace CapaDatos.PAC
             return await TimbrarAsync(xmlNominaSinTimbrar, config);
         }
 
+        public async Task<RespuestaTimbrado> TimbrarComplementoPagoAsync(string xmlSinTimbrar, ConfiguracionPAC config)
+        {
+            // Finkok usa el mismo método stamping para complementos
+            return await TimbrarAsync(xmlSinTimbrar, config);
+        }
+
         #endregion
     }
 }

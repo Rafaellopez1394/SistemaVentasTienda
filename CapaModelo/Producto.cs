@@ -35,6 +35,7 @@ namespace CapaModelo
     {
         public int LoteID { get; set; }
         public int ProductoID { get; set; }
+        public int SucursalID { get; set; }
         public string NombreProducto { get; set; }
         public DateTime FechaEntrada { get; set; }
         public DateTime? FechaCaducidad { get; set; }
@@ -47,5 +48,17 @@ namespace CapaModelo
         public Boolean Estatus { get; set; }
     }
 
+    public class CambioPrecio
+    {
+        public int CambioID { get; set; }
+        public int ProductoID { get; set; }
+        public string NombreProducto { get; set; }
+        public string TipoPrecio { get; set; }
+        public decimal PrecioAnterior { get; set; }
+        public decimal PrecioNuevo { get; set; }
+        public decimal DiferenciaPorcentaje { get; set; }
+        public string Usuario { get; set; }
+        public DateTime FechaCambio { get; set; }
+        public string NombreSucursal { get; set; }
+    }
 }
-

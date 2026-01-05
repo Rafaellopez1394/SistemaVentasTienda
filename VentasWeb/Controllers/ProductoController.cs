@@ -17,6 +17,11 @@ namespace VentasWeb.Controllers
         {
             try
             {
+                // Obtener sucursal activa
+                int sucursalID = Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 1;
+
                 // 1. Obtenemos solo los datos básicos del producto (sin tocar lotes aquí)
                 var productos = CD_Producto.Instancia.ObtenerTodos();
 
@@ -34,12 +39,11 @@ namespace VentasWeb.Controllers
                     p.Estatus
                 }).ToList();
 
-                // 2. Calculamos el stock por separado (fuera del query de EF → evita el error de "árbol de expresión")
+                // 2. Calculamos el stock POR SUCURSAL por separado
                 var stocks = new Dictionary<int, int>();
                 foreach (var item in listaBase)
                 {
-                    int stock = CD_Producto.Instancia.ObtenerLotes(item.ProductoID)
-                                                    .Sum(l => l.CantidadDisponible);
+                    int stock = CD_Producto.Instancia.ObtenerStockPorSucursal(item.ProductoID, sucursalID);
                     stocks[item.ProductoID] = stock;
                 }
 
@@ -116,7 +120,11 @@ namespace VentasWeb.Controllers
         [HttpGet]
         public JsonResult ObtenerLotes(int productoId)
         {
-            var lotes = CD_Producto.Instancia.ObtenerLotes(productoId);
+            int sucursalID = Session["SucursalActiva"] != null 
+                ? (int)Session["SucursalActiva"] 
+                : 1;
+            
+            var lotes = CD_Producto.Instancia.ObtenerLotes(productoId, sucursalID);
             return Json(lotes, JsonRequestBehavior.AllowGet);
         }
 
@@ -132,6 +140,10 @@ namespace VentasWeb.Controllers
             if (ModelState.IsValid)
             {
                 lote.Usuario = User.Identity.Name ?? "system";
+                lote.SucursalID = Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 1;
+                
                 if (CD_Producto.Instancia.RegistrarLote(lote))
                 {
                     TempData["Success"] = "Lote registrado correctamente";
@@ -296,8 +308,17 @@ namespace VentasWeb.Controllers
         [HttpPost]
         public JsonResult AjustarLote(int loteId, decimal cantidadAjuste, string tipo, string motivo)
         {
+            int sucursalID = Session["SucursalActiva"] != null 
+                ? (int)Session["SucursalActiva"] 
+                : 1;
+            
             var lote = CD_Producto.Instancia.ObtenerLotePorId(loteId);
-            if (lote == null || cantidadAjuste <= 0 || lote.CantidadDisponible < cantidadAjuste)
+            
+            // VALIDAR QUE EL LOTE PERTENECE A LA SUCURSAL ACTIVA
+            if (lote == null || lote.SucursalID != sucursalID)
+                return Json(new { success = false, message = "El lote no pertenece a tu sucursal" });
+                
+            if (cantidadAjuste <= 0 || lote.CantidadDisponible < cantidadAjuste)
                 return Json(new { success = false, message = "Ajuste inválido" });
 
             var ajuste = new AjusteInventario

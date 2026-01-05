@@ -16,13 +16,14 @@ namespace CapaDatos
         private CD_VentaPOS() { }
 
         // Buscar productos para agregar al carrito
-        public List<ProductoPOS> BuscarProducto(string texto)
+        public List<ProductoPOS> BuscarProducto(string texto, int sucursalID = 1)
         {
             var lista = new List<ProductoPOS>();
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
                 SqlCommand cmd = new SqlCommand("BuscarProductoPOS", cnx) { CommandType = CommandType.StoredProcedure };
                 cmd.Parameters.AddWithValue("@Texto", texto);
+                cmd.Parameters.AddWithValue("@SucursalID", sucursalID);
 
                 cnx.Open();
                 using (SqlDataReader dr = cmd.ExecuteReader())
@@ -70,7 +71,7 @@ namespace CapaDatos
         }
 
         // Obtener lote activo de un producto (FIFO - First In First Out)
-        public bool ObtenerLoteActivo(int productoID, out int loteID, out decimal precioCompra)
+        public bool ObtenerLoteActivo(int productoID, int sucursalID, out int loteID, out decimal precioCompra)
         {
             loteID = 0;
             precioCompra = 0;
@@ -81,11 +82,13 @@ namespace CapaDatos
                     SELECT TOP 1 LoteID, PrecioCompra
                     FROM LotesProducto
                     WHERE ProductoID = @ProductoID 
+                      AND SucursalID = @SucursalID
                       AND Estatus = 1 
                       AND CantidadDisponible > 0
                     ORDER BY FechaEntrada ASC", cnx);
                 
                 cmd.Parameters.AddWithValue("@ProductoID", productoID);
+                cmd.Parameters.AddWithValue("@SucursalID", sucursalID);
                 cnx.Open();
                 
                 using (SqlDataReader dr = cmd.ExecuteReader())
@@ -153,11 +156,12 @@ namespace CapaDatos
                     var pMensaje = new SqlParameter("@Mensaje", SqlDbType.VarChar, 200) { Direction = ParameterDirection.Output };
                     
                     cmdVenta.Parameters.AddWithValue("@ClienteID", venta.ClienteID);
-                    cmdVenta.Parameters.AddWithValue("@TipoVenta", venta.TipoVenta);
+                    cmdVenta.Parameters.AddWithValue("@TipoVenta", venta.TipoVenta); // CONTADO, CREDITO, PARCIAL
                     cmdVenta.Parameters.AddWithValue("@FormaPagoID", (object)venta.FormaPagoID ?? DBNull.Value);
                     cmdVenta.Parameters.AddWithValue("@MetodoPagoID", (object)venta.MetodoPagoID ?? DBNull.Value);
                     cmdVenta.Parameters.AddWithValue("@EfectivoRecibido", (object)venta.EfectivoRecibido ?? DBNull.Value);
                     cmdVenta.Parameters.AddWithValue("@Cambio", (object)venta.Cambio ?? DBNull.Value);
+                    cmdVenta.Parameters.AddWithValue("@MontoPagado", (object)venta.MontoPagado ?? DBNull.Value); // ✅ Nuevo parámetro
                     cmdVenta.Parameters.AddWithValue("@Subtotal", venta.Subtotal);
                     cmdVenta.Parameters.AddWithValue("@IVA", venta.IVA);
                     cmdVenta.Parameters.AddWithValue("@Total", venta.Total);
@@ -410,7 +414,9 @@ namespace CapaDatos
                                 FechaApertura = dr["FechaApertura"] == DBNull.Value ? (DateTime?)null : Convert.ToDateTime(dr["FechaApertura"]),
                                 SaldoActual = Convert.ToDecimal(dr["SaldoActual"]),
                                 NumeroVentas = Convert.ToInt32(dr["NumeroVentas"]),
-                                TotalVentas = Convert.ToDecimal(dr["TotalVentas"])
+                                TotalVentas = Convert.ToDecimal(dr["TotalVentas"]),
+                                FondoInicial = Convert.ToDecimal(dr["FondoInicial"]),
+                                TotalGastos = Convert.ToDecimal(dr["TotalGastos"])
                             };
                         }
                     }
@@ -652,5 +658,186 @@ namespace CapaDatos
             BitConverter.GetBytes(id).CopyTo(bytes, 0);
             return new Guid(bytes);
         }
+
+        // ===== MÉTODOS PARA PAGOS PARCIALES =====
+
+        /// <summary>
+        /// Registra un pago parcial de una venta
+        /// </summary>
+        public bool RegistrarPagoVenta(RegistrarPagoVentaRequest request, string usuario, out int pagoID, out string mensaje)
+        {
+            pagoID = 0;
+            mensaje = "";
+
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                SqlCommand cmd = new SqlCommand("RegistrarPagoVenta", cnx) { CommandType = CommandType.StoredProcedure };
+
+                var pPagoID = new SqlParameter("@PagoID", SqlDbType.Int) { Direction = ParameterDirection.Output };
+                var pMensaje = new SqlParameter("@Mensaje", SqlDbType.VarChar, 200) { Direction = ParameterDirection.Output };
+
+                cmd.Parameters.AddWithValue("@VentaID", request.VentaID);
+                cmd.Parameters.AddWithValue("@FormaPagoID", request.FormaPagoID);
+                cmd.Parameters.AddWithValue("@MetodoPagoID", request.MetodoPagoID);
+                cmd.Parameters.AddWithValue("@Monto", request.Monto);
+                cmd.Parameters.AddWithValue("@Referencia", (object)request.Referencia ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Observaciones", (object)request.Observaciones ?? DBNull.Value);
+                cmd.Parameters.AddWithValue("@Usuario", usuario);
+                cmd.Parameters.AddWithValue("@ComplementoPagoID", DBNull.Value); // Se llenará después del timbrado
+                cmd.Parameters.Add(pPagoID);
+                cmd.Parameters.Add(pMensaje);
+
+                try
+                {
+                    cnx.Open();
+                    cmd.ExecuteNonQuery();
+
+                    pagoID = Convert.ToInt32(pPagoID.Value);
+                    mensaje = pMensaje.Value.ToString();
+
+                    return pagoID > 0;
+                }
+                catch (Exception ex)
+                {
+                    mensaje = "Error al registrar pago: " + ex.Message;
+                    return false;
+                }
+            }
+        }
+
+        /// <summary>
+        /// Obtiene ventas pendientes de pago
+        /// </summary>
+        public List<VentaPendientePago> ObtenerVentasPendientesPago(Guid? clienteID = null)
+        {
+            var lista = new List<VentaPendientePago>();
+
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                SqlCommand cmd = new SqlCommand("ObtenerVentasPendientesPago", cnx) { CommandType = CommandType.StoredProcedure };
+                cmd.Parameters.AddWithValue("@ClienteID", (object)clienteID ?? DBNull.Value);
+
+                try
+                {
+                    cnx.Open();
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            lista.Add(new VentaPendientePago
+                            {
+                                VentaID = dr.GetGuid(dr.GetOrdinal("VentaID")),
+                                ClienteID = dr.GetGuid(dr.GetOrdinal("ClienteID")),
+                                Cliente = dr["Cliente"].ToString(),
+                                RFC = dr["RFC"].ToString(),
+                                FechaVenta = dr.GetDateTime(dr.GetOrdinal("FechaVenta")),
+                                Total = dr.GetDecimal(dr.GetOrdinal("Total")),
+                                MontoPagado = dr.GetDecimal(dr.GetOrdinal("MontoPagado")),
+                                SaldoPendiente = dr.GetDecimal(dr.GetOrdinal("SaldoPendiente")),
+                                EsPagado = dr.GetBoolean(dr.GetOrdinal("EsPagado")),
+                                RequiereFactura = dr.GetBoolean(dr.GetOrdinal("RequiereFactura")),
+                                IdFactura = dr["IdFactura"] == DBNull.Value ? (int?)null : dr.GetInt32(dr.GetOrdinal("IdFactura")),
+                                FacturaUUID = dr["FacturaUUID"] == DBNull.Value ? (Guid?)null : dr.GetGuid(dr.GetOrdinal("FacturaUUID")),
+                                FacturaSerieFolio = dr["FacturaSerieFolio"]?.ToString(),
+                                NumeroPagos = dr.GetInt32(dr.GetOrdinal("NumeroPagos")),
+                                ClienteRazonSocial = dr["ClienteRazonSocial"]?.ToString(),
+                                ClienteRFC = dr["ClienteRFC"]?.ToString()
+                            });
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    return lista;
+                }
+            }
+
+            return lista;
+        }
+
+        /// <summary>
+        /// Obtiene los pagos realizados de una venta
+        /// </summary>
+        public List<VentaPago> ObtenerPagosVenta(Guid ventaID)
+        {
+            var lista = new List<VentaPago>();
+
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                string query = @"
+                    SELECT 
+                        vp.PagoID, vp.VentaID, vp.FormaPagoID, fp.Descripcion AS FormaPagoDescripcion,
+                        vp.MetodoPagoID, mp.Descripcion AS MetodoPagoDescripcion,
+                        vp.Monto, vp.FechaPago, vp.Referencia, vp.Observaciones, vp.Usuario,
+                        vp.ComplementoPagoID, vp.FechaAlta
+                    FROM VentaPagos vp
+                    INNER JOIN CatFormasPago fp ON vp.FormaPagoID = fp.FormaPagoID
+                    INNER JOIN CatMetodosPago mp ON vp.MetodoPagoID = mp.MetodoPagoID
+                    WHERE vp.VentaID = @VentaID
+                    ORDER BY vp.FechaPago ASC";
+
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@VentaID", ventaID);
+
+                try
+                {
+                    cnx.Open();
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            lista.Add(new VentaPago
+                            {
+                                PagoID = dr.GetInt32(dr.GetOrdinal("PagoID")),
+                                VentaID = dr.GetGuid(dr.GetOrdinal("VentaID")),
+                                FormaPagoID = dr.GetInt32(dr.GetOrdinal("FormaPagoID")),
+                                FormaPagoDescripcion = dr["FormaPagoDescripcion"].ToString(),
+                                MetodoPagoID = dr.GetInt32(dr.GetOrdinal("MetodoPagoID")),
+                                MetodoPagoDescripcion = dr["MetodoPagoDescripcion"].ToString(),
+                                Monto = dr.GetDecimal(dr.GetOrdinal("Monto")),
+                                FechaPago = dr.GetDateTime(dr.GetOrdinal("FechaPago")),
+                                Referencia = dr["Referencia"]?.ToString(),
+                                Observaciones = dr["Observaciones"]?.ToString(),
+                                Usuario = dr["Usuario"].ToString(),
+                                ComplementoPagoID = dr["ComplementoPagoID"] == DBNull.Value ? (int?)null : dr.GetInt32(dr.GetOrdinal("ComplementoPagoID")),
+                                FechaAlta = dr.GetDateTime(dr.GetOrdinal("FechaAlta"))
+                            });
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    return lista;
+                }
+            }
+
+            return lista;
+        }
+
+        /// <summary>
+        /// Actualiza el ComplementoPagoID después de timbrar
+        /// </summary>
+        public bool ActualizarComplementoPagoID(int pagoID, int complementoPagoID)
+        {
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                string query = "UPDATE VentaPagos SET ComplementoPagoID = @ComplementoPagoID WHERE PagoID = @PagoID";
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@ComplementoPagoID", complementoPagoID);
+                cmd.Parameters.AddWithValue("@PagoID", pagoID);
+
+                try
+                {
+                    cnx.Open();
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    return rowsAffected > 0;
+                }
+                catch (Exception)
+                {
+                    return false;
+                }
+            }
+        }
     }
 }
+

@@ -1,0 +1,353 @@
+@model CapaModelo.Traspaso
+@{
+    ViewBag.Title = "Detalle de Traspaso";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-info text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-file-alt"></i> Detalle de Traspaso @Model.FolioTraspaso
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Información General -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h5 class="border-bottom pb-2"><i class="fas fa-info-circle"></i> Información General</h5>
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Folio:</strong><br />
+                            @Model.FolioTraspaso
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Fecha Registro:</strong><br />
+                            @Model.FechaTraspaso.ToString("dd/MM/yyyy")
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Estatus:</strong><br />
+                            @if (Model.Estatus == "PENDIENTE")
+                            {
+                                <span class="badge badge-warning badge-lg">Pendiente</span>
+                            }
+                            else if (Model.Estatus == "EN_TRANSITO")
+                            {
+                                <span class="badge badge-info badge-lg">En Tránsito</span>
+                            }
+                            else if (Model.Estatus == "RECIBIDO")
+                            {
+                                <span class="badge badge-success badge-lg">Recibido</span>
+                            }
+                            else if (Model.Estatus == "CANCELADO")
+                            {
+                                <span class="badge badge-danger badge-lg">Cancelado</span>
+                            }
+                        </div>
+                        <div class="col-md-3">
+                            <strong>Total Productos:</strong><br />
+                            @Model.TotalProductos productos
+                        </div>
+                    </div>
+
+                    <!-- Sucursales -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <div class="card border-primary">
+                                <div class="card-header bg-primary text-white">
+                                    <strong><i class="fas fa-arrow-circle-up"></i> Sucursal Origen</strong>
+                                </div>
+                                <div class="card-body">
+                                    <strong>@Model.SucursalOrigen?.Nombre</strong><br />
+                                    RFC: @Model.SucursalOrigen?.RFC<br />
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border-success">
+                                <div class="card-header bg-success text-white">
+                                    <strong><i class="fas fa-arrow-circle-down"></i> Sucursal Destino</strong>
+                                </div>
+                                <div class="card-body">
+                                    <strong>@Model.SucursalDestino?.Nombre</strong><br />
+                                    RFC: @Model.SucursalDestino?.RFC<br />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Timeline de Estados -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h5 class="border-bottom pb-2"><i class="fas fa-history"></i> Historial</h5>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="timeline">
+                                <div class="timeline-item @(Model.FechaTraspaso != null ? "completed" : "")">
+                                    <div class="timeline-marker"></div>
+                                    <div class="timeline-content">
+                                        <h6>Registrado</h6>
+                                        <p>@Model.FechaRegistro.ToString("dd/MM/yyyy HH:mm")</p>
+                                    </div>
+                                </div>
+
+                                @if (Model.FechaEnvio != null)
+                                {
+                                    <div class="timeline-item completed">
+                                        <div class="timeline-marker"></div>
+                                        <div class="timeline-content">
+                                            <h6>Enviado</h6>
+                                            <p>@Model.FechaEnvio?.ToString("dd/MM/yyyy HH:mm")</p>
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (Model.FechaRecepcion != null)
+                                {
+                                    <div class="timeline-item completed">
+                                        <div class="timeline-marker"></div>
+                                        <div class="timeline-content">
+                                            <h6>Recibido</h6>
+                                            <p>@Model.FechaRecepcion?.ToString("dd/MM/yyyy HH:mm")</p>
+                                        </div>
+                                    </div>
+                                }
+
+                                @if (!string.IsNullOrEmpty(Model.MotivoCancelacion))
+                                {
+                                    <div class="timeline-item cancelled">
+                                        <div class="timeline-marker"></div>
+                                        <div class="timeline-content">
+                                            <h6>Cancelado</h6>
+                                            <p>Motivo: @Model.MotivoCancelacion</p>
+                                        </div>
+                                    </div>
+                                }
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Observaciones -->
+                    @if (!string.IsNullOrEmpty(Model.Observaciones))
+                    {
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <div class="alert alert-info">
+                                    <strong><i class="fas fa-comment"></i> Observaciones:</strong><br />
+                                    @Model.Observaciones
+                                </div>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Detalle de Productos -->
+                    <div class="row mb-4">
+                        <div class="col-md-12">
+                            <h5 class="border-bottom pb-2"><i class="fas fa-boxes"></i> Productos</h5>
+                        </div>
+                        <div class="col-md-12">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-striped">
+                                    <thead class="thead-dark">
+                                        <tr>
+                                            <th>Código</th>
+                                            <th>Producto</th>
+                                            <th>Unidad</th>
+                                            <th class="text-right">Cantidad Solicitada</th>
+                                            <th class="text-right">Cantidad Enviada</th>
+                                            <th class="text-right">Cantidad Recibida</th>
+                                            <th class="text-right">Precio Unit.</th>
+                                            <th class="text-right">Subtotal</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach (var detalle in Model.Detalles)
+                                        {
+                                            <tr>
+                                                <td>@detalle.CodigoProducto</td>
+                                                <td>@detalle.NombreProducto</td>
+                                                <td>@detalle.UnidadMedida</td>
+                                                <td class="text-right">@detalle.CantidadSolicitada.ToString("N3")</td>
+                                                <td class="text-right">@detalle.CantidadEnviada.ToString("N3")</td>
+                                                <td class="text-right">@detalle.CantidadRecibida.ToString("N3")</td>
+                                                <td class="text-right">$@detalle.PrecioUnitario.ToString("N2")</td>
+                                                <td class="text-right">$@detalle.Subtotal.ToString("N2")</td>
+                                            </tr>
+                                        }
+                                    </tbody>
+                                    <tfoot>
+                                        <tr class="font-weight-bold">
+                                            <td colspan="3" class="text-right">Totales:</td>
+                                            <td class="text-right">@Model.TotalCantidad.ToString("N3")</td>
+                                            <td></td>
+                                            <td></td>
+                                            <td></td>
+                                            <td class="text-right">$@Model.ValorTotal.ToString("N2")</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Botones de Acción -->
+                    <div class="row">
+                        <div class="col-md-12 text-right">
+                            <a href="@Url.Action("Index", "Traspaso")" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Regresar
+                            </a>
+
+                            @if (Model.Estatus == "PENDIENTE")
+                            {
+                                <button type="button" class="btn btn-primary" onclick="enviarTraspaso(@Model.TraspasoID)">
+                                    <i class="fas fa-truck"></i> Enviar
+                                </button>
+                                <button type="button" class="btn btn-danger" onclick="cancelarTraspaso(@Model.TraspasoID)">
+                                    <i class="fas fa-ban"></i> Cancelar
+                                </button>
+                            }
+
+                            @if (Model.Estatus == "EN_TRANSITO")
+                            {
+                                <button type="button" class="btn btn-success" onclick="recibirTraspaso(@Model.TraspasoID)">
+                                    <i class="fas fa-check"></i> Recibir
+                                </button>
+                                <button type="button" class="btn btn-danger" onclick="cancelarTraspaso(@Model.TraspasoID)">
+                                    <i class="fas fa-ban"></i> Cancelar
+                                </button>
+                            }
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section styles {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+    <style>
+        .badge-lg {
+            font-size: 1rem;
+            padding: 0.5rem 1rem;
+        }
+
+        .timeline {
+            position: relative;
+            padding-left: 40px;
+        }
+
+        .timeline::before {
+            content: '';
+            position: absolute;
+            left: 10px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #dee2e6;
+        }
+
+        .timeline-item {
+            position: relative;
+            margin-bottom: 20px;
+            padding-left: 10px;
+        }
+
+        .timeline-marker {
+            position: absolute;
+            left: -36px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background: #dee2e6;
+            border: 3px solid #fff;
+        }
+
+        .timeline-item.completed .timeline-marker {
+            background: #28a745;
+        }
+
+        .timeline-item.cancelled .timeline-marker {
+            background: #dc3545;
+        }
+
+        .timeline-content h6 {
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .timeline-content p {
+            margin: 0;
+            color: #6c757d;
+        }
+    </style>
+}
+
+@section scripts {
+    <script>
+        function enviarTraspaso(traspasoID) {
+            if (confirm('¿Está seguro de enviar este traspaso?\n\nEsta acción deducirá el inventario de la sucursal origen.')) {
+                $.ajax({
+                    url: '@Url.Action("Enviar", "Traspaso")',
+                    type: 'POST',
+                    data: { traspasoID: traspasoID },
+                    success: function (response) {
+                        if (response.success) {
+                            alert('Traspaso enviado correctamente');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function () {
+                        alert('Error al enviar el traspaso');
+                    }
+                });
+            }
+        }
+
+        function recibirTraspaso(traspasoID) {
+            if (confirm('¿Está seguro de recibir este traspaso?\n\nEsta acción agregará el inventario a la sucursal destino.')) {
+                $.ajax({
+                    url: '@Url.Action("Recibir", "Traspaso")',
+                    type: 'POST',
+                    data: { traspasoID: traspasoID },
+                    success: function (response) {
+                        if (response.success) {
+                            alert('Traspaso recibido correctamente');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function () {
+                        alert('Error al recibir el traspaso');
+                    }
+                });
+            }
+        }
+
+        function cancelarTraspaso(traspasoID) {
+            var motivo = prompt('Ingrese el motivo de cancelación:');
+            if (motivo && motivo.trim() !== '') {
+                $.ajax({
+                    url: '@Url.Action("Cancelar", "Traspaso")',
+                    type: 'POST',
+                    data: { traspasoID: traspasoID, motivo: motivo },
+                    success: function (response) {
+                        if (response.success) {
+                            alert('Traspaso cancelado correctamente');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + response.message);
+                        }
+                    },
+                    error: function () {
+                        alert('Error al cancelar el traspaso');
+                    }
+                });
+            }
+        }
+    </script>
+}

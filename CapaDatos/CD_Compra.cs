@@ -4,9 +4,14 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
+using CapaDatos.Utilidades;
 
 namespace CapaDatos
 {
+    // Alias para compatibilidad con nombres en código
+    using DetalleCompra = CapaModelo.CompraDetalle;
+
     public class CD_Compra
     {
         private static CD_Compra _instancia;
@@ -55,14 +60,15 @@ namespace CapaDatos
                     {
                         var cmdLote = new SqlCommand(@"
                             INSERT INTO LotesProducto (
-                                ProductoID, FechaEntrada, CantidadTotal, CantidadDisponible,
+                                ProductoID, SucursalID, FechaEntrada, CantidadTotal, CantidadDisponible,
                                 PrecioCompra, PrecioVenta, Usuario, UltimaAct, Estatus
                             ) VALUES (
-                                @ProductoID, GETDATE(), @Cantidad, @Cantidad,
+                                @ProductoID, @SucursalID, GETDATE(), @Cantidad, @Cantidad,
                                 @PrecioCompra, @PrecioVenta, @Usuario, GETDATE(), 1
                             )", cnx, tran);
 
                         cmdLote.Parameters.AddWithValue("@ProductoID", d.ProductoID);
+                        cmdLote.Parameters.AddWithValue("@SucursalID", compra.SucursalID);
                         cmdLote.Parameters.AddWithValue("@Cantidad", d.Cantidad);
                         cmdLote.Parameters.AddWithValue("@PrecioCompra", d.PrecioCompra);
                         cmdLote.Parameters.AddWithValue("@PrecioVenta", d.PrecioVenta);
@@ -276,5 +282,186 @@ namespace CapaDatos
             BitConverter.GetBytes(id).CopyTo(bytes, 0);
             return new Guid(bytes);
         }
+
+        /// <summary>
+        /// Registra una compra desde un archivo XML CFDI con desglose automático de lotes
+        /// </summary>
+        public bool RegistrarCompraDesdeXML(string rutaXML, Dictionary<int, ProductoCompraXML> mapeoProductos, int sucursalID, string usuario, out string mensaje)
+        {
+            mensaje = string.Empty;
+
+            try
+            {
+                // 1. Parsear el XML
+                var datosFactura = CFDICompraParser.ParsearXML(rutaXML);
+
+                // 2. Buscar o crear proveedor basado en RFC
+                Guid proveedorID = BuscarOCrearProveedor(datosFactura);
+
+                // 3. Crear objeto Compra
+                var compra = new Compra
+                {
+                    ProveedorID = proveedorID,
+                    FolioFactura = $"{datosFactura.Serie}-{datosFactura.Folio}",
+                    FechaCompra = datosFactura.Fecha,
+                    Total = datosFactura.Total,
+                    Usuario = usuario,
+                    SucursalID = sucursalID, // Asignar sucursal
+                    Detalle = new List<DetalleCompra>(),
+                    // Datos adicionales del XML
+                    UUID = datosFactura.UUID,
+                    XMLOriginal = System.IO.File.ReadAllText(rutaXML)
+                };
+
+                // 4. Mapear conceptos del XML a productos con desglose
+                foreach (var concepto in datosFactura.Conceptos)
+                {
+                    // Buscar mapeo de producto
+                    var mapeo = mapeoProductos.Values.FirstOrDefault(m => 
+                        m.NoIdentificacionXML == concepto.NoIdentificacion || 
+                        m.DescripcionXML == concepto.Descripcion);
+
+                    if (mapeo == null)
+                    {
+                        mensaje = $"No se encontró mapeo para el concepto: {concepto.Descripcion}";
+                        return false;
+                    }
+
+                    // Calcular cantidad desglosada
+                    decimal cantidadFinal = concepto.Cantidad * mapeo.FactorConversion;
+                    decimal precioUnitarioFinal = concepto.ValorUnitario / mapeo.FactorConversion;
+
+                    // Calcular IVA del concepto
+                    decimal tasaIVA = 0;
+                    bool exento = true;
+
+                    if (concepto.ImpuestosTrasladados != null && concepto.ImpuestosTrasladados.Count > 0)
+                    {
+                        var impuestoIVA = concepto.ImpuestosTrasladados.FirstOrDefault(i => i.Impuesto == "002"); // 002 = IVA
+                        if (impuestoIVA != null)
+                        {
+                            tasaIVA = impuestoIVA.TasaOCuota * 100; // Convertir a porcentaje
+                            exento = false;
+                        }
+                    }
+
+                    compra.Detalle.Add(new DetalleCompra
+                    {
+                        ProductoID = mapeo.ProductoID,
+                        Cantidad = (int)Math.Ceiling(cantidadFinal), // Redondear hacia arriba
+                        PrecioCompra = precioUnitarioFinal,
+                        PrecioVenta = mapeo.PrecioVentaSugerido > 0 ? mapeo.PrecioVentaSugerido : precioUnitarioFinal * 1.3m,
+                        TasaIVAPorcentaje = tasaIVA,
+                        Exento = exento
+                    });
+                }
+
+                // 5. Registrar compra con lotes
+                bool resultado = RegistrarCompraConLotes(compra, usuario);
+
+                if (resultado)
+                {
+                    mensaje = $"Compra registrada exitosamente desde XML. UUID: {datosFactura.UUID}";
+                    
+                    // Guardar XML en carpeta de respaldo
+                    GuardarXMLRespaldo(rutaXML, datosFactura.UUID);
+                }
+                else
+                {
+                    mensaje = "Error al registrar la compra";
+                }
+
+                return resultado;
+            }
+            catch (Exception ex)
+            {
+                mensaje = "Error al procesar XML: " + ex.Message;
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Busca un proveedor por RFC o lo crea si no existe
+        /// </summary>
+        private Guid BuscarOCrearProveedor(CFDICompraParser.DatosFacturaCompra datosFactura)
+        {
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                cnx.Open();
+
+                // Buscar proveedor por RFC
+                string queryBuscar = "SELECT ProveedorID FROM Proveedores WHERE RFCProveedor = @RFC";
+                SqlCommand cmdBuscar = new SqlCommand(queryBuscar, cnx);
+                cmdBuscar.Parameters.AddWithValue("@RFC", datosFactura.EmisorRFC);
+
+                object result = cmdBuscar.ExecuteScalar();
+
+                if (result != null)
+                {
+                    return (Guid)result;
+                }
+
+                // No existe, crear nuevo proveedor
+                Guid nuevoID = Guid.NewGuid();
+                string queryCrear = @"
+                    INSERT INTO Proveedores (
+                        ProveedorID, RazonSocial, RFCProveedor, ContactoNombre, 
+                        Activo, FechaRegistro
+                    ) VALUES (
+                        @ProveedorID, @RazonSocial, @RFC, @ContactoNombre,
+                        1, GETDATE()
+                    )";
+
+                SqlCommand cmdCrear = new SqlCommand(queryCrear, cnx);
+                cmdCrear.Parameters.AddWithValue("@ProveedorID", nuevoID);
+                cmdCrear.Parameters.AddWithValue("@RazonSocial", datosFactura.EmisorNombre ?? "Proveedor " + datosFactura.EmisorRFC);
+                cmdCrear.Parameters.AddWithValue("@RFC", datosFactura.EmisorRFC);
+                cmdCrear.Parameters.AddWithValue("@ContactoNombre", "Sin contacto");
+
+                cmdCrear.ExecuteNonQuery();
+
+                return nuevoID;
+            }
+        }
+
+        /// <summary>
+        /// Guarda una copia del XML en carpeta de respaldo
+        /// </summary>
+        private void GuardarXMLRespaldo(string rutaOriginal, string uuid)
+        {
+            try
+            {
+                string carpetaRespaldo = System.IO.Path.Combine(
+                    AppDomain.CurrentDomain.BaseDirectory,
+                    "XMLCompras"
+                );
+
+                if (!System.IO.Directory.Exists(carpetaRespaldo))
+                {
+                    System.IO.Directory.CreateDirectory(carpetaRespaldo);
+                }
+
+                string nombreArchivo = $"{uuid}_{DateTime.Now:yyyyMMddHHmmss}.xml";
+                string rutaDestino = System.IO.Path.Combine(carpetaRespaldo, nombreArchivo);
+
+                System.IO.File.Copy(rutaOriginal, rutaDestino, true);
+            }
+            catch
+            {
+                // No fallar si no se puede guardar respaldo
+            }
+        }
+    }
+
+    /// <summary>
+    /// Clase auxiliar para mapear productos del XML a productos del sistema
+    /// </summary>
+    public class ProductoCompraXML
+    {
+        public int ProductoID { get; set; }
+        public string NoIdentificacionXML { get; set; }  // Código/SKU en el XML
+        public string DescripcionXML { get; set; }        // Descripción en el XML
+        public decimal FactorConversion { get; set; }     // Ej: 1 caja = 8 piezas
+        public decimal PrecioVentaSugerido { get; set; }  // Precio de venta calculado
     }
 }

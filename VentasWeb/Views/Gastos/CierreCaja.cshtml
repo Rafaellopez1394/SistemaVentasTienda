@@ -1,0 +1,274 @@
+@{
+    ViewBag.Title = "Cierre de Caja";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <h1>
+            <i class="fa fa-calculator"></i> Cierre de Caja
+            <small>Resumen de ventas y gastos del día</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="@Url.Action("Index", "Home")"><i class="fa fa-dashboard"></i> Inicio</a></li>
+            <li><a href="@Url.Action("Registrar", "Gastos")">Gastos</a></li>
+            <li class="active">Cierre de Caja</li>
+        </ol>
+    </section>
+
+    <section class="content">
+        <div class="row">
+            <div class="col-md-12">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-search"></i> Consultar Cierre</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Caja</label>
+                                    <select id="cajaID" class="form-control">
+                                        <option value="">Seleccione caja</option>
+                                        <!-- Se llenará dinámicamente o desde el servidor -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>Fecha</label>
+                                    <input type="date" id="fechaCierre" class="form-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label>&nbsp;</label><br />
+                                    <button id="btnConsultarCierre" class="btn btn-primary">
+                                        <i class="fa fa-search"></i> Consultar Cierre
+                                    </button>
+                                    <button id="btnImprimirCierre" class="btn btn-default">
+                                        <i class="fa fa-print"></i> Imprimir
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="resultadoCierre" style="display:none;">
+            <!-- Resumen General -->
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="info-box bg-green">
+                        <span class="info-box-icon"><i class="fa fa-shopping-cart"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">TOTAL VENTAS</span>
+                            <span class="info-box-number" id="totalVentas">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box bg-red">
+                        <span class="info-box-icon"><i class="fa fa-money"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">TOTAL GASTOS</span>
+                            <span class="info-box-number" id="totalGastos">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box bg-aqua">
+                        <span class="info-box-icon"><i class="fa fa-dollar"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">EFECTIVO EN CAJA</span>
+                            <span class="info-box-number" id="efectivoCaja">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-3">
+                    <div class="info-box bg-yellow">
+                        <span class="info-box-icon"><i class="fa fa-line-chart"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">GANANCIA NETA</span>
+                            <span class="info-box-number" id="gananciaNeta">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Concentrado de Gastos por Categoría -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="box box-warning">
+                        <div class="box-header with-border">
+                            <h3 class="box-title"><i class="fa fa-pie-chart"></i> Concentrado de Gastos por Categoría</h3>
+                        </div>
+                        <div class="box-body">
+                            <table class="table table-bordered table-striped">
+                                <thead>
+                                    <tr class="bg-warning">
+                                        <th>Categoría</th>
+                                        <th class="text-center">Número de Gastos</th>
+                                        <th class="text-right">Total</th>
+                                        <th class="text-right">% del Total</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="concentradoGastos">
+                                    <tr>
+                                        <td colspan="4" class="text-center text-muted">No hay gastos registrados</td>
+                                    </tr>
+                                </tbody>
+                                <tfoot id="totalConcentrado" style="display:none;">
+                                    <tr class="bg-gray">
+                                        <th>TOTAL</th>
+                                        <th class="text-center" id="totalNumeroGastos">0</th>
+                                        <th class="text-right" id="totalMontoGastos">$0.00</th>
+                                        <th class="text-right">100%</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Desglose de Ventas -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="box box-success">
+                        <div class="box-header with-border">
+                            <h3 class="box-title"><i class="fa fa-credit-card"></i> Desglose de Ventas</h3>
+                        </div>
+                        <div class="box-body">
+                            <table class="table table-bordered">
+                                <thead>
+                                    <tr>
+                                        <th>Forma de Pago</th>
+                                        <th class="text-right">Monto</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td><i class="fa fa-money text-success"></i> Efectivo</td>
+                                        <td class="text-right"><strong id="ventasEfectivo">$0.00</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fa fa-credit-card text-info"></i> Tarjeta</td>
+                                        <td class="text-right"><strong id="ventasTarjeta">$0.00</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td><i class="fa fa-exchange text-warning"></i> Transferencia</td>
+                                        <td class="text-right"><strong id="ventasTransferencia">$0.00</strong></td>
+                                    </tr>
+                                    <tr class="bg-gray">
+                                        <td><strong>TOTAL</strong></td>
+                                        <td class="text-right"><strong id="totalVentasTable">$0.00</strong></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="box box-danger">
+                        <div class="box-header with-border">
+                            <h3 class="box-title"><i class="fa fa-list"></i> Detalle de Gastos</h3>
+                        </div>
+                        <div class="box-body">
+                            <div class="table-responsive" style="max-height: 300px; overflow-y: auto;">
+                                <table class="table table-bordered table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Categoría</th>
+                                            <th>Concepto</th>
+                                            <th class="text-right">Monto</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="detalleGastos">
+                                        <tr>
+                                            <td colspan="3" class="text-center text-muted">No hay gastos registrados</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Resumen Final -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="box box-warning">
+                        <div class="box-header with-border">
+                            <h3 class="box-title"><i class="fa fa-calculator"></i> Resumen Final del Día</h3>
+                        </div>
+                        <div class="box-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h4>Cálculo de Ganancia Neta:</h4>
+                                    <table class="table table-bordered">
+                                        <tr>
+                                            <td><strong>Ventas Totales:</strong></td>
+                                            <td class="text-right text-success" id="resumenVentas">$0.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>(-) Gastos:</strong></td>
+                                            <td class="text-right text-danger" id="resumenGastos">$0.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>(-) Retiros:</strong></td>
+                                            <td class="text-right text-warning" id="resumenRetiros">$0.00</td>
+                                        </tr>
+                                        <tr class="bg-yellow">
+                                            <td><strong>= GANANCIA NETA:</strong></td>
+                                            <td class="text-right"><h4 id="resumenGananciaNeta" style="margin:0;">$0.00</h4></td>
+                                        </tr>
+                                    </table>
+                                </div>
+
+                                <div class="col-md-6">
+                                    <h4>Efectivo Esperado en Caja:</h4>
+                                    <table class="table table-bordered">
+                                        <tr>
+                                            <td><strong>Ventas en Efectivo:</strong></td>
+                                            <td class="text-right text-success" id="resumenEfectivoVentas">$0.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>(-) Gastos en Efectivo:</strong></td>
+                                            <td class="text-right text-danger" id="resumenEfectivoGastos">$0.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>(-) Retiros:</strong></td>
+                                            <td class="text-right text-warning" id="resumenEfectivoRetiros">$0.00</td>
+                                        </tr>
+                                        <tr class="bg-aqua">
+                                            <td><strong>= EFECTIVO EN CAJA:</strong></td>
+                                            <td class="text-right"><h4 id="resumenEfectivoCaja" style="margin:0;">$0.00</h4></td>
+                                        </tr>
+                                    </table>
+                                </div>
+                            </div>
+
+                            <div class="alert alert-info">
+                                <i class="fa fa-info-circle"></i>
+                                <strong>Nota:</strong> La ganancia neta representa el beneficio real del día considerando todos los ingresos y egresos.
+                                El efectivo en caja muestra el dinero físico que debe estar disponible al cierre.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/Gastos/CierreCaja.js"></script>
+}

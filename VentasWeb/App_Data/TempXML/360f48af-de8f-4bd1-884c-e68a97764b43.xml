@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?><cfdi:Comprobante xmlns:cfdi="http://www.sat.gob.mx/cfd/4" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:implocal="http://www.sat.gob.mx/implocal" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" xsi:schemaLocation="http://www.sat.gob.mx/cfd/4 http://www.sat.gob.mx/sitio_internet/cfd/4/cfdv40.xsd http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd http://www.sat.gob.mx/implocal http://www.sat.gob.mx/sitio_internet/cfd/implocal/implocal.xsd " Version="4.0" Serie="PR" Folio="49605" Fecha="2025-12-03T20:53:46" Sello="Y4dVXzmaO9xI9ufFdvPOU7IxJTLArkOhn8wWaBg3mNy1ujlpn0v6fy53pCTBdil300HZYnUr46uPQF9y2W3YrOJBzHIihC+aDEpsINnQ6dM4h7mnhUd//MWSarQRGO13ssH5FB6FREPJESBWORqefemDARx7V/ZGTFaFrjQvDzntBbQjzuDSppEW0P5dFfAhVuxIvg6FgfR8R/mH6M5mBZt8WJDKFquueti6GcJwfUgYHODag02990wcnnsuz3rKqZVb1P/bkSqOcdWhfVllYteUSFmWFFVjvvpWgM75yiiVT/d3QM81G5+W/Z/WI5AteI357NZeYpHaihTKaBrqEg==" FormaPago="99" NoCertificado="00001000000518107508" Certificado="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" SubTotal="11998.00" Moneda="MXN" TipoCambio="1" Total="11998.00" TipoDeComprobante="I" Exportacion="01" MetodoPago="PPD" LugarExpedicion="81200">
+  <cfdi:Emisor Rfc="PRO110527LU1" Nombre="PESCADERIA ROBLES" RegimenFiscal="601" />
+  <cfdi:Receptor Rfc="GAMA6111156JA" Nombre="ALMA ROSA GAXIOLA MONTOYA" DomicilioFiscalReceptor="81048" RegimenFiscalReceptor="612" UsoCFDI="G01" />
+  <cfdi:Conceptos>
+    <cfdi:Concepto ClaveProdServ="50121700" NoIdentificacion="MASKOB1" Cantidad="2.00" ClaveUnidad="KGM" Unidad="KG" Descripcion="MASAGO KOBE KG" ValorUnitario="490.00" Importe="980.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="980.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50171800" NoIdentificacion="SAAGMA2" Cantidad="1.00" ClaveUnidad="XBX" Unidad="C12" Descripcion="SALSA AGRIDULCE MAEPLOY 12/730 ML" ValorUnitario="900.00" Importe="900.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="900.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50201712" NoIdentificacion="TEJATF4" Cantidad="3.00" ClaveUnidad="XBX" Unidad="C6" Descripcion="TE JAZMIN TEN FU'S 6/5 LB" ValorUnitario="2175.00" Importe="6525.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="6525.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50171700" NoIdentificacion="VINMIZ2" Cantidad="1.00" ClaveUnidad="XBX" Unidad="C4" Descripcion="VINAGRE DE ARROZ MIZKAN 4/1 GAL" ValorUnitario="575.00" Importe="575.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="575.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50131800" NoIdentificacion="QUESO22" Cantidad="1.00" ClaveUnidad="XBX" Unidad="C8" Descripcion="QUESO CHESTER 8/2.2 KG" ValorUnitario="2328.00" Importe="2328.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="2328.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+    <cfdi:Concepto ClaveProdServ="50171800" NoIdentificacion="SASRHF2" Cantidad="1.00" ClaveUnidad="XBX" Unidad="C12" Descripcion="SALSA SRIRACHA HF 12/28 OZ" ValorUnitario="690.00" Importe="690.00" ObjetoImp="02">
+      <cfdi:Impuestos>
+        <cfdi:Traslados>
+          <cfdi:Traslado Base="690.00" Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" />
+        </cfdi:Traslados>
+      </cfdi:Impuestos>
+    </cfdi:Concepto>
+  </cfdi:Conceptos>
+  <cfdi:Impuestos TotalImpuestosTrasladados="0.00">
+    <cfdi:Traslados>
+      <cfdi:Traslado Impuesto="002" TipoFactor="Tasa" TasaOCuota="0.000000" Importe="0.00" Base="11998.00" />
+    </cfdi:Traslados>
+  </cfdi:Impuestos>
+  <cfdi:Complemento>
+    <tfd:TimbreFiscalDigital xsi:schemaLocation="http://www.sat.gob.mx/TimbreFiscalDigital http://www.sat.gob.mx/sitio_internet/cfd/TimbreFiscalDigital/TimbreFiscalDigitalv11.xsd" xmlns:tfd="http://www.sat.gob.mx/TimbreFiscalDigital" Version="1.1" UUID="664870F2-2996-4252-A9C1-EBAB261B877C" FechaTimbrado="2025-12-03T21:53:38" RfcProvCertif="ASE0209252Q1" SelloCFD="Y4dVXzmaO9xI9ufFdvPOU7IxJTLArkOhn8wWaBg3mNy1ujlpn0v6fy53pCTBdil300HZYnUr46uPQF9y2W3YrOJBzHIihC+aDEpsINnQ6dM4h7mnhUd//MWSarQRGO13ssH5FB6FREPJESBWORqefemDARx7V/ZGTFaFrjQvDzntBbQjzuDSppEW0P5dFfAhVuxIvg6FgfR8R/mH6M5mBZt8WJDKFquueti6GcJwfUgYHODag02990wcnnsuz3rKqZVb1P/bkSqOcdWhfVllYteUSFmWFFVjvvpWgM75yiiVT/d3QM81G5+W/Z/WI5AteI357NZeYpHaihTKaBrqEg==" NoCertificadoSAT="00001000000707891043" SelloSAT="WBDkVUddEAUMaKwB+M7IicRAWc1P4d3GNeEvhcoM+ZKFS3YVCGSjdHQsoxHVXfAjqDzHA6Uh0zxT2ER/9DfJwZrEBk7jyKkaI5MJ5U7uca4ihsqN+8QdIT2kjeipDTbG7wOXqQ0hPqkucvb1hzL9HzrFuB77Vhand6dwg5TGuhVrVW7UrzHL5zPQJW+s009mBf/sCVwlaWvDMKJEYDkpv3X2es2vPG+QO8Q/NeNG1Sa34dRTUH20oMSZ4d6TQzuiEtbgE/FbKY21eejRwJNWEY2ifL1qOrWrggZvUN1Imb+g1eTj/KOvEjo/1jREkM4yeTojmgMF7AG0P45BUVtJTA==" />
+  </cfdi:Complemento>
+</cfdi:Comprobante>

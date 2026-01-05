@@ -1,6 +1,6 @@
 c:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaModelo\bin\Debug\CapaModelo.dll
-C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaModelo\obj\Debug\CapaModelo.csproj.AssemblyReference.cache
-C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaModelo\obj\Debug\CapaModelo.csproj.CoreCompileInputs.cache
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaModelo\obj\Debug\CapaModelo.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaModelo\obj\Debug\CapaModelo.pdb
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaModelo\bin\Debug\CapaModelo.pdb
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaModelo\obj\Debug\CapaModelo.csproj.AssemblyReference.cache
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaModelo\obj\Debug\CapaModelo.csproj.CoreCompileInputs.cache

@@ -193,5 +193,40 @@ namespace VentasWeb.Controllers
                 return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
+
+        // GET: Cliente/BuscarClientes
+        [HttpGet]
+        public JsonResult BuscarClientes(string termino)
+        {
+            try
+            {
+                if (string.IsNullOrWhiteSpace(termino) || termino.Length < 3)
+                {
+                    return Json(new { success = false, mensaje = "El término de búsqueda debe tener al menos 3 caracteres" }, JsonRequestBehavior.AllowGet);
+                }
+
+                var clientes = CD_Cliente.Instancia.ObtenerTodos()
+                    .Where(c => 
+                        (c.RazonSocial != null && c.RazonSocial.ToUpper().Contains(termino.ToUpper())) ||
+                        (c.RFC != null && c.RFC.ToUpper().Contains(termino.ToUpper()))
+                    )
+                    .Take(10)
+                    .Select(c => new
+                    {
+                        c.ClienteID,
+                        c.RazonSocial,
+                        c.RFC,
+                        c.CorreoElectronico,
+                        c.Telefono
+                    })
+                    .ToList();
+
+                return Json(new { success = true, data = clientes }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
     }
 }

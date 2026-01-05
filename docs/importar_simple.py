@@ -184,10 +184,10 @@ def importar_existencias_desde_productos(conn, archivo_excel):
             # Insertar lote
             cursor.execute("""
                 INSERT INTO LotesProducto (
-                    ProductoID, FechaEntrada, CantidadTotal, CantidadDisponible,
+                    ProductoID, SucursalID, FechaEntrada, CantidadTotal, CantidadDisponible,
                     PrecioCompra, PrecioVenta, Usuario, Estatus, UltimaAct
                 )
-                VALUES (?, GETDATE(), ?, ?, ?, ?, 'IMPORTADOR', 1, GETDATE())
+                VALUES (?, 1, GETDATE(), ?, ?, ?, ?, 'IMPORTADOR', 1, GETDATE())
             """, (producto_id, cantidad, cantidad, precio_compra, precio_venta))
             
             conn.commit()

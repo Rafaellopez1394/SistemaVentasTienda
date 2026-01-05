@@ -117,7 +117,7 @@ begin
 		'Instalador SQL Express (opcional)', 'URL personalizada del instalador',
 		'Si la descarga automática falla, puede proporcionar una URL directa al instalador de SQL Express (.exe).');
 	UrlPage.Add('URL del instalador:', False);
-	UrlPage.Values[0] := ParamValue('SqlUrl', 'https://go.microsoft.com/fwlink/?linkid=866658');
+	UrlPage.Values[0] := ParamValue('SqlUrl', '');
 
 	// Página de puerto del sitio IIS
 	PortPage := CreateInputQueryPage(UrlPage.ID,
@@ -186,13 +186,12 @@ begin
 		Result := True;
 		exit;
 	end;
-	// Usa PowerShell para realizar HEAD y validar Content-Length > ~1MB y status 2xx/3xx
+	// Valida con HEAD y hace fallback a GET con Range si HEAD falla; acepta 2xx/3xx
 	Cmd := '-NoProfile -ExecutionPolicy Bypass -Command "'
 		+ '$u=\'''+ url + '\'';'
-		+ 'try { $r=Invoke-WebRequest -Uri $u -Method Head -UseBasicParsing;'
-		+ ' $len=0; if ($r.Headers.ContainsKey(\''Content-Length\'')) { [int]$len=$r.Headers[\''Content-Length\''] };'
-		+ ' if ($r.StatusCode -ge 200 -and $r.StatusCode -lt 400 -and $len -gt 1000000) { exit 0 } else { exit 1 } }'
-		+ ' catch { exit 2 }' + '"';
+		+ 'try { $r=Invoke-WebRequest -Uri $u -Method Head -UseBasicParsing -MaximumRedirection 5; $sc = $r.StatusCode } '
+		+ 'catch { try { $r=Invoke-WebRequest -Uri $u -Method Get -UseBasicParsing -MaximumRedirection 5 -Headers @{Range=\''bytes=0-0\''}; $sc=$r.StatusCode } catch { exit 1 } } ;'
+		+ 'if ($sc -ge 200 -and $sc -lt 400) { exit 0 } else { exit 1 }' + '"';
 	if Exec('powershell', Cmd, '', SW_HIDE, ewWaitUntilTerminated, ResultCode) then
 		Result := (ResultCode = 0)
 	else

@@ -68,7 +68,17 @@ function mostrarCertificados(certificados) {
             ? '<i class="fas fa-check-circle text-success" title="Predeterminado"></i> Sí'
             : '<button class="btn btn-sm btn-outline-primary" onclick="establecerPredeterminado(' + cert.CertificadoID + ')">Establecer</button>';
 
-        var fechaFin = moment(cert.FechaVigenciaFin).format('DD/MM/YYYY');
+        // Formatear fecha sin moment.js
+        var fechaFin = 'Sin fecha';
+        if (cert.FechaVigenciaFin) {
+            var fecha = new Date(cert.FechaVigenciaFin);
+            if (!isNaN(fecha.getTime())) {
+                var dia = String(fecha.getDate()).padStart(2, '0');
+                var mes = String(fecha.getMonth() + 1).padStart(2, '0');
+                var anio = fecha.getFullYear();
+                fechaFin = dia + '/' + mes + '/' + anio;
+            }
+        }
 
         tbody.append(`
             <tr>

@@ -147,9 +147,11 @@
     <Compile Include="Controllers\ReporteController.cs" />
     <Compile Include="Controllers\RolController.cs" />
     <Compile Include="Controllers\SucursalController.cs" />
+    <Compile Include="Controllers\TraspasoController.cs" />
     <Compile Include="Controllers\UsuarioController.cs" />
     <Compile Include="Controllers\VentaController.cs" />
     <Compile Include="Controllers\VentaPOSController.cs" />
+    <Compile Include="Controllers\GastosController.cs" />
     <Compile Include="Filters\VerificarSession.cs" />
     <Compile Include="Global.asax.cs">
       <DependentUpon>Global.asax</DependentUpon>
@@ -1932,6 +1934,9 @@
     <Content Include="Scripts\esm\popper.min.js" />
     <Content Include="Scripts\Factura\Factura_Index.js" />
     <Content Include="Scripts\Factura\GenerarFactura.js" />
+    <Content Include="Scripts\Gastos\Registrar.js" />
+    <Content Include="Scripts\Gastos\CierreCaja.js" />
+    <Content Include="Scripts\Compra\CargarXML.js" />
     <Content Include="Scripts\index.js.flow" />
     <Content Include="Scripts\esm\popper.min.js.map" />
     <Content Include="Scripts\esm\popper.js.map" />
@@ -2041,6 +2046,7 @@
     <Content Include="Scripts\Views\Compra_Consultar.js" />
     <Content Include="Scripts\Views\Compra_Crear.js" />
     <Content Include="Scripts\Views\Credito.js" />
+    <Content Include="Scripts\Views\GestionarPagosVentas.js" />
     <Content Include="Scripts\Views\Nomina_Calcular.js" />
     <Content Include="Scripts\Views\Nomina_Detalle.js" />
     <Content Include="Scripts\Views\Nomina_Index.js" />
@@ -2118,6 +2124,13 @@
     <Content Include="Views\Lote\Index.cshtml" />
     <Content Include="Views\Producto\EditarLote.cshtml" />
     <Content Include="Views\Compra\Crear - Copia.cshtml" />
+    <Content Include="Views\Gastos\Registrar.cshtml" />
+    <Content Include="Views\Gastos\CierreCaja.cshtml" />
+    <Content Include="Views\Traspaso\Index.cshtml" />
+    <Content Include="Views\Traspaso\Registrar.cshtml" />
+    <Content Include="Views\Traspaso\Detalle.cshtml" />
+    <Content Include="Views\Compra\CargarXML.cshtml" />
+    <Content Include="Views\Compra\TestXML.cshtml" />
     <Content Include="Views\Credito\Index.cshtml" />
     <Content Include="Views\Configuracion\Index.cshtml" />
     <Content Include="Scripts\Views\Configuracion.js" />
@@ -2153,6 +2166,7 @@
     <Content Include="Views\CertificadoDigital\Index.cshtml" />
     <Content Include="Views\DescomposicionProducto\Index.cshtml" />
     <Content Include="Views\ConfiguracionSMTP\Index.cshtml" />
+    <Content Include="Views\Pagos\GestionarPagosVentas.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />

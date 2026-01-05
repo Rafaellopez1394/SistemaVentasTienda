@@ -64,6 +64,8 @@
     <Compile Include="EmailLog.cs" />
     <Compile Include="Empleado.cs" />
     <Compile Include="Factura.cs" />
+    <Compile Include="Gasto.cs" />
+    <Compile Include="Traspaso.cs" />
     <Compile Include="Menu.cs" />
     <Compile Include="MapeoIVA.cs" />
     <Compile Include="MovimientoAjuste.cs" />

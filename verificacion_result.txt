@@ -1,0 +1,62 @@
+========================================
+VERIFICACIÓN DE INTEGRIDAD MULTISUCURSAL
+========================================
+ 
+1. VERIFICANDO LOTES SIN SUCURSAL...
+  ✅ OK: Todos los lotes tienen SucursalID
+ 
+2. DISTRIBUCIÓN DE INVENTARIO POR SUCURSAL:
+SucursalID  Sucursal                                                     TotalLotes  UnidadesDisponibles ProductosDistintos
+----------- ------------------------------------------------------------ ----------- ------------------- ------------------
+          1 SUCURSAL 001                                                         111                3206                111
+          2 CENTRO                                                                 0                NULL                  0
+
+(2 rows affected)
+ 
+3. PRODUCTOS CON INVENTARIO EN MÚLTIPLES SUCURSALES:
+ProductoID  Nombre                                                                                                                                                                                                   NumSucursales TotalDisponible
+----------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ------------- ---------------
+
+(0 rows affected)
+ 
+4. TRASPASOS PENDIENTES O EN TRÁNSITO:
+  No hay traspasos pendientes
+ 
+5. TOP 10 PRODUCTOS POR SUCURSAL:
+-----------------------------------
+Sucursal: SUCURSAL 001
+Codigo                                             Producto                                                                                                                                                                                                 Stock      
+-------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- -----------
+894388001533                                       PALILLO BROCHETA # 8 BAMBOO SKEWERS MEN                                                                                                                                                                          200
+894388001540                                       PALILLO BROCHETA  #6 BAMBOO SKEWRS MEN                                                                                                                                                                           200
+894388001540-1                                     PALILLO BROCHETA  #6 BAMBOO SKEWRS MAY                                                                                                                                                                           200
+859367002536-1                                     PALILLO BROCHETA #12 BAMBOO SKEWRS MAY                                                                                                                                                                           100
+859367002536                                       PALILLO BROCHETA #12 BAMBOO SKEWRS MEN                                                                                                                                                                           100
+8888                                               CAMARON CHICO 111-130                                                                                                                                                                                            100
+8889                                               CAMARON 21-25                                                                                                                                                                                                     97
+8810                                               CAMARON 131-150                                                                                                                                                                                                   93
+896663001184-1                                     PALILLO BAMBOO 20/80 PZ MAY                                                                                                                                                                                       80
+896663001184                                       PALILLO BAMBOO 20/80 PZ MEN                                                                                                                                                                                       80
+
+(10 rows affected)
+ 
+Sucursal: CENTRO
+Codigo                                             Producto                                                                                                                                                                                                 Stock      
+-------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- -----------
+
+(0 rows affected)
+ 
+6. VERIFICANDO INTEGRIDAD REFERENCIAL:
+  ✅ OK: Todas las referencias a sucursales son válidas
+ 
+========================================
+RESUMEN DE VERIFICACIÓN
+========================================
+TotalLotes  LotesSinSucursal UnidadesTotales SucursalesConInventario TraspasosPendientes
+----------- ---------------- --------------- ----------------------- -------------------
+        111                0            3206                       1                   0
+
+(1 rows affected)
+ 
+✅ Verificación completada
+ 

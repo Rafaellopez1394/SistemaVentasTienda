@@ -341,6 +341,9 @@ namespace CapaDatos
                     // 1. Obtener datos de la venta
                     string queryVenta = @"
                         SELECT v.VentaID, v.Total AS TotalVenta, v.FechaVenta,
+                               v.TipoVenta, 
+                               ISNULL(v.MontoPagado, v.Total) AS MontoPagado,
+                               ISNULL(v.SaldoPendiente, 0) AS SaldoPendiente,
                                dv.ProductoID, p.CodigoInterno, p.Nombre, dv.Cantidad, 
                                dv.PrecioVenta, 
                                (dv.Cantidad * dv.PrecioVenta) AS Subtotal,
@@ -366,6 +369,14 @@ namespace CapaDatos
                         return null;
                     }
 
+                    // Leer la primera fila para obtener el SaldoPendiente
+                    dr.Read();
+                    decimal saldoPendienteVenta = Convert.ToDecimal(dr["SaldoPendiente"]);
+                    string tipoVenta = dr["TipoVenta"]?.ToString() ?? "CONTADO";
+                    
+                    // Determinar el método de pago según el saldo pendiente
+                    string metodoPago = saldoPendienteVenta > 0 ? "PPD" : (request.MetodoPago ?? "PUE");
+
                     factura = new Factura
                     {
                         FacturaID = Guid.NewGuid(),
@@ -378,7 +389,8 @@ namespace CapaDatos
                         ReceptorRegimenFiscalReceptor = request.ReceptorRegimenFiscal ?? "616",
                         ReceptorEmail = request.ReceptorEmail,
                         FormaPago = request.FormaPago ?? "99",
-                        MetodoPago = request.MetodoPago ?? "PUE",
+                        MetodoPago = metodoPago,
+                        SaldoPendiente = saldoPendienteVenta, // Saldo insoluto para XML
                         Estatus = "PENDIENTE",
                         Version = "4.0",
                         TipoComprobante = "I",
@@ -395,7 +407,8 @@ namespace CapaDatos
                     decimal impuestosTotal = 0;
                     int secuencia = 1;
 
-                    while (dr.Read())
+                    // Procesar los detalles de la venta (ya leímos la primera fila arriba)
+                    do
                     {
                         decimal tasaIVA = Convert.ToDecimal(dr["TasaIVA"]);
                         decimal montoIVA = Convert.ToDecimal(dr["MontoIVA"]);
@@ -449,6 +462,8 @@ namespace CapaDatos
                         factura.Conceptos.Add(detalle);
                         subtotalTotal += detalle.Importe;
                     }
+                    while (dr.Read()); // Continuar procesando filas
+                    
                     dr.Close();
 
                     factura.Subtotal = subtotalTotal;

@@ -13,7 +13,13 @@ namespace CapaModelo
         public DateTime FechaCompra { get; set; }
         public decimal Total { get; set; }
         public string Usuario { get; set; }
+        public int SucursalID { get; set; }
         public List<CompraDetalle> Detalle { get; set; }
+        
+        // Propiedades para compras desde XML
+        public string UUID { get; set; }           // UUID del CFDI
+        public string XMLOriginal { get; set; }    // XML completo guardado
+        public bool EsDesdeXML { get; set; }       // Indica si se creó desde XML
     }
 
     public class CompraDetalle

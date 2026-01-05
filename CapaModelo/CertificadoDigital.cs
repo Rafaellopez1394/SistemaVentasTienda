@@ -39,8 +39,8 @@ namespace CapaModelo
         public string Observaciones { get; set; }
         
         // Propiedades calculadas
-        public bool EsVigente => FechaVigenciaFin > DateTime.Now;
-        public int DiasRestantes => (FechaVigenciaFin - DateTime.Now).Days;
+        public bool EsVigente { get { return FechaVigenciaFin > DateTime.Now; } }
+        public int DiasRestantes { get { return (FechaVigenciaFin - DateTime.Now).Days; } }
         public string EstadoVigencia
         {
             get

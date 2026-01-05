@@ -1,0 +1,31 @@
+Changed database context to 'DB_TIENDA'.
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 51
+Invalid column name 'Activo'.
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 51
+Invalid column name 'FechaRegistro'.
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 62
+Invalid column name 'Activo'.
+Msg 206, Level 16, State 2, Server SISTEMAS\SERVIDOR, Line 62
+Operand type clash: int is incompatible with uniqueidentifier
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 102
+Invalid column name 'SucursalID'.
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 102
+Invalid column name 'UsuarioID'.
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 104
+Invalid column name 'Activo'.
+Msg 206, Level 16, State 2, Server SISTEMAS\SERVIDOR, Line 119
+Operand type clash: uniqueidentifier is incompatible with int
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 143
+Invalid column name 'EsPagado'.
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 175
+Invalid column name 'SaldoPendiente'.
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 175
+Invalid column name 'EsCancelada'.
+Msg 206, Level 16, State 2, Server SISTEMAS\SERVIDOR, Line 201
+Operand type clash: uniqueidentifier is incompatible with int
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 228
+Invalid column name 'EsPagado'.
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 276
+Invalid column name 'EsPagado'.
+Msg 207, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 269
+Invalid column name 'EsPagado'.

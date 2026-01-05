@@ -45,10 +45,15 @@ namespace VentasWeb.Controllers
 
         // API: Obtener ventas detalladas con análisis de productos, utilidades y precios
         [HttpGet]
-        public JsonResult ObtenerVentasDetalladas(string fechaInicio, string fechaFin, int? productoId = null, string categoria = null)
+        public JsonResult ObtenerVentasDetalladas(string fechaInicio, string fechaFin, int? productoId = null, string categoria = null, int? sucursalId = null)
         {
             try
             {
+                // Si no se especifica sucursal, usar la activa
+                int sucursalFiltro = sucursalId ?? (Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 0);
+                
                 var ventasDetalladas = new List<object>();
                 
                 using (var cnx = new System.Data.SqlClient.SqlConnection(Conexion.CN))
@@ -80,14 +85,18 @@ namespace VentasWeb.Controllers
                         INNER JOIN Productos p ON dv.ProductoID = p.ProductoID
                         LEFT JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
                         WHERE v.FechaVenta >= @FechaInicio 
-                        AND v.FechaVenta <= @FechaFin
-                        " + (productoId.HasValue ? " AND p.ProductoID = @ProductoID" : "") +
+                        AND v.FechaVenta <= @FechaFin"
+                        + (sucursalFiltro > 0 ? " AND v.SucursalID = @SucursalID" : "")
+                        + (productoId.HasValue ? " AND p.ProductoID = @ProductoID" : "") +
                         (!string.IsNullOrEmpty(categoria) ? " AND c.Nombre = @Categoria" : "") + @"
                         ORDER BY v.FechaVenta DESC, v.VentaID DESC
                     ", cnx);
                     
                     cmd.Parameters.AddWithValue("@FechaInicio", Convert.ToDateTime(fechaInicio));
                     cmd.Parameters.AddWithValue("@FechaFin", Convert.ToDateTime(fechaFin).AddDays(1).AddSeconds(-1));
+                    
+                    if (sucursalFiltro > 0)
+                        cmd.Parameters.AddWithValue("@SucursalID", sucursalFiltro);
                     
                     if (productoId.HasValue)
                         cmd.Parameters.AddWithValue("@ProductoID", productoId.Value);
@@ -130,16 +139,21 @@ namespace VentasWeb.Controllers
 
         // API: Obtener productos más vendidos
         [HttpGet]
-        public JsonResult ObtenerProductosMasVendidos(string fechaInicio, string fechaFin, int top = 10)
+        public JsonResult ObtenerProductosMasVendidos(string fechaInicio, string fechaFin, int top = 10, int? sucursalId = null)
         {
             try
             {
+                int sucursalFiltro = sucursalId ?? (Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 0);
+                
                 var productosMasVendidos = new List<object>();
                 
                 using (var cnx = new System.Data.SqlClient.SqlConnection(Conexion.CN))
                 {
                     cnx.Open();
-                    var cmd = new System.Data.SqlClient.SqlCommand(@"
+                    
+                    string query = @"
                         SELECT TOP (@Top)
                             p.ProductoID,
                             p.CodigoInterno AS CodigoProducto,
@@ -156,14 +170,23 @@ namespace VentasWeb.Controllers
                         INNER JOIN Productos p ON dv.ProductoID = p.ProductoID
                         LEFT JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
                         WHERE v.FechaVenta >= @FechaInicio 
-                        AND v.FechaVenta <= @FechaFin
+                        AND v.FechaVenta <= @FechaFin";
+                    
+                    if (sucursalFiltro > 0)
+                        query += " AND v.SucursalID = @SucursalID";
+                        
+                    query += @"
                         GROUP BY p.ProductoID, p.CodigoInterno, p.Nombre, c.Nombre
-                        ORDER BY TotalUnidadesVendidas DESC
-                    ", cnx);
+                        ORDER BY TotalUnidadesVendidas DESC";
+                    
+                    var cmd = new System.Data.SqlClient.SqlCommand(query, cnx);
                     
                     cmd.Parameters.AddWithValue("@Top", top);
                     cmd.Parameters.AddWithValue("@FechaInicio", Convert.ToDateTime(fechaInicio));
                     cmd.Parameters.AddWithValue("@FechaFin", Convert.ToDateTime(fechaFin).AddDays(1).AddSeconds(-1));
+                    
+                    if (sucursalFiltro > 0)
+                        cmd.Parameters.AddWithValue("@SucursalID", sucursalFiltro);
                     
                     using (var dr = cmd.ExecuteReader())
                     {
@@ -196,16 +219,21 @@ namespace VentasWeb.Controllers
 
         // API: Obtener categorías con ventas
         [HttpGet]
-        public JsonResult ObtenerVentasPorCategoria(string fechaInicio, string fechaFin)
+        public JsonResult ObtenerVentasPorCategoria(string fechaInicio, string fechaFin, int? sucursalId = null)
         {
             try
             {
+                int sucursalFiltro = sucursalId ?? (Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 0);
+                
                 var ventasPorCategoria = new List<object>();
                 
                 using (var cnx = new System.Data.SqlClient.SqlConnection(Conexion.CN))
                 {
                     cnx.Open();
-                    var cmd = new System.Data.SqlClient.SqlCommand(@"
+                    
+                    string query = @"
                         SELECT 
                             COALESCE(c.Nombre, 'Sin categoría') AS Categoria,
                             COUNT(DISTINCT v.VentaID) AS NumeroVentas,
@@ -217,13 +245,22 @@ namespace VentasWeb.Controllers
                         INNER JOIN Productos p ON dv.ProductoID = p.ProductoID
                         LEFT JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
                         WHERE v.FechaVenta >= @FechaInicio 
-                        AND v.FechaVenta <= @FechaFin
+                        AND v.FechaVenta <= @FechaFin";
+                    
+                    if (sucursalFiltro > 0)
+                        query += " AND v.SucursalID = @SucursalID";
+                        
+                    query += @"
                         GROUP BY c.Nombre
-                        ORDER BY TotalVentas DESC
-                    ", cnx);
+                        ORDER BY TotalVentas DESC";
+                    
+                    var cmd = new System.Data.SqlClient.SqlCommand(query, cnx);
                     
                     cmd.Parameters.AddWithValue("@FechaInicio", Convert.ToDateTime(fechaInicio));
                     cmd.Parameters.AddWithValue("@FechaFin", Convert.ToDateTime(fechaFin).AddDays(1).AddSeconds(-1));
+                    
+                    if (sucursalFiltro > 0)
+                        cmd.Parameters.AddWithValue("@SucursalID", sucursalFiltro);
                     
                     using (var dr = cmd.ExecuteReader())
                     {
@@ -251,10 +288,14 @@ namespace VentasWeb.Controllers
 
         // API: Obtener estadísticas generales
         [HttpGet]
-        public JsonResult ObtenerEstadisticasGenerales(string fechaInicio, string fechaFin)
+        public JsonResult ObtenerEstadisticasGenerales(string fechaInicio, string fechaFin, int? sucursalId = null)
         {
             try
             {
+                int sucursalFiltro = sucursalId ?? (Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 0);
+                
                 var estadisticas = new
                 {
                     TotalVentas = 0m,
@@ -268,7 +309,8 @@ namespace VentasWeb.Controllers
                 using (var cnx = new System.Data.SqlClient.SqlConnection(Conexion.CN))
                 {
                     cnx.Open();
-                    var cmd = new System.Data.SqlClient.SqlCommand(@"
+                    
+                    string query = @"
                         SELECT 
                             SUM(dv.PrecioVenta * dv.Cantidad) AS TotalVentas,
                             SUM((dv.PrecioVenta - COALESCE(dv.PrecioCompra, 0)) * dv.Cantidad) AS TotalUtilidad,
@@ -283,11 +325,18 @@ namespace VentasWeb.Controllers
                         FROM VentasClientes v
                         INNER JOIN VentasDetalleClientes dv ON v.VentaID = dv.VentaID
                         WHERE v.FechaVenta >= @FechaInicio 
-                        AND v.FechaVenta <= @FechaFin
-                    ", cnx);
+                        AND v.FechaVenta <= @FechaFin";
+                    
+                    if (sucursalFiltro > 0)
+                        query += " AND v.SucursalID = @SucursalID";
+                    
+                    var cmd = new System.Data.SqlClient.SqlCommand(query, cnx);
                     
                     cmd.Parameters.AddWithValue("@FechaInicio", Convert.ToDateTime(fechaInicio));
                     cmd.Parameters.AddWithValue("@FechaFin", Convert.ToDateTime(fechaFin).AddDays(1).AddSeconds(-1));
+                    
+                    if (sucursalFiltro > 0)
+                        cmd.Parameters.AddWithValue("@SucursalID", sucursalFiltro);
                     
                     using (var dr = cmd.ExecuteReader())
                     {

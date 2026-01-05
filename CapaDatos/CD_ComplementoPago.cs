@@ -533,6 +533,285 @@ namespace CapaDatos
             cmd.ExecuteNonQuery();
         }
 
+        /// <summary>
+        /// Genera y timbra complemento de pago desde un registro de VentaPago
+        /// </summary>
+        public async Task<RespuestaTimbrado> GenerarComplementoDesdeVentaPago(Guid ventaID, Guid pagoID, string usuario)
+        {
+            var respuesta = new RespuestaTimbrado { Exitoso = false };
+
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                cnx.Open();
+                SqlTransaction transaction = cnx.BeginTransaction();
+
+                try
+                {
+                    // 1. Obtener datos del pago
+                    string queryPago = @"
+                        SELECT vp.Monto, vp.FormaPagoID, vp.FechaPago, vp.Referencia,
+                               vc.ClienteID, vc.Total, vc.MontoPagado, vc.SaldoPendiente,
+                               f.FacturaID, f.UUID, f.Serie, f.Folio, f.Subtotal, f.Total as TotalFactura,
+                               f.TotalImpuestosTrasladados
+                        FROM VentaPagos vp
+                        INNER JOIN VentasClientes vc ON vp.VentaID = vc.VentaID
+                        LEFT JOIN Facturas f ON vc.VentaID = f.VentaID
+                        WHERE vp.PagoID = @PagoID";
+
+                    SqlCommand cmdPago = new SqlCommand(queryPago, cnx, transaction);
+                    cmdPago.Parameters.AddWithValue("@PagoID", pagoID);
+
+                    SqlDataReader drPago = cmdPago.ExecuteReader();
+                    if (!drPago.Read())
+                    {
+                        drPago.Close();
+                        respuesta.Mensaje = "No se encontró el pago especificado";
+                        transaction.Rollback();
+                        return respuesta;
+                    }
+
+                    decimal montoPago = drPago.GetDecimal(0);
+                    Guid clienteID = drPago.GetGuid(4);
+                    decimal totalVenta = drPago.GetDecimal(5);
+                    decimal montoPagado = drPago.GetDecimal(6);
+                    decimal saldoPendiente = drPago.GetDecimal(7);
+                    
+                    Guid? facturaID = drPago.IsDBNull(8) ? (Guid?)null : drPago.GetGuid(8);
+                    string uuid = drPago.IsDBNull(9) ? null : drPago.GetString(9);
+                    string serie = drPago.IsDBNull(10) ? "" : drPago.GetString(10);
+                    string folio = drPago.IsDBNull(11) ? "" : drPago.GetString(11);
+                    decimal subtotal = drPago.IsDBNull(12) ? 0 : drPago.GetDecimal(12);
+                    decimal totalFactura = drPago.IsDBNull(13) ? 0 : drPago.GetDecimal(13);
+                    decimal iva = drPago.IsDBNull(14) ? 0 : drPago.GetDecimal(14);
+                    
+                    drPago.Close();
+
+                    // Verificar que exista factura
+                    if (!facturaID.HasValue || string.IsNullOrEmpty(uuid))
+                    {
+                        respuesta.Mensaje = "La venta no tiene factura asociada. Debe generar la factura primero.";
+                        transaction.Rollback();
+                        return respuesta;
+                    }
+
+                    // 2. Obtener datos del cliente
+                    string queryCliente = @"
+                        SELECT RFC, RazonSocial, CodigoPostal, RegimenFiscal
+                        FROM Clientes
+                        WHERE ClienteID = @ClienteID";
+
+                    SqlCommand cmdCliente = new SqlCommand(queryCliente, cnx, transaction);
+                    cmdCliente.Parameters.AddWithValue("@ClienteID", clienteID);
+
+                    SqlDataReader drCliente = cmdCliente.ExecuteReader();
+                    if (!drCliente.Read())
+                    {
+                        drCliente.Close();
+                        respuesta.Mensaje = "No se encontró el cliente";
+                        transaction.Rollback();
+                        return respuesta;
+                    }
+
+                    string receptorRFC = drCliente.GetString(0);
+                    string receptorNombre = drCliente.GetString(1);
+                    string receptorCP = drCliente.IsDBNull(2) ? "00000" : drCliente.GetString(2);
+                    string receptorRegimen = drCliente.IsDBNull(3) ? "616" : drCliente.GetString(3);
+
+                    drCliente.Close();
+
+                    // 3. Crear estructura del complemento
+                    var complemento = new ComplementoPago
+                    {
+                        FechaEmision = DateTime.Now,
+                        ReceptorRFC = receptorRFC,
+                        ReceptorNombre = receptorNombre,
+                        ReceptorDomicilioFiscal = receptorCP,
+                        ReceptorRegimenFiscal = receptorRegimen,
+                        ReceptorUsoCFDI = "CP01", // Por definir
+                        MontoTotalPagos = montoPago,
+                        EstadoTimbrado = "PENDIENTE"
+                    };
+
+                    // Calcular número de parcialidad
+                    string queryParcialidad = @"
+                        SELECT COUNT(*) 
+                        FROM VentaPagos 
+                        WHERE VentaID = @VentaID AND FechaPago <= @FechaPago";
+
+                    SqlCommand cmdParcialidad = new SqlCommand(queryParcialidad, cnx, transaction);
+                    cmdParcialidad.Parameters.AddWithValue("@VentaID", ventaID);
+                    cmdParcialidad.Parameters.AddWithValue("@FechaPago", DateTime.Now);
+                    int numParcialidad = (int)cmdParcialidad.ExecuteScalar();
+
+                    // Agregar pago al complemento
+                    var pagoComplemento = new ComplementoPagoPago
+                    {
+                        FechaPago = DateTime.Now,
+                        FormaDePagoP = "01", // TODO: Mapear desde FormaPagoID
+                        MonedaP = "MXN",
+                        Monto = montoPago
+                    };
+
+                    // Agregar documento relacionado (la factura)
+                    decimal saldoAnterior = saldoPendiente + montoPago;
+                    var documento = new ComplementoPagoDocumento
+                    {
+                        IdDocumento = facturaID.Value,
+                        UUIDDocumento = uuid,
+                        Serie = serie,
+                        Folio = folio,
+                        MonedaDR = "MXN",
+                        NumParcialidad = numParcialidad,
+                        ImpSaldoAnt = saldoAnterior,
+                        ImpPagado = montoPago,
+                        ImpSaldoInsoluto = saldoPendiente,
+                        ObjetoImpDR = iva > 0 ? "02" : "01"
+                    };
+
+                    // Agregar impuestos del documento si tiene IVA
+                    if (iva > 0 && totalFactura > 0)
+                    {
+                        decimal proporcion = montoPago / totalFactura;
+                        decimal baseIVA = subtotal * proporcion;
+                        decimal importeIVA = iva * proporcion;
+
+                        documento.ImpuestosDR.Add(new ComplementoPagoImpuestoDR
+                        {
+                            TipoImpuesto = "TRASLADO",
+                            BaseDR = baseIVA,
+                            ImpuestoDR = "002", // IVA
+                            TipoFactorDR = "Tasa",
+                            TasaOCuotaDR = 0.160000m,
+                            ImporteDR = importeIVA
+                        });
+                    }
+
+                    pagoComplemento.DocumentosRelacionados.Add(documento);
+                    complemento.Pagos.Add(pagoComplemento);
+
+                    // 4. Generar XML del complemento
+                    var pacConfig = CD_Factura.Instancia.ObtenerConfiguracionPAC(out string mensajeConfig);
+                    if (pacConfig == null)
+                    {
+                        respuesta.Mensaje = $"No hay configuración de PAC: {mensajeConfig}";
+                        transaction.Rollback();
+                        return respuesta;
+                    }
+
+                    // Obtener datos del emisor (empresa)
+                    var empresa = ObtenerDatosEmpresa(cnx, transaction);
+                    if (empresa == null)
+                    {
+                        respuesta.Mensaje = "No se encontró configuración de la empresa";
+                        transaction.Rollback();
+                        return respuesta;
+                    }
+                    
+                    var xmlGenerator = new ComplementoPago20XMLGenerator();
+                    string xmlSinTimbrar = xmlGenerator.GenerarXML(complemento, empresa, pacConfig);
+
+                    complemento.XMLSinTimbrar = xmlSinTimbrar;
+
+                    // 5. Guardar complemento en BD (ClienteID necesario)
+                    string queryGetClienteID = "SELECT ISNULL(IdCliente, 0) FROM Clientes WHERE ClienteID = @ClienteID";
+                    SqlCommand cmdGetClienteID = new SqlCommand(queryGetClienteID, cnx, transaction);
+                    cmdGetClienteID.Parameters.AddWithValue("@ClienteID", clienteID);
+                    int idCliente = (int)cmdGetClienteID.ExecuteScalar();
+                    
+                    if (idCliente == 0)
+                    {
+                        respuesta.Mensaje = "Error: Cliente no encontrado";
+                        transaction.Rollback();
+                        return respuesta;
+                    }
+                    
+                    complemento.ClienteID = idCliente;
+                    complemento.UsuarioRegistro = usuario;
+                    int complementoPagoID = InsertarComplementoPago(complemento, cnx, transaction);
+
+                    // 6. Timbrar con PAC
+                    IProveedorPAC pac = ObtenerProveedorPAC(pacConfig.ProveedorPAC);
+                    respuesta = await pac.TimbrarComplementoPagoAsync(xmlSinTimbrar, pacConfig);
+
+                    if (respuesta.Exitoso)
+                    {
+                        // Actualizar con datos del timbrado
+                        ActualizarComplementoTimbrado(complementoPagoID, respuesta, cnx, transaction);
+
+                        // Actualizar el ComplementoPagoID en VentaPagos
+                        string updatePago = "UPDATE VentaPagos SET ComplementoPagoID = @ComplementoID WHERE PagoID = @PagoID";
+                        SqlCommand cmdUpdate = new SqlCommand(updatePago, cnx, transaction);
+                        cmdUpdate.Parameters.AddWithValue("@ComplementoID", complementoPagoID);
+                        cmdUpdate.Parameters.AddWithValue("@PagoID", pagoID);
+                        cmdUpdate.ExecuteNonQuery();
+
+                        transaction.Commit();
+                        respuesta.Mensaje = "Complemento de pago timbrado exitosamente";
+                    }
+                    else
+                    {
+                        ActualizarComplementoError(complementoPagoID, respuesta.CodigoError, respuesta.Mensaje, cnx, transaction);
+                        transaction.Commit();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    transaction.Rollback();
+                    respuesta.Exitoso = false;
+                    respuesta.Mensaje = $"Error al generar complemento: {ex.Message}";
+                }
+            }
+
+            return respuesta;
+        }
+
+        private IProveedorPAC ObtenerProveedorPAC(string nombrePAC)
+        {
+            switch (nombrePAC.ToUpper())
+            {
+                case "FINKOK":
+                    return new FinkokPAC();
+                
+                case "FACTURAMA":
+                    return new FacturamaPAC();
+                
+                case "SIMULADOR":
+                    return new SimuladorPAC();
+                
+                default:
+                    return new SimuladorPAC();
+            }
+        }
+
+        private CapaDatos.PAC.ConfiguracionEmpresa ObtenerDatosEmpresa(SqlConnection cnx, SqlTransaction tran)
+        {
+            string query = @"
+                SELECT RFCEmisor, NombreEmisor, RegimenFiscal, CodigoPostal,
+                       NoCertificado, CertificadoBase64
+                FROM Configuracion
+                WHERE Activo = 1";
+
+            SqlCommand cmd = new SqlCommand(query, cnx, tran);
+            SqlDataReader dr = cmd.ExecuteReader();
+
+            CapaDatos.PAC.ConfiguracionEmpresa empresa = null;
+            if (dr.Read())
+            {
+                empresa = new CapaDatos.PAC.ConfiguracionEmpresa
+                {
+                    RFC = dr.IsDBNull(0) ? "XAXX010101000" : dr.GetString(0),
+                    RazonSocial = dr.IsDBNull(1) ? "Empresa Demo" : dr.GetString(1),
+                    RegimenFiscal = dr.IsDBNull(2) ? "601" : dr.GetString(2),
+                    CodigoPostal = dr.IsDBNull(3) ? "00000" : dr.GetString(3),
+                    NoCertificado = dr.IsDBNull(4) ? null : dr.GetString(4),
+                    Certificado = dr.IsDBNull(5) ? null : dr.GetString(5)
+                };
+            }
+            dr.Close();
+
+            return empresa;
+        }
+
         #endregion
     }
 }

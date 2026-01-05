@@ -41,6 +41,14 @@ namespace CapaDatos.PAC
         /// <returns>Respuesta con estatus del comprobante</returns>
         Task<RespuestaConsulta> ConsultarEstatusAsync(string uuid, string rfcEmisor, string rfcReceptor, 
             decimal total, ConfiguracionPAC config);
+
+        /// <summary>
+        /// Timbra un complemento de pago
+        /// </summary>
+        /// <param name="xmlSinTimbrar">XML del complemento sin timbrar</param>
+        /// <param name="config">Configuración del PAC</param>
+        /// <returns>Respuesta con UUID, sello SAT y XML timbrado</returns>
+        Task<RespuestaTimbrado> TimbrarComplementoPagoAsync(string xmlSinTimbrar, ConfiguracionPAC config);
     }
 
     /// <summary>

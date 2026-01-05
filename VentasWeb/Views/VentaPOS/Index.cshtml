@@ -56,14 +56,20 @@
                 </div>
                 <div id="cajaDetalles" style="display:none;" class="mt-2 pt-2 border-top">
                     <div class="row">
-                        <div class="col-md-4">
-                            <small class="d-block">Apertura: <span id="cajaFechaApertura"></span></small>
+                        <div class="col-md-3">
+                            <small class="d-block"><strong>Apertura:</strong> <span id="cajaFechaApertura"></span></small>
                         </div>
-                        <div class="col-md-4">
-                            <small class="d-block">Ventas: <span id="cajaNumVentas">0</span></small>
+                        <div class="col-md-2">
+                            <small class="d-block"><strong>Fondo:</strong> $<span id="cajaFondoInicial">0.00</span></small>
                         </div>
-                        <div class="col-md-4">
-                            <small class="d-block">Total: $<span id="cajaTotalVentas">0.00</span></small>
+                        <div class="col-md-2">
+                            <small class="d-block"><strong>Ventas:</strong> <span id="cajaNumVentas">0</span> ($<span id="cajaTotalVentas">0.00</span>)</small>
+                        </div>
+                        <div class="col-md-2">
+                            <small class="d-block text-danger"><strong>Gastos:</strong> $<span id="cajaTotalGastos">0.00</span></small>
+                        </div>
+                        <div class="col-md-3">
+                            <small class="d-block text-primary"><strong>Esperado:</strong> $<span id="cajaSaldoEsperado">0.00</span></small>
                         </div>
                     </div>
                 </div>
@@ -175,6 +181,41 @@
                             <i class="fas fa-credit-card"></i> Crédito
                         </label>
                     </div>
+                    <div class="form-check form-check-inline">
+                        <input class="form-check-input" type="radio" name="tipoVenta" id="rdParcial" value="PARCIAL" onchange="cambiarTipoVenta()" disabled />
+                        <label class="form-check-label" for="rdParcial">
+                            <i class="fas fa-hand-holding-usd"></i> Pago Parcial
+                        </label>
+                    </div>
+                    
+                    <!-- Panel para capturar monto pagado (solo visible en PARCIAL) -->
+                    <div id="panelMontoParcial" style="display:none;" class="mt-3">
+                        <div class="alert alert-warning">
+                            <i class="fas fa-info-circle"></i> Se generará una factura con método PPD (Pago en Parcialidades o Diferido)
+                        </div>
+                        <label class="form-label fw-bold">Total de la venta:</label>
+                        <h4 class="text-primary" id="lblTotalVentaParcial">$0.00</h4>
+                        
+                        <label class="form-label fw-bold mt-2">Monto a pagar ahora:</label>
+                        <div class="input-group input-group-lg">
+                            <span class="input-group-text">$</span>
+                            <input type="number" class="form-control" id="txtMontoPagado" placeholder="0.00" step="0.01" min="0.01" onkeyup="calcularSaldoPendiente()" />
+                        </div>
+                        
+                        <div class="alert alert-info mt-3" id="panelSaldoPendiente" style="display:none;">
+                            <div class="row">
+                                <div class="col-6">
+                                    <small>Saldo Pendiente:</small>
+                                    <h5 class="mb-0 text-danger" id="lblSaldoPendiente">$0.00</h5>
+                                </div>
+                                <div class="col-6 text-end">
+                                    <small>Pagado:</small>
+                                    <h5 class="mb-0 text-success" id="lblPorcentajePagado">0%</h5>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <div class="mt-2">
                         <small class="text-muted"><i class="fas fa-info-circle"></i> Las ventas a crédito no pueden facturarse hasta liquidar el saldo</small>
                     </div>
@@ -258,8 +299,10 @@
     <div class="modal-dialog">
         <div class="modal-content">
             <div class="modal-header bg-success text-white">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
                 <h5 class="modal-title"><i class="fas fa-lock-open"></i> Apertura de Caja</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div class="alert alert-info">
@@ -278,7 +321,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-success" onclick="procesarApertura()">
                     <i class="fas fa-check"></i> Abrir Caja
                 </button>
@@ -292,8 +335,10 @@
     <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header bg-danger text-white">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
                 <h5 class="modal-title"><i class="fas fa-lock"></i> Cierre de Caja</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <!-- Resumen del turno -->
@@ -306,10 +351,12 @@
                             <div class="col-6">
                                 <p class="mb-1"><strong>Fondo Inicial:</strong> $<span id="cierreFondoInicial">0.00</span></p>
                                 <p class="mb-1"><strong>Total Ventas:</strong> $<span id="cierreTotalVentas">0.00</span></p>
+                                <p class="mb-1"><strong>(-) Total Gastos:</strong> <span class="text-danger">$<span id="cierreTotalGastos">0.00</span></span></p>
                             </div>
                             <div class="col-6">
                                 <p class="mb-1"><strong>Número Ventas:</strong> <span id="cierreNumVentas">0</span></p>
                                 <p class="mb-1"><strong>Monto Esperado:</strong> <span class="text-primary fw-bold">$<span id="cierreMontoEsperado">0.00</span></span></p>
+                                <small class="text-muted">(Fondo + Ventas - Gastos)</small>
                             </div>
                         </div>
                     </div>
@@ -364,7 +411,7 @@
                 </div>
             </div>
             <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
                 <button type="button" class="btn btn-danger" onclick="procesarCierre()">
                     <i class="fas fa-lock"></i> Cerrar Caja
                 </button>

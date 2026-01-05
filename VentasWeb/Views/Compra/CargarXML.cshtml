@@ -1,0 +1,250 @@
+@{
+    ViewBag.Title = "Cargar Factura XML";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <h1>
+            <i class="fa fa-file-code"></i> Cargar Factura de Compra (XML)
+            <small>Importar CFDI y registrar productos por lote</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="@Url.Action("Index", "Home")"><i class="fa fa-dashboard"></i> Inicio</a></li>
+            <li><a href="@Url.Action("Index", "Compra")">Compras</a></li>
+            <li class="active">Cargar XML</li>
+        </ol>
+    </section>
+
+    <section class="content">
+        <!-- Paso 1: Cargar archivo XML -->
+        <div id="paso1" class="row">
+            <div class="col-md-12">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-upload"></i> Paso 1: Cargar archivo XML</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Seleccionar archivo XML de factura</label>
+                                    <input type="file" id="archivoXML" accept=".xml" class="form-control" />
+                                    <small class="text-muted">
+                                        <i class="fa fa-info-circle"></i> 
+                                        Seleccione un archivo CFDI 4.0 o 3.3 en formato XML
+                                    </small>
+                                </div>
+                                <button type="button" id="btnProcesarXML" class="btn btn-primary btn-lg">
+                                    <i class="fa fa-cogs"></i> Procesar XML
+                                </button>
+                                <button type="button" id="btnVolverLista" class="btn btn-default btn-lg" onclick="window.location.href='@Url.Action("Index", "Compra")'">
+                                    <i class="fa fa-arrow-left"></i> Volver a Lista
+                                </button>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="alert alert-info">
+                                    <h4><i class="fa fa-lightbulb-o"></i> Instrucciones:</h4>
+                                    <ol>
+                                        <li>Seleccione el archivo XML de la factura de compra</li>
+                                        <li>El sistema extraerá automáticamente los datos del proveedor y productos</li>
+                                        <li>Podrá ajustar el factor de conversión (ej: 2 cajas × 8 piezas = 16 unidades)</li>
+                                        <li>Los productos se registrarán por lote en el inventario</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paso 2: Datos de la factura (oculto inicialmente) -->
+        <div id="paso2" class="row" style="display:none;">
+            <div class="col-md-12">
+                <div class="box box-success">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-check-circle"></i> Paso 2: Verificar datos de la factura</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <!-- Datos del proveedor -->
+                            <div class="col-md-6">
+                                <h4><i class="fa fa-truck"></i> Datos del Proveedor</h4>
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th width="40%">RFC:</th>
+                                        <td id="proveedorRFC">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Razón Social:</th>
+                                        <td id="proveedorNombre">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <!-- Datos del comprobante -->
+                            <div class="col-md-6">
+                                <h4><i class="fa fa-file-invoice"></i> Datos del Comprobante</h4>
+                                <table class="table table-bordered">
+                                    <tr>
+                                        <th width="40%">Serie-Folio:</th>
+                                        <td id="serieFolio">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Fecha:</th>
+                                        <td id="fecha">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>UUID:</th>
+                                        <td id="uuid" style="font-size:11px;">-</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </div>
+
+                        <!-- Selección de Sucursal -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="box box-warning">
+                                    <div class="box-header with-border">
+                                        <h4 class="box-title">
+                                            <i class="fa fa-store"></i> Sucursal Destino 
+                                            <span class="label label-danger">REQUERIDO</span>
+                                        </h4>
+                                    </div>
+                                    <div class="box-body">
+                                        <input id="sucursalID" type="hidden" value="0" />
+                                        <div class="row">
+                                            <div class="col-md-4">
+                                                <div class="form-group">
+                                                    <label>RFC:</label>
+                                                    <input type="text" class="form-control" readonly id="sucursalRFC" placeholder="Sin seleccionar">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <div class="form-group">
+                                                    <label>Nombre:</label>
+                                                    <input type="text" class="form-control" readonly id="sucursalNombre" placeholder="Sin seleccionar">
+                                                </div>
+                                            </div>
+                                            <div class="col-md-3">
+                                                <div class="form-group">
+                                                    <label>&nbsp;</label>
+                                                    <button type="button" class="btn btn-success btn-block" onclick="abrirModalSucursales()">
+                                                        <i class="fa fa-search"></i> Seleccionar Sucursal
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="alert alert-warning">
+                                    <strong><i class="fa fa-dollar"></i> Totales:</strong>
+                                    Subtotal: <span id="subTotal">$0.00</span> |
+                                    Descuento: <span id="descuento">$0.00</span> |
+                                    <strong>Total: <span id="total">$0.00</span></strong>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Paso 3: Mapeo de productos y desglose (oculto inicialmente) -->
+        <div id="paso3" class="row" style="display:none;">
+            <div class="col-md-12">
+                <div class="box box-warning">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-boxes"></i> Paso 3: Mapear productos y configurar desglose</h3>
+                        <div class="box-tools pull-right">
+                            <span class="badge bg-yellow" id="contadorProductos">0 productos</span>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <div class="alert alert-info">
+                            <i class="fa fa-info-circle"></i>
+                            <strong>Factor de Conversión:</strong> Indique cuántas unidades individuales contiene cada unidad del XML. 
+                            <br>Ejemplo: Si el XML dice "2 cajas" y cada caja tiene 8 piezas, el factor es <strong>8</strong> y se registrarán <strong>16 piezas</strong>.
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-striped" id="tablaConceptos">
+                                <thead>
+                                    <tr>
+                                        <th width="5%">#</th>
+                                        <th width="15%">Código/Ident.</th>
+                                        <th width="25%">Descripción XML</th>
+                                        <th width="8%">Cant. XML</th>
+                                        <th width="10%">Precio Unit.</th>
+                                        <th width="10%">Factor Conv.</th>
+                                        <th width="10%">Cant. Final</th>
+                                        <th width="17%">Producto Sistema</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyConceptos">
+                                    <!-- Se llenará dinámicamente -->
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12 text-right">
+                                <button type="button" id="btnCancelar" class="btn btn-danger">
+                                    <i class="fa fa-times"></i> Cancelar
+                                </button>
+                                <button type="button" id="btnRegistrarCompra" class="btn btn-success btn-lg">
+                                    <i class="fa fa-save"></i> Registrar Compra y Crear Lotes
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Modal para seleccionar sucursal -->
+<div class="modal fade" id="modalSucursales" tabindex="-1" role="dialog">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-success">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title"><i class="fa fa-store"></i> Seleccionar Sucursal</h4>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table id="tablaSucursales" class="table table-bordered table-striped table-hover">
+                        <thead>
+                            <tr>
+                                <th width="60">Acción</th>
+                                <th>RFC</th>
+                                <th>Nombre</th>
+                                <th>Dirección</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">
+                    <i class="fa fa-times"></i> Cerrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/Compra/CargarXML.js"></script>
+}

@@ -225,5 +225,205 @@ namespace VentasWeb.Controllers
             }
         }
 
+        // GET: Home/ObtenerVentasPorPeriodo
+        [HttpGet]
+        public JsonResult ObtenerVentasPorPeriodo(string periodo)
+        {
+            try
+            {
+                DateTime hoy = DateTime.Today;
+                DateTime fechaInicio;
+                List<decimal> ventas = new List<decimal>();
+                List<string> etiquetas = new List<string>();
+                decimal totalPeriodo = 0;
+                int transacciones = 0;
+
+                switch (periodo.ToLower())
+                {
+                    case "semana":
+                        // Última semana (7 días)
+                        fechaInicio = hoy.AddDays(-(int)hoy.DayOfWeek);
+                        string[] diasSemana = { "Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb" };
+                        
+                        for (int i = 0; i < 7; i++)
+                        {
+                            DateTime dia = fechaInicio.AddDays(i);
+                            var ventasDia = CD_Reportes.Instancia.ReporteVenta(dia, dia, 0);
+                            decimal totalDia = 0;
+                            if (ventasDia != null)
+                            {
+                                transacciones += ventasDia.Count;
+                                foreach (var venta in ventasDia)
+                                {
+                                    decimal total = 0;
+                                    if (decimal.TryParse(venta.TotalVenta, out total))
+                                    {
+                                        totalDia += total;
+                                    }
+                                }
+                            }
+                            ventas.Add(totalDia);
+                            totalPeriodo += totalDia;
+                            etiquetas.Add(diasSemana[i]);
+                        }
+                        break;
+
+                    case "mes":
+                        // Último mes (30 días por semanas)
+                        fechaInicio = hoy.AddDays(-29);
+                        for (int i = 0; i < 5; i++)
+                        {
+                            DateTime inicioSemana = fechaInicio.AddDays(i * 7);
+                            DateTime finSemana = inicioSemana.AddDays(6);
+                            if (finSemana > hoy) finSemana = hoy;
+                            
+                            var ventasSemana = CD_Reportes.Instancia.ReporteVenta(inicioSemana, finSemana, 0);
+                            decimal totalSemana = 0;
+                            if (ventasSemana != null)
+                            {
+                                transacciones += ventasSemana.Count;
+                                foreach (var venta in ventasSemana)
+                                {
+                                    decimal total = 0;
+                                    if (decimal.TryParse(venta.TotalVenta, out total))
+                                    {
+                                        totalSemana += total;
+                                    }
+                                }
+                            }
+                            ventas.Add(totalSemana);
+                            totalPeriodo += totalSemana;
+                            etiquetas.Add($"Sem {i + 1}");
+                            
+                            if (finSemana >= hoy) break;
+                        }
+                        break;
+
+                    case "año":
+                        // Último año (12 meses)
+                        string[] meses = { "Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic" };
+                        for (int i = 11; i >= 0; i--)
+                        {
+                            DateTime mes = hoy.AddMonths(-i);
+                            DateTime inicioMes = new DateTime(mes.Year, mes.Month, 1);
+                            DateTime finMes = inicioMes.AddMonths(1).AddDays(-1);
+                            if (finMes > hoy) finMes = hoy;
+                            
+                            var ventasMes = CD_Reportes.Instancia.ReporteVenta(inicioMes, finMes, 0);
+                            decimal totalMes = 0;
+                            if (ventasMes != null)
+                            {
+                                transacciones += ventasMes.Count;
+                                foreach (var venta in ventasMes)
+                                {
+                                    decimal total = 0;
+                                    if (decimal.TryParse(venta.TotalVenta, out total))
+                                    {
+                                        totalMes += total;
+                                    }
+                                }
+                            }
+                            ventas.Add(totalMes);
+                            totalPeriodo += totalMes;
+                            etiquetas.Add(meses[mes.Month - 1]);
+                        }
+                        break;
+
+                    default:
+                        return Json(new { success = false, mensaje = "Periodo no válido" }, JsonRequestBehavior.AllowGet);
+                }
+
+                return Json(new
+                {
+                    success = true,
+                    periodo = periodo,
+                    ventas = ventas,
+                    etiquetas = etiquetas,
+                    totalPeriodo = totalPeriodo,
+                    transacciones = transacciones
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    success = false,
+                    mensaje = ex.Message
+                }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // ==========================================
+        // GESTIÓN DE SUCURSAL ACTIVA
+        // ==========================================
+        
+        [HttpGet]
+        public JsonResult ObtenerSucursalActiva()
+        {
+            try
+            {
+                int sucursalID = Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 0;
+                
+                return Json(sucursalID, JsonRequestBehavior.AllowGet);
+            }
+            catch
+            {
+                return Json(0, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        [HttpPost]
+        public JsonResult CambiarSucursalActiva(int sucursalID)
+        {
+            try
+            {
+                Session["SucursalActiva"] = sucursalID;
+                
+                return Json(new
+                {
+                    success = true,
+                    mensaje = "Sucursal cambiada correctamente"
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    success = false,
+                    mensaje = ex.Message
+                });
+            }
+        }
+
+        // ==========================================
+        // ALERTAS DE CAMBIOS DE PRECIOS
+        // ==========================================
+        
+        [HttpGet]
+        public JsonResult ObtenerCambiosPreciosRecientes(int horas = 24)
+        {
+            try
+            {
+                var cambios = CD_Producto.Instancia.ObtenerCambiosPreciosRecientes(horas);
+                
+                return Json(new
+                {
+                    success = true,
+                    data = cambios
+                }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    success = false,
+                    mensaje = ex.Message,
+                    data = new List<object>()
+                }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
     }
 }

@@ -4,10 +4,36 @@ let lotesActuales = [];
 $(document).ready(function () {
     cargarCatalogos();
     inicializarTabla();
+    mostrarSucursalActual();
 
     // Guardar producto
     $('#btnGuardarProducto').click(Guardar);
 });
+
+// Mostrar nombre de sucursal actual
+function mostrarSucursalActual() {
+    $.ajax({
+        url: '/Home/ObtenerSucursalActiva',
+        type: 'GET',
+        success: function(sucursalID) {
+            if (sucursalID) {
+                // Obtener nombre de la sucursal
+                $.ajax({
+                    url: '/Sucursal/Obtener',
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.data) {
+                            const sucursal = response.data.find(s => s.SucursalID == sucursalID);
+                            if (sucursal) {
+                                $('#nombreSucursalActual').text(sucursal.Nombre);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+    });
+}
 
 // ==================== CATÁLOGOS ====================
 function cargarCatalogos() {

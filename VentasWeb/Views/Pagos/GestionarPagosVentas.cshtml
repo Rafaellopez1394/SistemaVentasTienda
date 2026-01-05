@@ -1,0 +1,254 @@
+@{
+    ViewBag.Title = "Gestionar Pagos de Ventas";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<style>
+    .venta-card {
+        border-left: 4px solid #ffc107;
+        transition: all 0.3s;
+    }
+    .venta-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        transform: translateY(-2px);
+    }
+    .venta-pagada {
+        border-left-color: #28a745;
+        background-color: #f8f9fa;
+    }
+    .saldo-pendiente {
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #dc3545;
+    }
+    .monto-pagado {
+        color: #28a745;
+    }
+    .badge-pago {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+    }
+    .pago-item {
+        border-bottom: 1px solid #dee2e6;
+        padding: 0.75rem 0;
+    }
+    .pago-item:last-child {
+        border-bottom: none;
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="card shadow">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-hand-holding-usd"></i> Gestión de Pagos de Ventas Parciales
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <!-- Filtros -->
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="control-label">Buscar Cliente:</label>
+                            <div class="input-group">
+                                <input type="text" class="form-control" id="txtBuscarCliente" placeholder="Buscar por nombre o RFC..." />
+                                <span class="input-group-btn">
+                                    <button class="btn btn-primary" onclick="buscarCliente()">
+                                        <i class="fa fa-search"></i> Buscar
+                                    </button>
+                                </span>
+                            </div>
+                            <div id="resultadosCliente" class="mt-2" style="max-height: 200px; overflow-y: auto;"></div>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="control-label">Filtrar por:</label>
+                            <select class="form-control" id="cboFiltro" onchange="cargarVentasPendientes()">
+                                <option value="pendientes">Solo pendientes</option>
+                                <option value="todas">Todas</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="control-label">&nbsp;</label>
+                            <button class="btn btn-success btn-block" onclick="cargarVentasPendientes()">
+                                <i class="fa fa-sync-alt"></i> Actualizar Lista
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Resumen -->
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <div class="card bg-warning text-dark">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Ventas Pendientes</h6>
+                                    <h3 id="lblTotalVentas">0</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-danger text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Saldo Total Pendiente</h6>
+                                    <h3 id="lblSaldoTotal">$0.00</h3>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card bg-success text-white">
+                                <div class="card-body text-center">
+                                    <h6 class="card-title">Total Pagado</h6>
+                                    <h3 id="lblTotalPagado">$0.00</h3>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Lista de Ventas -->
+    <div class="row" id="listaVentas">
+        <div class="col-12">
+            <div class="alert alert-info text-center">
+                <i class="fas fa-info-circle"></i> Cargue ventas pendientes usando el botón "Actualizar Lista"
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Registrar Pago -->
+<div class="modal fade" id="modalRegistrarPago" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title">
+                    <i class="fa fa-money-bill-wave"></i> Registrar Pago
+                </h4>
+            </div>
+            <div class="modal-body">
+                <!-- Información de la venta -->
+                <div class="card mb-3">
+                    <div class="card-header bg-light">
+                        <strong>Información de la Venta</strong>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Cliente:</strong> <span id="pagoClienteNombre"></span></p>
+                                <p class="mb-1"><strong>RFC:</strong> <span id="pagoClienteRFC"></span></p>
+                                <p class="mb-1"><strong>Fecha Venta:</strong> <span id="pagoFechaVenta"></span></p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Total Venta:</strong> $<span id="pagoTotalVenta">0.00</span></p>
+                                <p class="mb-1"><strong>Pagado:</strong> <span class="text-success">$<span id="pagoMontoPagado">0.00</span></span></p>
+                                <p class="mb-1"><strong>Saldo Pendiente:</strong> <span class="text-danger">$<span id="pagoSaldoPendiente">0.00</span></span></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Formulario de pago -->
+                <form id="formRegistrarPago">
+                    <input type="hidden" id="pagoVentaID" />
+                    
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="control-label">Monto a Pagar <span class="text-danger">*</span></label>
+                                <div class="input-group input-group-lg">
+                                    <span class="input-group-addon">$</span>
+                                    <input type="number" class="form-control" id="txtMontoPago" placeholder="0.00" step="0.01" min="0.01" required onkeyup="validarMontoPago()" />
+                                </div>
+                                <small class="help-block" id="txtNuevoSaldo"></small>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="control-label">Fecha de Pago</label>
+                                <input type="datetime-local" class="form-control" id="txtFechaPago" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="control-label">Forma de Pago <span class="text-danger">*</span></label>
+                                <select class="form-control" id="cboFormaPagoPago" required>
+                                    <option value="">Seleccionar...</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label class="control-label">Método de Pago <span class="text-danger">*</span></label>
+                                <select class="form-control" id="cboMetodoPagoPago" required>
+                                    <option value="">Seleccionar...</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="control-label">Referencia / No. de Transacción</label>
+                        <input type="text" class="form-control" id="txtReferencia" placeholder="Ej: Transferencia 123456, Cheque 7890, etc." />
+                    </div>
+
+                    <div class="form-group">
+                        <label class="control-label">Observaciones</label>
+                        <textarea class="form-control" id="txtObservaciones" rows="2" placeholder="Notas adicionales sobre este pago..."></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="procesarPago()">
+                    <i class="fa fa-check-circle"></i> Registrar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL: Historial de Pagos -->
+<div class="modal fade" id="modalHistorialPagos" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+                <h4 class="modal-title">
+                    <i class="fa fa-history"></i> Historial de Pagos
+                </h4>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <p class="mb-1"><strong>Cliente:</strong> <span id="historialClienteNombre"></span></p>
+                    <p class="mb-1"><strong>Total Venta:</strong> $<span id="historialTotalVenta">0.00</span></p>
+                </div>
+                <div id="listaHistorialPagos">
+                    <div class="text-center">
+                        <i class="fas fa-spinner fa-spin fa-2x"></i>
+                        <p>Cargando historial...</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/latest/toastr.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="~/Scripts/Views/GestionarPagosVentas.js?v=@DateTime.Now.Ticks"></script>
+}

@@ -1,0 +1,367 @@
+@model CapaModelo.Traspaso
+@{
+    ViewBag.Title = "Registrar Traspaso";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4 class="mb-0">
+                        <i class="fas fa-plus"></i> Registrar Nuevo Traspaso
+                    </h4>
+                </div>
+                <div class="card-body">
+                    <form id="formTraspaso">
+                        <div class="row">
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="cboSucursalOrigen">Sucursal Origen <span class="text-danger">*</span></label>
+                                    <select id="cboSucursalOrigen" class="form-control" required>
+                                        <option value="">Seleccione...</option>
+                                        @foreach (var sucursal in ViewBag.Sucursales)
+                                        {
+                                            <option value="@sucursal.SucursalID">@sucursal.Nombre</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="cboSucursalDestino">Sucursal Destino <span class="text-danger">*</span></label>
+                                    <select id="cboSucursalDestino" class="form-control" required>
+                                        <option value="">Seleccione...</option>
+                                        @foreach (var sucursal in ViewBag.Sucursales)
+                                        {
+                                            <option value="@sucursal.SucursalID">@sucursal.Nombre</option>
+                                        }
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <div class="form-group">
+                                    <label for="txtFechaTraspaso">Fecha Traspaso</label>
+                                    <input type="date" id="txtFechaTraspaso" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="txtObservaciones">Observaciones</label>
+                                    <textarea id="txtObservaciones" class="form-control" rows="2" maxlength="500"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <hr />
+
+                        <!-- Sección para agregar productos -->
+                        <div class="row mb-3">
+                            <div class="col-md-12">
+                                <h5><i class="fas fa-boxes"></i> Productos a Traspasar</h5>
+                            </div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-5">
+                                <label>Buscar Producto</label>
+                                <select id="cboProducto" class="form-control" style="width: 100%">
+                                    <option value="">Seleccione un producto...</option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label>Disponible</label>
+                                <input type="text" id="txtDisponible" class="form-control" readonly />
+                            </div>
+                            <div class="col-md-2">
+                                <label>Cantidad <span class="text-danger">*</span></label>
+                                <input type="number" id="txtCantidad" class="form-control" step="0.001" min="0.001" />
+                            </div>
+                            <div class="col-md-2">
+                                <label>Precio Unit.</label>
+                                <input type="text" id="txtPrecioUnitario" class="form-control" readonly />
+                            </div>
+                            <div class="col-md-1">
+                                <label>&nbsp;</label>
+                                <button type="button" id="btnAgregarProducto" class="btn btn-primary btn-block">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Tabla de productos agregados -->
+                        <div class="table-responsive">
+                            <table id="tablaProductos" class="table table-bordered table-striped">
+                                <thead class="thead-dark">
+                                    <tr>
+                                        <th width="40%">Producto</th>
+                                        <th width="15%" class="text-center">Código</th>
+                                        <th width="15%" class="text-right">Cantidad</th>
+                                        <th width="15%" class="text-right">Precio Unit.</th>
+                                        <th width="10%" class="text-right">Subtotal</th>
+                                        <th width="5%" class="text-center">Acción</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                                <tfoot>
+                                    <tr>
+                                        <th colspan="2" class="text-right">Totales:</th>
+                                        <th class="text-right" id="totalCantidad">0.000</th>
+                                        <th></th>
+                                        <th class="text-right" id="totalValor">$0.00</th>
+                                        <th></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+
+                        <hr />
+
+                        <!-- Botones de acción -->
+                        <div class="row">
+                            <div class="col-md-12 text-right">
+                                <a href="@Url.Action("Index", "Traspaso")" class="btn btn-secondary">
+                                    <i class="fas fa-times"></i> Cancelar
+                                </a>
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-save"></i> Registrar Traspaso
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" />
+
+    <script>
+        var productosAgregados = [];
+        var inventarioSucursal = [];
+
+        $(document).ready(function () {
+            // Fecha actual
+            $('#txtFechaTraspaso').val(new Date().toISOString().split('T')[0]);
+
+            // Inicializar Select2
+            $('#cboProducto').select2({
+                placeholder: 'Busque por nombre o código',
+                allowClear: true,
+                language: 'es'
+            });
+
+            // Evento al cambiar sucursal origen
+            $('#cboSucursalOrigen').change(function () {
+                var sucursalID = $(this).val();
+                if (sucursalID) {
+                    cargarInventarioSucursal(sucursalID);
+                } else {
+                    $('#cboProducto').html('<option value="">Seleccione primero la sucursal origen</option>');
+                    inventarioSucursal = [];
+                }
+            });
+
+            // Evento al seleccionar producto
+            $('#cboProducto').change(function () {
+                var productoID = $(this).val();
+                if (productoID) {
+                    var producto = inventarioSucursal.find(p => p.ProductoID == productoID);
+                    if (producto) {
+                        $('#txtDisponible').val(parseFloat(producto.CantidadDisponible).toFixed(3));
+                        $('#txtPrecioUnitario').val('$' + parseFloat(producto.PrecioPromedioCompra).toFixed(2));
+                        $('#txtCantidad').val('').focus();
+                    }
+                } else {
+                    limpiarCamposProducto();
+                }
+            });
+
+            // Evento agregar producto
+            $('#btnAgregarProducto').click(function () {
+                agregarProducto();
+            });
+
+            // Evento submit form
+            $('#formTraspaso').submit(function (e) {
+                e.preventDefault();
+                registrarTraspaso();
+            });
+        });
+
+        function cargarInventarioSucursal(sucursalID) {
+            $.ajax({
+                url: '@Url.Action("ObtenerInventarioSucursal", "Traspaso")',
+                type: 'GET',
+                data: { sucursalID: sucursalID },
+                success: function (response) {
+                    if (response.success) {
+                        inventarioSucursal = response.data;
+                        
+                        // Llenar combo de productos
+                        var html = '<option value="">Seleccione un producto...</option>';
+                        $.each(response.data, function (index, item) {
+                            html += '<option value="' + item.ProductoID + '">' +
+                                item.CodigoProducto + ' - ' + item.NombreProducto +
+                                ' (Disponible: ' + item.CantidadDisponible + ' ' + item.UnidadMedida + ')' +
+                                '</option>';
+                        });
+                        $('#cboProducto').html(html);
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function () {
+                    alert('Error al cargar el inventario');
+                }
+            });
+        }
+
+        function agregarProducto() {
+            var productoID = $('#cboProducto').val();
+            var cantidad = parseFloat($('#txtCantidad').val());
+            
+            if (!productoID) {
+                alert('Seleccione un producto');
+                return;
+            }
+
+            if (!cantidad || cantidad <= 0) {
+                alert('Ingrese una cantidad válida');
+                return;
+            }
+
+            var producto = inventarioSucursal.find(p => p.ProductoID == productoID);
+            var disponible = parseFloat(producto.CantidadDisponible);
+
+            if (cantidad > disponible) {
+                alert('La cantidad solicitada (' + cantidad.toFixed(3) + ') excede la cantidad disponible (' + disponible.toFixed(3) + ')');
+                return;
+            }
+
+            // Verificar si ya está agregado
+            var existe = productosAgregados.find(p => p.ProductoID == productoID);
+            if (existe) {
+                alert('Este producto ya fue agregado');
+                return;
+            }
+
+            // Agregar a la lista
+            var precioUnitario = parseFloat(producto.PrecioPromedioCompra);
+            var subtotal = cantidad * precioUnitario;
+
+            productosAgregados.push({
+                ProductoID: parseInt(productoID),
+                NombreProducto: producto.NombreProducto,
+                CodigoProducto: producto.CodigoProducto,
+                UnidadMedida: producto.UnidadMedida,
+                CantidadSolicitada: cantidad,
+                PrecioUnitario: precioUnitario,
+                Subtotal: subtotal
+            });
+
+            renderizarTablaProductos();
+            limpiarCamposProducto();
+        }
+
+        function renderizarTablaProductos() {
+            var html = '';
+            var totalCantidad = 0;
+            var totalValor = 0;
+
+            $.each(productosAgregados, function (index, item) {
+                html += '<tr>' +
+                    '<td>' + item.NombreProducto + '</td>' +
+                    '<td class="text-center">' + item.CodigoProducto + '</td>' +
+                    '<td class="text-right">' + item.CantidadSolicitada.toFixed(3) + ' ' + item.UnidadMedida + '</td>' +
+                    '<td class="text-right">$' + item.PrecioUnitario.toFixed(2) + '</td>' +
+                    '<td class="text-right">$' + item.Subtotal.toFixed(2) + '</td>' +
+                    '<td class="text-center">' +
+                    '<button type="button" class="btn btn-danger btn-sm" onclick="eliminarProducto(' + index + ')">' +
+                    '<i class="fas fa-trash"></i>' +
+                    '</button>' +
+                    '</td>' +
+                    '</tr>';
+
+                totalCantidad += item.CantidadSolicitada;
+                totalValor += item.Subtotal;
+            });
+
+            $('#tablaProductos tbody').html(html);
+            $('#totalCantidad').text(totalCantidad.toFixed(3));
+            $('#totalValor').text('$' + totalValor.toFixed(2));
+        }
+
+        function eliminarProducto(index) {
+            if (confirm('¿Está seguro de eliminar este producto?')) {
+                productosAgregados.splice(index, 1);
+                renderizarTablaProductos();
+            }
+        }
+
+        function limpiarCamposProducto() {
+            $('#cboProducto').val('').trigger('change');
+            $('#txtDisponible').val('');
+            $('#txtCantidad').val('');
+            $('#txtPrecioUnitario').val('');
+        }
+
+        function registrarTraspaso() {
+            var sucursalOrigenID = parseInt($('#cboSucursalOrigen').val());
+            var sucursalDestinoID = parseInt($('#cboSucursalDestino').val());
+            
+            if (!sucursalOrigenID) {
+                alert('Seleccione la sucursal origen');
+                return;
+            }
+
+            if (!sucursalDestinoID) {
+                alert('Seleccione la sucursal destino');
+                return;
+            }
+
+            if (sucursalOrigenID === sucursalDestinoID) {
+                alert('La sucursal origen y destino no pueden ser la misma');
+                return;
+            }
+
+            if (productosAgregados.length === 0) {
+                alert('Debe agregar al menos un producto');
+                return;
+            }
+
+            var traspaso = {
+                SucursalOrigenID: sucursalOrigenID,
+                SucursalDestinoID: sucursalDestinoID,
+                FechaTraspaso: $('#txtFechaTraspaso').val(),
+                Observaciones: $('#txtObservaciones').val(),
+                Detalles: productosAgregados
+            };
+
+            $.ajax({
+                url: '@Url.Action("Registrar", "Traspaso")',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(traspaso),
+                success: function (response) {
+                    if (response.success) {
+                        alert(response.message || 'Traspaso registrado correctamente');
+                        window.location.href = '@Url.Action("Index", "Traspaso")';
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function () {
+                    alert('Error al registrar el traspaso');
+                }
+            });
+        }
+    </script>
+}

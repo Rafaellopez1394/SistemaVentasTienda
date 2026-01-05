@@ -137,6 +137,9 @@ function Sucursaleselect(json) {
     $("#txtsucursalid").val(json.SucursalID);
     $("#txtRFCSucursal").val(json.RFC);
     $("#txtNombreSucursal").val(json.Nombre);
+    
+    // Ocultar badge de requerido
+    $("#badgeSucursalRequerida").hide();
 
     $('#modalSucursal').modal('hide');
 }
@@ -353,6 +356,7 @@ $('#btnTerminarGuardarCompra').on('click', function () {
                 $("#txtsucursalid").val("0");
                 $("#txtRFCSucursal").val("");
                 $("#txtNombreSucursal").val("");
+                $("#badgeSucursalRequerida").show(); // Mostrar badge de nuevo
 
                 //PRODUCTO
                 $("#txtproductoid").val("0");

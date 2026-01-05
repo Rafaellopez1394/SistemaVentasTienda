@@ -1,0 +1,181 @@
+@{
+    ViewBag.Title = "Registrar Gastos";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <h1>
+            <i class="fa fa-money"></i> Registrar Gastos
+            <small>Control de gastos operativos</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="@Url.Action("Index", "Home")"><i class="fa fa-dashboard"></i> Inicio</a></li>
+            <li class="active">Registrar Gastos</li>
+        </ol>
+    </section>
+
+    <section class="content">
+        <div class="row">
+            <!-- Formulario de Registro -->
+            <div class="col-md-4">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-plus-circle"></i> Nuevo Gasto</h3>
+                    </div>
+                    <div class="box-body">
+                        <form id="formGasto">
+                            <div class="form-group">
+                                <label>Categoría *</label>
+                                <select id="categoriaGastoID" class="form-control" required>
+                                    <option value="">Seleccione categoría</option>
+                                    @foreach (var cat in ViewBag.Categorias)
+                                    {
+                                        <option value="@cat.CategoriaGastoID" 
+                                                data-requiere="@cat.RequiereAprobacion.ToString().ToLower()" 
+                                                data-maximo="@(cat.MontoMaximo > 0 ? cat.MontoMaximo.ToString() : "")">
+                                            @cat.Nombre
+                                        </option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Concepto *</label>
+                                <input type="text" id="concepto" class="form-control" placeholder="Ej: Compra de limpieza" required maxlength="300" />
+                            </div>
+
+                            <div class="form-group">
+                                <label>Monto *</label>
+                                <div class="input-group">
+                                    <span class="input-group-addon">$</span>
+                                    <input type="number" id="monto" class="form-control" placeholder="0.00" step="0.01" min="0.01" required />
+                                </div>
+                                <small id="alertaMontoMaximo" class="text-warning" style="display:none;">
+                                    <i class="fa fa-exclamation-triangle"></i> Este monto requerirá aprobación
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Descripción</label>
+                                <textarea id="descripcion" class="form-control" rows="3" placeholder="Detalles adicionales del gasto" maxlength="500"></textarea>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Forma de Pago</label>
+                                <select id="formaPagoID" class="form-control">
+                                    <option value="">Sin especificar</option>
+                                    @foreach (var fp in ViewBag.FormasPago)
+                                    {
+                                        <option value="@fp.FormaPagoID">@fp.Descripcion</option>
+                                    }
+                                </select>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>No. Factura</label>
+                                        <input type="text" id="numeroFactura" class="form-control" placeholder="Opcional" maxlength="50" />
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-group">
+                                        <label>Proveedor</label>
+                                        <input type="text" id="proveedor" class="form-control" placeholder="Opcional" maxlength="200" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label>Observaciones</label>
+                                <input type="text" id="observaciones" class="form-control" placeholder="Notas adicionales" maxlength="500" />
+                            </div>
+
+                            <button type="submit" id="btnRegistrar" class="btn btn-primary btn-block">
+                                <i class="fa fa-save"></i> Registrar Gasto
+                            </button>
+                            <button type="button" id="btnLimpiar" class="btn btn-default btn-block">
+                                <i class="fa fa-eraser"></i> Limpiar Formulario
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lista de Gastos del Día -->
+            <div class="col-md-8">
+                <div class="box box-success">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-list"></i> Gastos del Día</h3>
+                        <div class="box-tools pull-right">
+                            <button type="button" class="btn btn-box-tool" id="btnRefrescar">
+                                <i class="fa fa-refresh"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Fecha Inicio</label>
+                                    <input type="date" id="fechaInicio" class="form-control" />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group">
+                                    <label>Fecha Fin</label>
+                                    <input type="date" id="fechaFin" class="form-control" />
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="alert alert-info">
+                            <strong><i class="fa fa-calculator"></i> Total de Gastos:</strong>
+                            <span id="totalGastos" class="pull-right" style="font-size:18px; font-weight:bold;">$0.00</span>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table id="tablaGastos" class="table table-bordered table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Fecha/Hora</th>
+                                        <th>Categoría</th>
+                                        <th>Concepto</th>
+                                        <th>Monto</th>
+                                        <th>Estado</th>
+                                        <th>Usuario</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyGastos">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted">
+                                            <i class="fa fa-info-circle"></i> No hay gastos registrados
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Resumen por Categoría -->
+                <div class="box box-warning">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-pie-chart"></i> Resumen por Categoría</h3>
+                    </div>
+                    <div class="box-body">
+                        <div id="resumenCategorias" class="row">
+                            <!-- Se llenará dinámicamente -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/Gastos/Registrar.js?v=@DateTime.Now.Ticks"></script>
+}

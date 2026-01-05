@@ -1,0 +1,81 @@
+@{
+    ViewBag.Title = "Test Carga XML";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <h1>Test de Carga XML - Diagnóstico</h1>
+    </section>
+
+    <section class="content">
+        <div class="box box-primary">
+            <div class="box-header">
+                <h3 class="box-title">Prueba Simple de Carga</h3>
+            </div>
+            <div class="box-body">
+                <div class="form-group">
+                    <label>Seleccionar XML:</label>
+                    <input type="file" id="testXML" accept=".xml" class="form-control" />
+                </div>
+                <button type="button" id="btnTest" class="btn btn-primary">
+                    <i class="fa fa-upload"></i> Probar Carga
+                </button>
+                <hr />
+                <div id="resultado" class="alert" style="display:none;"></div>
+            </div>
+        </div>
+    </section>
+</div>
+
+@section scripts {
+<script>
+$(document).ready(function() {
+    $('#btnTest').on('click', function() {
+        var input = document.getElementById('testXML');
+        
+        if (!input.files || input.files.length === 0) {
+            $('#resultado').removeClass().addClass('alert alert-danger').html('No hay archivo seleccionado').show();
+            return;
+        }
+
+        var archivo = input.files[0];
+        $('#resultado').removeClass().addClass('alert alert-info')
+            .html('📄 Archivo: ' + archivo.name + '<br>📊 Tamaño: ' + archivo.size + ' bytes<br>🔤 Tipo: ' + archivo.type)
+            .show();
+
+        var formData = new FormData();
+        formData.append('file', archivo);
+
+        $('#btnTest').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Subiendo...');
+
+        $.ajax({
+            url: '/Compra/ProcesarXML',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                $('#btnTest').prop('disabled', false).html('<i class="fa fa-upload"></i> Probar Carga');
+                
+                if (response.success) {
+                    $('#resultado').removeClass().addClass('alert alert-success')
+                        .html('✅ <strong>ÉXITO</strong><br><pre>' + JSON.stringify(response, null, 2) + '</pre>')
+                        .show();
+                } else {
+                    $('#resultado').removeClass().addClass('alert alert-danger')
+                        .html('❌ <strong>ERROR</strong><br>' + response.mensaje)
+                        .show();
+                }
+            },
+            error: function(xhr, status, error) {
+                $('#btnTest').prop('disabled', false).html('<i class="fa fa-upload"></i> Probar Carga');
+                $('#resultado').removeClass().addClass('alert alert-danger')
+                    .html('❌ <strong>ERROR DE RED</strong><br>Status: ' + status + '<br>Error: ' + error + '<br>Response: ' + xhr.responseText)
+                    .show();
+            }
+        });
+    });
+});
+</script>
+}

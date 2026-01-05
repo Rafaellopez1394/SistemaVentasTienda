@@ -245,9 +245,13 @@ namespace VentasWeb.Controllers
         {
             try
             {
+                int sucursalID = Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 1;
+                
                 // Usar CD_Producto para obtener lotes del producto
                 // La consulta SQL ya filtra por Estatus = 1 y CantidadDisponible > 0
-                var lotes = CD_Producto.Instancia.ObtenerLotesDisponibles(productoId)
+                var lotes = CD_Producto.Instancia.ObtenerLotesDisponibles(productoId, sucursalID)
                     .Select(l => new {
                         value = l.LoteID,
                         text = $"Lote {l.LoteID} - Disponible: {l.CantidadDisponible} - Caducidad: {(l.FechaCaducidad.HasValue ? l.FechaCaducidad.Value.ToString("dd/MM/yyyy") : "N/A")}",
