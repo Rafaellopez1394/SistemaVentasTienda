@@ -65,6 +65,7 @@ function consultarCierre() {
 
 function mostrarCierre(data) {
     // Resumen general (info boxes)
+    $('#montoInicial').text('$' + formatMoney(data.MontoInicial));
     $('#totalVentas').text('$' + formatMoney(data.TotalVentas));
     $('#totalGastos').text('$' + formatMoney(data.TotalGastos));
     $('#efectivoCaja').text('$' + formatMoney(data.EfectivoEnCaja));
@@ -106,6 +107,7 @@ function mostrarCierre(data) {
     $('#resumenRetiros').text('$' + formatMoney(data.TotalRetiros));
     $('#resumenGananciaNeta').text('$' + formatMoney(data.GananciaNeta));
 
+    $('#resumenMontoInicial').text('$' + formatMoney(data.MontoInicial));
     $('#resumenEfectivoVentas').text('$' + formatMoney(data.VentasEfectivo));
     $('#resumenEfectivoGastos').text('$' + formatMoney(data.GastosEfectivo));
     $('#resumenEfectivoRetiros').text('$' + formatMoney(data.TotalRetiros));

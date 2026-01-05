@@ -218,6 +218,7 @@ namespace CapaDatos
                                 {
                                     CajaID = reader.GetInt32(reader.GetOrdinal("CajaID")),
                                     Fecha = reader.GetDateTime(reader.GetOrdinal("Fecha")),
+                                    MontoInicial = reader.GetDecimal(reader.GetOrdinal("MontoInicial")),
                                     TotalVentas = reader.GetDecimal(reader.GetOrdinal("TotalVentas")),
                                     VentasEfectivo = reader.GetDecimal(reader.GetOrdinal("VentasEfectivo")),
                                     VentasTarjeta = reader.GetDecimal(reader.GetOrdinal("VentasTarjeta")),

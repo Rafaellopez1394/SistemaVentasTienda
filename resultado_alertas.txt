@@ -1,0 +1,48 @@
+Changed database context to 'DB_TIENDA'.
+============================================================
+Módulo de Alertas de Inventario - Stock Mínimo
+============================================================
+ 
+✓ Columna StockMinimo agregada a tabla Productos
+✓ Índice IX_Productos_StockMinimo_Estatus creado
+ 
+Actualizando productos sin stock mínimo configurado...
+
+(396 rows affected)
+✓ 396 productos actualizados con stock mínimo sugerido
+ 
+============================================================
+Resumen de Alertas Actuales:
+============================================================
+NivelAlerta CantidadProductos
+----------- -----------------
+AGOTADO                     1
+BAJO                       37
+NORMAL                    285
+
+(3 rows affected)
+ 
+============================================================
+Ejemplos de productos con alertas:
+============================================================
+Codigo                                             Producto                                                                                                                                                                                                 StockActual StockMinimo NivelAlerta
+-------------------------------------------------- -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- ----------- ----------- -----------
+524226462632                                       Aceite Canola                                                                                                                                                                                                      0           4 AGOTADO    
+08906724267712                                     ACEITE DE AJONJOLI  1/2 L                                                                                                                                                                                          0          10 NORMAL     
+24072025                                           ACEITE DE MAIZ MACEITE 20 L                                                                                                                                                                                        0          10 NORMAL     
+7501052470085                                      ADERESO RANCH 237 G                                                                                                                                                                                                0          10 NORMAL     
+7501055307906                                      AGUA CIEL 600 ML                                                                                                                                                                                                   0          10 NORMAL     
+7508888000238                                      AGUACATE                                                                                                                                                                                                           0          10 NORMAL     
+7508888000201                                      ALETA DE ATUN                                                                                                                                                                                                      0          10 NORMAL     
+7508888000100-1                                    ALGA VERDE TOKYO 10 HOJAS                                                                                                                                                                                          0          10 NORMAL     
+7508888000100                                      ALGA VERDE TOKYO 100 HOJAS                                                                                                                                                                                         0          10 NORMAL     
+073234003086-1                                     ARROZ KOKUHO 1 KG                                                                                                                                                                                                  0          10 NORMAL     
+
+(10 rows affected)
+ 
+============================================================
+Script ejecutado exitosamente
+============================================================
+ 
+Accede al módulo en: /AlertasInventario
+ 

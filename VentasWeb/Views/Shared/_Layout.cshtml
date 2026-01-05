@@ -464,6 +464,13 @@
                 </a>
                 <ul class="sidebar-dropdown collapse" id="inventarioDropdown">
                     <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Index","AlertasInventario")" class="sidebar-nav-link">
+                            <i class="fas fa-exclamation-triangle"></i>
+                            <span>Alertas de Stock</span>
+                            <span id="menuBadgeAlertas" class="badge badge-danger" style="display:none; margin-left: 8px;">0</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
                         <a href="@Url.Action("Index","Mermas")" class="sidebar-nav-link">
                             <i class="fas fa-list"></i>
                             <span>Historial</span>
@@ -955,6 +962,49 @@
                 width: 700,
                 confirmButtonText: 'Entendido'
             });
+        }
+
+        // ============================================================
+        // Actualizar Badge de Alertas de Inventario
+        // ============================================================
+        function actualizarBadgeAlertas() {
+            @if (PermisoHelper.TienePermiso("ADMINISTRADOR", "EMPLEADO")) {
+                <text>
+                $.ajax({
+                    url: '@Url.Action("ObtenerConteo", "AlertasInventario")',
+                    type: 'GET',
+                    success: function(response) {
+                        if (response.success && response.data && response.data.TOTAL > 0) {
+                            $('#menuBadgeAlertas').text(response.data.TOTAL).show();
+                            
+                            // Mostrar notificación si hay alertas críticas o agotados
+                            if (response.data.AGOTADO > 0 || response.data.CRITICO > 0) {
+                                const mensaje = response.data.AGOTADO > 0 
+                                    ? response.data.AGOTADO + ' producto(s) AGOTADO(S)' 
+                                    : response.data.CRITICO + ' producto(s) en nivel CRÍTICO';
+                                
+                                toastr.error(mensaje, 'Alerta de Inventario', {
+                                    timeOut: 15000,
+                                    onclick: function() {
+                                        window.location.href = '@Url.Action("Index", "AlertasInventario")';
+                                    }
+                                });
+                            }
+                        } else {
+                            $('#menuBadgeAlertas').hide();
+                        }
+                    }
+                });
+                </text>
+            }
+        }
+
+        // Actualizar badge cada 5 minutos
+        @if (PermisoHelper.TienePermiso("ADMINISTRADOR", "EMPLEADO")) {
+            <text>
+            actualizarBadgeAlertas();
+            setInterval(actualizarBadgeAlertas, 300000); // 5 minutos
+            </text>
         }
     </script>
 

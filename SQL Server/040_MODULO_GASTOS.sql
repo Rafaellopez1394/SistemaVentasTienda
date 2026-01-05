@@ -315,6 +315,19 @@ BEGIN
     IF @Fecha IS NULL
         SET @Fecha = CAST(GETDATE() AS DATE);
     
+    -- Monto inicial de apertura de caja
+    DECLARE @MontoInicial DECIMAL(18,2);
+    
+    SELECT @MontoInicial = ISNULL(Monto, 0)
+    FROM MovimientosCaja
+    WHERE CajaID = @CajaID
+      AND TipoMovimiento = 'APERTURA'
+      AND CAST(FechaMovimiento AS DATE) = @Fecha
+    ORDER BY FechaMovimiento DESC;
+    
+    IF @MontoInicial IS NULL
+        SET @MontoInicial = 0;
+    
     -- Ventas del día
     DECLARE @TotalVentas DECIMAL(18,2);
     DECLARE @VentasEfectivo DECIMAL(18,2);
@@ -352,6 +365,7 @@ BEGIN
     SELECT 
         @CajaID AS CajaID,
         @Fecha AS Fecha,
+        @MontoInicial AS MontoInicial,
         @TotalVentas AS TotalVentas,
         @VentasEfectivo AS VentasEfectivo,
         @VentasTarjeta AS VentasTarjeta,
@@ -359,7 +373,7 @@ BEGIN
         @TotalGastos AS TotalGastos,
         @GastosEfectivo AS GastosEfectivo,
         @TotalRetiros AS TotalRetiros,
-        (@VentasEfectivo - @GastosEfectivo - @TotalRetiros) AS EfectivoEnCaja,
+        (@MontoInicial + @VentasEfectivo - @GastosEfectivo - @TotalRetiros) AS EfectivoEnCaja,
         (@TotalVentas - @TotalGastos - @TotalRetiros) AS GananciaNeta;
     
     -- Detalle de gastos

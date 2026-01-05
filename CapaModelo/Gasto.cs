@@ -67,6 +67,7 @@ namespace CapaModelo
     {
         public int CajaID { get; set; }
         public DateTime Fecha { get; set; }
+        public decimal MontoInicial { get; set; }
         public decimal TotalVentas { get; set; }
         public decimal VentasEfectivo { get; set; }
         public decimal VentasTarjeta { get; set; }

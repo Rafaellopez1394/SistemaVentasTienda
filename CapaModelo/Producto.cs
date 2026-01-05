@@ -29,6 +29,8 @@ namespace CapaModelo
         public bool VentaPorGramaje { get; set; }
         public decimal? PrecioPorKilo { get; set; }
         public string UnidadMedidaBase { get; set; }
+        public int? StockMinimo { get; set; }
+        public int StockActual { get; set; }
     }
 
     public class LoteProducto
@@ -60,5 +62,22 @@ namespace CapaModelo
         public string Usuario { get; set; }
         public DateTime FechaCambio { get; set; }
         public string NombreSucursal { get; set; }
+    }
+
+    public class AlertaInventario
+    {
+        public int ProductoID { get; set; }
+        public string CodigoInterno { get; set; }
+        public string NombreProducto { get; set; }
+        public string Categoria { get; set; }
+        public int StockActual { get; set; }
+        public int StockMinimo { get; set; }
+        public int Diferencia { get; set; }
+        public decimal PorcentajeStock { get; set; }
+        public string NivelAlerta { get; set; } // CRITICO, BAJO, AGOTADO
+        public int SucursalID { get; set; }
+        public string NombreSucursal { get; set; }
+        public DateTime? UltimaCompra { get; set; }
+        public int DiasDesdeUltimaCompra { get; set; }
     }
 }

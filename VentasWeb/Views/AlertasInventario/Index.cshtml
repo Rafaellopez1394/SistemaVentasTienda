@@ -1,0 +1,194 @@
+@{
+    ViewBag.Title = "Alertas de Inventario";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-wrapper">
+    <section class="content-header">
+        <h1>
+            <i class="fa fa-exclamation-triangle"></i> Alertas de Inventario
+            <small>Control de stock mínimo y productos críticos</small>
+        </h1>
+        <ol class="breadcrumb">
+            <li><a href="@Url.Action("Index", "Home")"><i class="fa fa-dashboard"></i> Inicio</a></li>
+            <li class="active">Alertas de Inventario</li>
+        </ol>
+    </section>
+
+    <section class="content">
+        <!-- Resumen de Alertas -->
+        <div class="row">
+            <div class="col-md-3">
+                <div class="info-box bg-red">
+                    <span class="info-box-icon"><i class="fa fa-times-circle"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">PRODUCTOS AGOTADOS</span>
+                        <span class="info-box-number" id="conteoAgotado">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="info-box bg-yellow">
+                    <span class="info-box-icon"><i class="fa fa-warning"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">STOCK CRÍTICO (&lt;25%)</span>
+                        <span class="info-box-number" id="conteoCritico">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="info-box bg-orange">
+                    <span class="info-box-icon"><i class="fa fa-exclamation"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">STOCK BAJO</span>
+                        <span class="info-box-number" id="conteoBajo">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="info-box bg-gray">
+                    <span class="info-box-icon"><i class="fa fa-list"></i></span>
+                    <div class="info-box-content">
+                        <span class="info-box-text">TOTAL ALERTAS</span>
+                        <span class="info-box-number" id="conteoTotal">0</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filtros y Acciones -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="box box-primary">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-filter"></i> Filtros y Acciones</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="row">
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Sucursal</label>
+                                    <select id="filtroSucursal" class="form-control">
+                                        <option value="0">Todas las sucursales</option>
+                                        <!-- Se llenará dinámicamente -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Nivel de Alerta</label>
+                                    <select id="filtroNivel" class="form-control">
+                                        <option value="">Todos</option>
+                                        <option value="AGOTADO">Agotado</option>
+                                        <option value="CRITICO">Crítico</option>
+                                        <option value="BAJO">Bajo</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>Categoría</label>
+                                    <select id="filtroCategoria" class="form-control">
+                                        <option value="">Todas</option>
+                                        <!-- Se llenará dinámicamente -->
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="form-group">
+                                    <label>&nbsp;</label><br>
+                                    <button id="btnActualizar" class="btn btn-primary">
+                                        <i class="fa fa-refresh"></i> Actualizar
+                                    </button>
+                                    <button id="btnExportar" class="btn btn-success">
+                                        <i class="fa fa-file-excel-o"></i> Exportar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Alertas -->
+        <div class="row">
+            <div class="col-md-12">
+                <div class="box box-danger">
+                    <div class="box-header with-border">
+                        <h3 class="box-title"><i class="fa fa-table"></i> Productos con Stock Bajo Mínimo</h3>
+                    </div>
+                    <div class="box-body">
+                        <div class="table-responsive">
+                            <table id="tablaAlertas" class="table table-bordered table-striped table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Nivel</th>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th>Categoría</th>
+                                        <th>Sucursal</th>
+                                        <th class="text-center">Stock Actual</th>
+                                        <th class="text-center">Stock Mínimo</th>
+                                        <th class="text-center">Diferencia</th>
+                                        <th class="text-center">% Stock</th>
+                                        <th>Última Compra</th>
+                                        <th class="text-center">Días</th>
+                                        <th class="text-center">Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyAlertas">
+                                    <tr>
+                                        <td colspan="12" class="text-center text-muted">
+                                            <i class="fa fa-spinner fa-spin"></i> Cargando alertas...
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Modal: Actualizar Stock Mínimo -->
+<div class="modal fade" id="modalStockMinimo" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+                <h4 class="modal-title"><i class="fa fa-edit"></i> Actualizar Stock Mínimo</h4>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="modalProductoID">
+                <div class="form-group">
+                    <label>Producto:</label>
+                    <p id="modalNombreProducto" class="form-control-static"></p>
+                </div>
+                <div class="form-group">
+                    <label>Stock Actual:</label>
+                    <p id="modalStockActual" class="form-control-static"></p>
+                </div>
+                <div class="form-group">
+                    <label>Nuevo Stock Mínimo: <span class="text-danger">*</span></label>
+                    <input type="number" id="modalNuevoStockMinimo" class="form-control" min="0" required>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Cancelar</button>
+                <button type="button" id="btnGuardarStockMinimo" class="btn btn-warning">
+                    <i class="fa fa-save"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/AlertasInventario/Index.js"></script>
+}

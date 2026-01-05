@@ -61,6 +61,16 @@
             <!-- Resumen General -->
             <div class="row">
                 <div class="col-md-3">
+                    <div class="info-box bg-blue">
+                        <span class="info-box-icon"><i class="fa fa-bank"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">MONTO INICIAL</span>
+                            <span class="info-box-number" id="montoInicial">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-3">
                     <div class="info-box bg-green">
                         <span class="info-box-icon"><i class="fa fa-shopping-cart"></i></span>
                         <div class="info-box-content">
@@ -81,21 +91,27 @@
                 </div>
 
                 <div class="col-md-3">
-                    <div class="info-box bg-aqua">
-                        <span class="info-box-icon"><i class="fa fa-dollar"></i></span>
-                        <div class="info-box-content">
-                            <span class="info-box-text">EFECTIVO EN CAJA</span>
-                            <span class="info-box-number" id="efectivoCaja">$0.00</span>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-md-3">
                     <div class="info-box bg-yellow">
                         <span class="info-box-icon"><i class="fa fa-line-chart"></i></span>
                         <div class="info-box-content">
                             <span class="info-box-text">GANANCIA NETA</span>
                             <span class="info-box-number" id="gananciaNeta">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Efectivo en Caja - Segunda Fila -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="info-box bg-aqua">
+                        <span class="info-box-icon"><i class="fa fa-dollar"></i></span>
+                        <div class="info-box-content">
+                            <span class="info-box-text">EFECTIVO ESPERADO EN CAJA</span>
+                            <span class="info-box-number" id="efectivoCaja" style="font-size: 32px;">$0.00</span>
+                            <span class="info-box-text" style="font-size: 12px; margin-top: 5px;">
+                                = Monto Inicial + Ventas Efectivo - Gastos Efectivo - Retiros
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -237,7 +253,11 @@
                                     <h4>Efectivo Esperado en Caja:</h4>
                                     <table class="table table-bordered">
                                         <tr>
-                                            <td><strong>Ventas en Efectivo:</strong></td>
+                                            <td><strong>Monto Inicial (Apertura):</strong></td>
+                                            <td class="text-right text-primary" id="resumenMontoInicial">$0.00</td>
+                                        </tr>
+                                        <tr>
+                                            <td><strong>(+) Ventas en Efectivo:</strong></td>
                                             <td class="text-right text-success" id="resumenEfectivoVentas">$0.00</td>
                                         </tr>
                                         <tr>

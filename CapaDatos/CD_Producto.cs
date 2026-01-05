@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
 
 namespace CapaDatos
 {
@@ -1037,6 +1038,149 @@ namespace CapaDatos
                     return false;
                 }
             }
+        }
+
+        /// <summary>
+        /// Obtiene productos con stock por debajo del mínimo
+        /// </summary>
+        public List<AlertaInventario> ObtenerProductosBajoStockMinimo(int? sucursalID = null)
+        {
+            var lista = new List<AlertaInventario>();
+            
+            try
+            {
+                using (SqlConnection conn = new SqlConnection(Conexion.CN))
+                {
+                    string query = @"
+                        SELECT 
+                            p.ProductoID,
+                            p.CodigoInterno,
+                            p.Nombre AS NombreProducto,
+                            c.Nombre AS Categoria,
+                            ISNULL(stock.StockActual, 0) AS StockActual,
+                            ISNULL(p.StockMinimo, 0) AS StockMinimo,
+                            (ISNULL(p.StockMinimo, 0) - ISNULL(stock.StockActual, 0)) AS Diferencia,
+                            CASE 
+                                WHEN ISNULL(p.StockMinimo, 0) > 0 
+                                THEN (CAST(ISNULL(stock.StockActual, 0) AS DECIMAL(10,2)) / CAST(p.StockMinimo AS DECIMAL(10,2)) * 100)
+                                ELSE 100
+                            END AS PorcentajeStock,
+                            CASE 
+                                WHEN ISNULL(stock.StockActual, 0) = 0 THEN 'AGOTADO'
+                                WHEN ISNULL(stock.StockActual, 0) <= (ISNULL(p.StockMinimo, 0) * 0.25) THEN 'CRITICO'
+                                WHEN ISNULL(stock.StockActual, 0) <= ISNULL(p.StockMinimo, 0) THEN 'BAJO'
+                                ELSE 'NORMAL'
+                            END AS NivelAlerta,
+                            s.SucursalID,
+                            s.Nombre AS NombreSucursal,
+                            ultimaCompra.FechaCompra AS UltimaCompra,
+                            DATEDIFF(DAY, ISNULL(ultimaCompra.FechaCompra, GETDATE()), GETDATE()) AS DiasDesdeUltimaCompra
+                        FROM Productos p
+                        INNER JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
+                        CROSS JOIN SUCURSAL s
+                        LEFT JOIN (
+                            SELECT 
+                                ProductoID, 
+                                SucursalID,
+                                SUM(CantidadDisponible) AS StockActual
+                            FROM LotesProducto
+                            WHERE Estatus = 1
+                            GROUP BY ProductoID, SucursalID
+                        ) stock ON p.ProductoID = stock.ProductoID AND s.SucursalID = stock.SucursalID
+                        LEFT JOIN (
+                            SELECT 
+                                cd.ProductoID,
+                                c.SucursalID,
+                                MAX(c.FechaCompra) AS FechaCompra
+                            FROM ComprasDetalle cd
+                            INNER JOIN Compras c ON cd.CompraID = c.CompraID
+                            GROUP BY cd.ProductoID, c.SucursalID
+                        ) ultimaCompra ON p.ProductoID = ultimaCompra.ProductoID AND s.SucursalID = ultimaCompra.SucursalID
+                        WHERE p.Estatus = 1
+                          AND p.StockMinimo IS NOT NULL
+                          AND p.StockMinimo > 0
+                          AND ISNULL(stock.StockActual, 0) <= p.StockMinimo";
+                    
+                    if (sucursalID.HasValue && sucursalID.Value > 0)
+                        query += " AND s.SucursalID = @SucursalID";
+                        
+                    query += @"
+                        ORDER BY 
+                            CASE 
+                                WHEN ISNULL(stock.StockActual, 0) = 0 THEN 1
+                                WHEN ISNULL(stock.StockActual, 0) <= (ISNULL(p.StockMinimo, 0) * 0.25) THEN 2
+                                ELSE 3
+                            END,
+                            p.Nombre";
+                    
+                    var cmd = new SqlCommand(query, conn);
+                    
+                    if (sucursalID.HasValue && sucursalID.Value > 0)
+                        cmd.Parameters.AddWithValue("@SucursalID", sucursalID.Value);
+                    
+                    conn.Open();
+                    
+                    using (var dr = cmd.ExecuteReader())
+                    {
+                        while (dr.Read())
+                        {
+                            lista.Add(new AlertaInventario
+                            {
+                                ProductoID = dr.GetInt32(dr.GetOrdinal("ProductoID")),
+                                CodigoInterno = dr.IsDBNull(dr.GetOrdinal("CodigoInterno")) ? "" : dr.GetString(dr.GetOrdinal("CodigoInterno")),
+                                NombreProducto = dr.GetString(dr.GetOrdinal("NombreProducto")),
+                                Categoria = dr.GetString(dr.GetOrdinal("Categoria")),
+                                StockActual = dr.GetInt32(dr.GetOrdinal("StockActual")),
+                                StockMinimo = dr.GetInt32(dr.GetOrdinal("StockMinimo")),
+                                Diferencia = dr.GetInt32(dr.GetOrdinal("Diferencia")),
+                                PorcentajeStock = dr.GetDecimal(dr.GetOrdinal("PorcentajeStock")),
+                                NivelAlerta = dr.GetString(dr.GetOrdinal("NivelAlerta")),
+                                SucursalID = dr.GetInt32(dr.GetOrdinal("SucursalID")),
+                                NombreSucursal = dr.GetString(dr.GetOrdinal("NombreSucursal")),
+                                UltimaCompra = dr.IsDBNull(dr.GetOrdinal("UltimaCompra")) ? (DateTime?)null : dr.GetDateTime(dr.GetOrdinal("UltimaCompra")),
+                                DiasDesdeUltimaCompra = dr.GetInt32(dr.GetOrdinal("DiasDesdeUltimaCompra"))
+                            });
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                // Log error
+                lista = new List<AlertaInventario>();
+            }
+            
+            return lista;
+        }
+
+        /// <summary>
+        /// Obtiene el conteo de alertas por nivel
+        /// </summary>
+        public Dictionary<string, int> ObtenerConteoAlertas(int? sucursalID = null)
+        {
+            var resultado = new Dictionary<string, int>
+            {
+                { "AGOTADO", 0 },
+                { "CRITICO", 0 },
+                { "BAJO", 0 },
+                { "TOTAL", 0 }
+            };
+            
+            try
+            {
+                var alertas = ObtenerProductosBajoStockMinimo(sucursalID);
+                
+                resultado["AGOTADO"] = alertas.Where(a => a.NivelAlerta == "AGOTADO").Count();
+                resultado["CRITICO"] = alertas.Where(a => a.NivelAlerta == "CRITICO").Count();
+                resultado["BAJO"] = alertas.Where(a => a.NivelAlerta == "BAJO").Count();
+                resultado["TOTAL"] = alertas.Count;
+            }
+            catch (Exception ex)
+            {
+                // Log error
+            }
+            
+            return resultado;
         }
     }
 }
