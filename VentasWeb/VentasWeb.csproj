@@ -16,6 +16,7 @@
     <RootNamespace>VentasWeb</RootNamespace>
     <AssemblyName>VentasWeb</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <LangVersion>8.0</LangVersion>
     <MvcBuildViews>false</MvcBuildViews>
     <UseIISExpress>true</UseIISExpress>
     <Use64BitIISExpress />
@@ -122,6 +123,7 @@
     <Compile Include="App_Start\BundleConfig.cs" />
     <Compile Include="App_Start\FilterConfig.cs" />
     <Compile Include="App_Start\RouteConfig.cs" />
+    <Compile Include="Controllers\AlertasInventarioController.cs" />
     <Compile Include="Controllers\CategoriaController.cs" />
     <Compile Include="Controllers\CertificadoDigitalController.cs" />
     <Compile Include="Controllers\ClienteController.cs" />
@@ -133,8 +135,10 @@
     <Compile Include="Controllers\CreditoController.cs" />
     <Compile Include="Controllers\CuentasPorPagarController.cs" />
     <Compile Include="Controllers\DescomposicionProductoController.cs" />
+    <Compile Include="Controllers\DevolucionController.cs" />
     <Compile Include="Controllers\EmpleadoController.cs" />
     <Compile Include="Controllers\FacturaController.cs" />
+    <!-- <Compile Include="Controllers\FacturaTestController.cs" /> ELIMINADO -->
     <Compile Include="Controllers\HomeController.cs" />
     <Compile Include="Controllers\LoginController.cs" />
     <Compile Include="Controllers\MermasController.cs" />
@@ -1920,6 +1924,7 @@
     <Content Include="Imagenes\tiendalogo.png" />
     <Content Include="Logs\factura_response_20260102_103931.txt" />
     <Content Include="Logs\factura_xml_20260102_103930.xml" />
+    <Content Include="Scripts\AlertasInventario\Index.js" />
     <Content Include="Scripts\bootstrap.bundle.js" />
     <Content Include="Scripts\bootstrap.bundle.min.js" />
     <Content Include="Scripts\bootstrap.js" />
@@ -1966,9 +1971,6 @@
     <Content Include="Scripts\jquery.validate.unobtrusive.min.js" />
     <Content Include="Scripts\modernizr-2.8.3.js" />
     <Content Include="Scripts\Plugins\select2.full.js" />
-    <Content Include="Scripts\Plugins\select2.full.min.js" />
-    <Content Include="Scripts\Plugins\select2.js" />
-    <Content Include="Scripts\Plugins\select2.min.js" />
     <Content Include="Scripts\Utilidades\FechaUtils.js" />
     <Content Include="Scripts\popper-utils.js" />
     <Content Include="Scripts\popper-utils.min.js" />
@@ -2167,6 +2169,9 @@
     <Content Include="Views\DescomposicionProducto\Index.cshtml" />
     <Content Include="Views\ConfiguracionSMTP\Index.cshtml" />
     <Content Include="Views\Pagos\GestionarPagosVentas.cshtml" />
+    <Content Include="Views\AlertasInventario\Index.cshtml" />
+    <Content Include="Views\Devolucion\Index.cshtml" />
+    <Content Include="Views\Devolucion\Registrar.cshtml" />
   </ItemGroup>
   <ItemGroup>
     <Folder Include="App_Data\" />
@@ -2184,13 +2189,13 @@
     <Service Include="{4A0DDDB5-7A95-4FBF-97CC-616D07737A77}" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\CapaModelo\CapaModelo.csproj">
+      <Project>{b2c91cc1-42f7-48b7-83e1-31a2d0e8d15c}</Project>
+      <Name>CapaModelo</Name>
+    </ProjectReference>
     <ProjectReference Include="..\CapaDatos\CapaDatos.csproj">
       <Project>{af114377-3ab3-455c-923f-66993dcb9235}</Project>
       <Name>CapaDatos</Name>
-    </ProjectReference>
-    <ProjectReference Include="..\CapaModelo\CapaModelo.csproj">
-      <Project>{7e595a57-bc8c-470d-9ea1-287a9547f592}</Project>
-      <Name>CapaModelo</Name>
     </ProjectReference>
   </ItemGroup>
   <PropertyGroup>

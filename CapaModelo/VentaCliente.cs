@@ -34,7 +34,7 @@ namespace CapaModelo
         public string Producto { get; set; }
         public int LoteID { get; set; }
         public string NumeroLote { get; set; }
-        public int Cantidad { get; set; }
+        public decimal Cantidad { get; set; } // Cambiar a decimal para soportar ventas por peso
         public decimal PrecioVenta { get; set; }
         public decimal PrecioCompra { get; set; }
         public decimal TasaIVAPorcentaje { get; set; }

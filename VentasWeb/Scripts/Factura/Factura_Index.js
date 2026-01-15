@@ -71,8 +71,9 @@ function abrirModalFacturar(ventaId) {
                 var data = response.data;
                 
                 $('#txtVentaID').val(data.ventaId);
-                $('#txtReceptorRFC').val(data.clienteRFC);
+                $('#txtReceptorRFC').val(data.clienteRFC || 'XAXX010101000');
                 $('#txtReceptorNombre').val(data.clienteNombre);
+                $('#txtReceptorCP').val(data.clienteCP || '06000');
                 $('#txtSubtotal').val(data.subtotal.toFixed(2));
                 $('#txtIVA').val(data.iva.toFixed(2));
                 $('#txtTotal').val(data.total.toFixed(2));
@@ -148,6 +149,7 @@ function generarYTimbrarFactura() {
         VentaID: $('#txtVentaID').val() || null,
         ReceptorRFC: $('#txtReceptorRFC').val(),
         ReceptorNombre: $('#txtReceptorNombre').val(),
+        ReceptorCP: $('#txtReceptorCP').val(),
         ReceptorRegimenFiscal: $('#cboRegimenFiscal').val(),
         UsoCFDI: $('#cboUsoCFDI').val(),
         FormaPago: $('#cboFormaPago').val(),

@@ -34,6 +34,19 @@ namespace VentasWeb.Controllers
                 return Json(new { data = new List<Sucursal>(), error = ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
+
+        public JsonResult ObtenerTodos()
+        {
+            try
+            {
+                List<Sucursal> lista = CD_Sucursal.Instancia.ObtenerSucursales();
+                return Json(new { data = lista }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { data = new List<Sucursal>(), error = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
     
         [HttpPost]
         public JsonResult Guardar(Sucursal objeto)

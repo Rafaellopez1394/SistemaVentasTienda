@@ -29,11 +29,20 @@ namespace VentasWeb.Controllers
                     sucursalFiltro > 0 ? (int?)sucursalFiltro : null
                 );
 
-                return Json(new { success = true, data = alertas }, JsonRequestBehavior.AllowGet);
+                // Asegurarse de que nunca sea null
+                if (alertas == null)
+                {
+                    alertas = new List<AlertaInventario>();
+                }
+
+                return Json(new { success = true, data = alertas, count = alertas.Count }, JsonRequestBehavior.AllowGet);
             }
             catch (Exception ex)
             {
-                return Json(new { success = false, mensaje = "Error: " + ex.Message }, JsonRequestBehavior.AllowGet);
+                // Log del error para debugging
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerAlertas: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("StackTrace: " + ex.StackTrace);
+                return Json(new { success = false, mensaje = "Error: " + ex.Message, stackTrace = ex.StackTrace }, JsonRequestBehavior.AllowGet);
             }
         }
 

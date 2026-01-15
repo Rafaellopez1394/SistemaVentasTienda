@@ -373,7 +373,7 @@ namespace CapaDatos
                                 ProductoID = Convert.ToInt32(dr["ProductoID"]),
                                 Producto = dr["Producto"].ToString(),
                                 LoteID = Convert.ToInt32(dr["LoteID"]),
-                                Cantidad = Convert.ToInt32(dr["Cantidad"]),
+                                Cantidad = Convert.ToDecimal(dr["Cantidad"]),
                                 PrecioVenta = Convert.ToDecimal(dr["PrecioVenta"]),
                                 PrecioCompra = Convert.ToDecimal(dr["PrecioCompra"]),
                                 TasaIVAPorcentaje = Convert.ToDecimal(dr["TasaIVA"]),

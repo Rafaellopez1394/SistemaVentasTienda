@@ -1,0 +1,40 @@
+Changed database context to 'DB_TIENDA'.
+============================================================
+M\u00d3DULO DE DEVOLUCIONES DE VENTA
+============================================================
+ 
+Msg 1778, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 12
+Column 'VentasClientes.VentaID' is not the same data type as referencing column 'Devoluciones.VentaID' in foreign key 'FK_Devoluciones_Venta'.
+Msg 1750, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 12
+Could not create constraint. See previous errors.
+Msg 1767, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 7
+Foreign key 'FK_DevolucionDetalle_Devolucion' references invalid table 'Devoluciones'.
+Msg 1750, Level 16, State 1, Server SISTEMAS\SERVIDOR, Line 7
+Could not create constraint. See previous errors.
+Msg 1088, Level 16, State 12, Server SISTEMAS\SERVIDOR, Line 7
+Cannot find the object "Devoluciones" because it does not exist or you do not have permissions.
+Msg 319, Level 15, State 1, Server SISTEMAS\SERVIDOR, Procedure sp_RegistrarDevolucion, Line 45
+Incorrect syntax near the keyword 'with'. If this statement is a common table expression, an xmlnamespaces clause or a change tracking context clause, the previous statement must be terminated with a semicolon.
+Msg 156, Level 15, State 1, Server SISTEMAS\SERVIDOR, Procedure sp_RegistrarDevolucion, Line 98
+Incorrect syntax near the keyword 'NULL'.
+\u2713 Stored Procedure sp_RegistrarDevolucion creado
+\u2713 Stored Procedure sp_ObtenerDevoluciones creado
+\u2713 Stored Procedure sp_ObtenerDetalleDevolucion creado
+\u2713 Stored Procedure sp_ReporteDevoluciones creado
+\u2713 Stored Procedure sp_ProductosMasDevueltos creado
+ 
+============================================================
+M\u00f3dulo de Devoluciones implementado exitosamente
+============================================================
+ 
+Tablas creadas:
+  \u2713 Devoluciones
+  \u2713 DevolucionesDetalle
+ 
+Stored Procedures:
+  \u2713 sp_RegistrarDevolucion
+  \u2713 sp_ObtenerDevoluciones
+  \u2713 sp_ObtenerDetalleDevolucion
+  \u2713 sp_ReporteDevoluciones
+  \u2713 sp_ProductosMasDevueltos
+ 

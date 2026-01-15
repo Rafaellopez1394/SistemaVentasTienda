@@ -1,0 +1,10 @@
+# Ignorar todos los archivos de certificados por seguridad
+*.cer
+*.key
+*.pfx
+*.p12
+password*
+
+# Excepto el README
+!README.md
+!.gitignore

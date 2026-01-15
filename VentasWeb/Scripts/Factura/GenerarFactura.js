@@ -56,9 +56,31 @@ function cargarRegimenesFiscales() {
                     options += '<option value="' + regimen.Clave + '">' + regimen.Clave + ' - ' + regimen.Descripcion + '</option>';
                 });
                 $('#cboRegimenFiscal').html(options);
+                
+                // Cuando cambia el régimen fiscal, ajustar UsoCFDI válidos
+                $('#cboRegimenFiscal').off('change').on('change', function () {
+                    validarUsoCFDIParaRegimen();
+                });
             }
         }
     });
+}
+
+// Validar que UsoCFDI sea compatible con el régimen fiscal
+function validarUsoCFDIParaRegimen() {
+    var regimen = $('#cboRegimenFiscal').val();
+    var usoCFDI = $('#cboUsoCFDI').val();
+    
+    // Régimen 616 (Sin obligaciones fiscales) solo acepta: S01, CP01, CN01
+    if (regimen === '616') {
+        var usosValidos = ['S01', 'CP01', 'CN01'];
+        
+        // Si el uso actual no es válido, cambiar a S01
+        if (usoCFDI && !usosValidos.includes(usoCFDI)) {
+            $('#cboUsoCFDI').val('S01');
+            toastr.info('UsoCFDI ajustado a "S01 - Sin efectos fiscales" (requerido para régimen 616)');
+        }
+    }
 }
 
 function procesarFacturacion() {
@@ -96,6 +118,12 @@ function procesarFacturacion() {
     
     if (!regimenFiscal) {
         toastr.warning('Seleccione el régimen fiscal');
+        return;
+    }
+    
+    // Validar combinación régimen-usoCFDI
+    if (regimenFiscal === '616' && !['S01', 'CP01', 'CN01'].includes(usoCFDI)) {
+        toastr.error('Para régimen 616 solo son válidos: S01 (Sin efectos fiscales), CP01 (Pagos) o CN01 (Nómina)');
         return;
     }
     

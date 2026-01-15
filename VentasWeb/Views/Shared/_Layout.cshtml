@@ -426,6 +426,27 @@
             </li>
 
             <li class="sidebar-nav-item">
+                <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#devolucionesDropdown">
+                    <i class="fas fa-undo-alt"></i>
+                    <span>Devoluciones</span>
+                </a>
+                <ul class="sidebar-dropdown collapse" id="devolucionesDropdown">
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Registrar","Devolucion")" class="sidebar-nav-link">
+                            <i class="fas fa-plus-circle"></i>
+                            <span>Registrar Devolución</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Index","Devolucion")" class="sidebar-nav-link">
+                            <i class="fas fa-list"></i>
+                            <span>Historial</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="sidebar-nav-item">
                 <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#gastosDropdown">
                     <i class="fas fa-money-bill-wave"></i>
                     <span>Gastos</span>
@@ -447,10 +468,24 @@
             </li>
 
             <li class="sidebar-nav-item">
-                <a href="@Url.Action("Index", "Producto")" class="sidebar-nav-link @(ViewContext.RouteData.Values["controller"].ToString() == "Producto" ? "active" : "")">
+                <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#productosDropdown">
                     <i class="fas fa-box"></i>
                     <span>Productos</span>
                 </a>
+                <ul class="sidebar-dropdown collapse" id="productosDropdown">
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Index","Producto")" class="sidebar-nav-link">
+                            <i class="fas fa-list"></i>
+                            <span>Gestionar Productos</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("Index","DescomposicionProducto")" class="sidebar-nav-link">
+                            <i class="fas fa-weight"></i>
+                            <span>Venta por Gramaje</span>
+                        </a>
+                    </li>
+                </ul>
             </li>
             }
 
@@ -674,6 +709,12 @@
                             </a>
                         </li>
                         <li class="sidebar-nav-item sidebar-dropdown-item">
+                            <a href="@Url.Action("Crear","Categoria")" class="sidebar-nav-link">
+                                <i class="fas fa-tags"></i>
+                                <span>Categorías de Productos</span>
+                            </a>
+                        </li>
+                        <li class="sidebar-nav-item sidebar-dropdown-item">
                             <a href="@Url.Action("Index","Sucursal")" class="sidebar-nav-link">
                                 <i class="fas fa-store"></i>
                                 <span>Sucursales</span>
@@ -683,12 +724,6 @@
                             <a href="@Url.Action("Index","Configuracion")" class="sidebar-nav-link">
                                 <i class="fas fa-sliders-h"></i>
                                 <span>Configuración</span>
-                            </a>
-                        </li>
-                        <li class="sidebar-nav-item sidebar-dropdown-item">
-                            <a href="@Url.Action("Index","CertificadoDigital")" class="sidebar-nav-link">
-                                <i class="fas fa-certificate"></i>
-                                <span>Certificados Digitales</span>
                             </a>
                         </li>
                         <li class="sidebar-nav-item sidebar-dropdown-item">

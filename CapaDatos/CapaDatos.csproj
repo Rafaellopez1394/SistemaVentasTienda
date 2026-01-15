@@ -10,7 +10,7 @@
     <RootNamespace>CapaDatos</RootNamespace>
     <AssemblyName>CapaDatos</AssemblyName>
     <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
-    <LangVersion>default</LangVersion>
+    <LangVersion>8.0</LangVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
   </PropertyGroup>
@@ -32,18 +32,28 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="itextsharp">
+      <HintPath>..\packages\iTextSharp.5.5.13.3\lib\itextsharp.dll</HintPath>
+    </Reference>
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\packages\Newtonsoft.Json.11.0.1\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="QRCoder">
+      <HintPath>..\packages\QRCoder.1.4.3\lib\net40\QRCoder.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Drawing" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="System.Data" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\CapaModelo\CapaModelo.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CD_Catalogo.cs" />
@@ -59,6 +69,7 @@
     <Compile Include="CD_CuentaContable.cs" />
     <Compile Include="CD_CuentasPorPagar.cs" />
     <Compile Include="CD_DescomposicionProducto.cs" />
+    <Compile Include="CD_Devolucion.cs" />
     <Compile Include="CD_EmailLog.cs" />
     <Compile Include="CD_Empleado.cs" />
     <Compile Include="CD_Factura.cs" />
@@ -82,22 +93,33 @@
     <Compile Include="CD_Venta.cs" />
     <Compile Include="CD_VentaPOS.cs" />
     <Compile Include="Conexion.cs" />
-    <Compile Include="PAC\CFDI40XMLGenerator.cs" />
-    <Compile Include="PAC\CFDINomina12XMLGenerator.cs" />
-    <Compile Include="PAC\ComplementoPago20XMLGenerator.cs" />
-    <Compile Include="PAC\FacturamaPAC.cs" />
-    <Compile Include="PAC\FinkokPAC.cs" />
-    <Compile Include="PAC\SimuladorPAC.cs" />
-    <Compile Include="PAC\IProveedorPAC.cs" />
+    <Compile Include="Generadores\ComplementoPago20XMLGenerator.cs" />
+    <Compile Include="FiscalAPI\FiscalApiSDK.cs" />
+    <Compile Include="PDF\FiscalAPICatalogosSAT.cs" />
+    <Compile Include="PDF\FiscalAPIDescargaMasiva.cs" />
+    <Compile Include="PDF\FiscalAPIEmail.cs" />
+    <Compile Include="PDF\FiscalAPIPDF.cs" />
+    <Compile Include="PDF\FiscalAPIPersonas.cs" />
+    <Compile Include="PDF\FiscalAPIProductosServicios.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RespuestaCancelacion.cs" />
+    <Compile Include="RespuestaConsulta.cs" />
     <Compile Include="Utilidades\CertificadoHelper.cs" />
+    <Compile Include="PAC\FiscalAPIModels.cs" />
+    <Compile Include="PAC\FiscalAPIService.cs" />
+    <Compile Include="Generadores\FiscalAPICFDI40Generator.cs" />
+    <Compile Include="Generadores\CFDI40XMLGenerator.cs" />
+    <Compile Include="Generadores\PDFFacturaGenerator.cs" />
+    <Compile Include="PAC\ProdigiaService.cs" />
+    <Compile Include="PAC\ProdigiaModels.cs" />
+    <!-- ARCHIVOS ELIMINADOS - Funcionalidad PAC/Facturación ANTIGUA
+    <Compile Include="PAC\FiscalAPIDirectHTTP.cs" />
+    <Compile Include="PAC\FiscalAPIPAC.cs" />
+    <Compile Include="PAC\IProveedorPAC.cs" />
+    <Compile Include="RespuestaCancelacionCFDI.cs" />
+    <Compile Include="RespuestaTimbrado.cs" />
     <Compile Include="Utilidades\CFDICompraParser.cs" />
-  </ItemGroup>
-  <ItemGroup>
-    <ProjectReference Include="..\CapaModelo\CapaModelo.csproj">
-      <Project>{7e595a57-bc8c-470d-9ea1-287a9547f592}</Project>
-      <Name>CapaModelo</Name>
-    </ProjectReference>
+    -->
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

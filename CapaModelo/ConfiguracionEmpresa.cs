@@ -36,6 +36,11 @@ namespace CapaModelo
         public byte[] CertificadoBytes { get; set; }
         public byte[] LlavePrivadaBytes { get; set; }
         
+        // Certificados para FiscalAPI SDK (Modo Por Valores) - Archivos en disco
+        public string NombreArchivoCertificado { get; set; }  // Ej: "EKU9003173C9.cer"
+        public string NombreArchivoLlavePrivada { get; set; } // Ej: "EKU9003173C9.key"
+        public string NombreArchivoPassword { get; set; }     // Ej: "password.txt" - contiene el password
+        
         // Configuración PAC
         public string ProveedorPAC { get; set; }
         public string UrlPAC { get; set; }

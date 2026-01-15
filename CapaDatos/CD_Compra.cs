@@ -288,8 +288,10 @@ namespace CapaDatos
         /// </summary>
         public bool RegistrarCompraDesdeXML(string rutaXML, Dictionary<int, ProductoCompraXML> mapeoProductos, int sucursalID, string usuario, out string mensaje)
         {
-            mensaje = string.Empty;
+            mensaje = "Funcionalidad de importación de CFDI de compras eliminada del sistema";
+            return false;
 
+            /* CÓDIGO ELIMINADO - Parseador de CFDI
             try
             {
                 // 1. Parsear el XML
@@ -371,58 +373,26 @@ namespace CapaDatos
                     mensaje = "Error al registrar la compra";
                 }
 
-                return resultado;
+                return false;
             }
             catch (Exception ex)
             {
                 mensaje = "Error al procesar XML: " + ex.Message;
                 return false;
             }
+            */
         }
 
+        /* MÉTODO ELIMINADO - Funcionalidad de CFDI
         /// <summary>
         /// Busca un proveedor por RFC o lo crea si no existe
         /// </summary>
         private Guid BuscarOCrearProveedor(CFDICompraParser.DatosFacturaCompra datosFactura)
         {
-            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
-            {
-                cnx.Open();
-
-                // Buscar proveedor por RFC
-                string queryBuscar = "SELECT ProveedorID FROM Proveedores WHERE RFCProveedor = @RFC";
-                SqlCommand cmdBuscar = new SqlCommand(queryBuscar, cnx);
-                cmdBuscar.Parameters.AddWithValue("@RFC", datosFactura.EmisorRFC);
-
-                object result = cmdBuscar.ExecuteScalar();
-
-                if (result != null)
-                {
-                    return (Guid)result;
-                }
-
-                // No existe, crear nuevo proveedor
-                Guid nuevoID = Guid.NewGuid();
-                string queryCrear = @"
-                    INSERT INTO Proveedores (
-                        ProveedorID, RazonSocial, RFCProveedor, ContactoNombre, 
-                        Activo, FechaRegistro
-                    ) VALUES (
-                        @ProveedorID, @RazonSocial, @RFC, @ContactoNombre,
-                        1, GETDATE()
-                    )";
-
-                SqlCommand cmdCrear = new SqlCommand(queryCrear, cnx);
-                cmdCrear.Parameters.AddWithValue("@ProveedorID", nuevoID);
-                cmdCrear.Parameters.AddWithValue("@RazonSocial", datosFactura.EmisorNombre ?? "Proveedor " + datosFactura.EmisorRFC);
-                cmdCrear.Parameters.AddWithValue("@RFC", datosFactura.EmisorRFC);
-                cmdCrear.Parameters.AddWithValue("@ContactoNombre", "Sin contacto");
-
-                cmdCrear.ExecuteNonQuery();
-
-                return nuevoID;
-            }
+            // Código eliminado - dependía de CFDICompraParser
+            return Guid.Empty;
         }
+        */
 
         /// <summary>
         /// Guarda una copia del XML en carpeta de respaldo

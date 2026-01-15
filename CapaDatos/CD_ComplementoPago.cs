@@ -5,7 +5,6 @@ using System.Data.SqlClient;
 using System.Linq;
 using System.Threading.Tasks;
 using CapaModelo;
-using CapaDatos.PAC;
 
 namespace CapaDatos
 {
@@ -174,41 +173,15 @@ namespace CapaDatos
                     int complementoPagoID = InsertarComplementoPago(complemento, cnx, transaction);
                     complemento.ComplementoPagoID = complementoPagoID;
 
-                    // 7. Obtener configuración
-                    var empresa = ObtenerConfiguracionEmpresa();
-                    var configPAC = ObtenerConfiguracionPAC();
+                    // FUNCIONALIDAD DE TIMBRADO ELIMINADA
+                    respuesta.Exitoso = false;
+                    respuesta.Mensaje = "Funcionalidad de timbrado con PAC eliminada del sistema";
+                    transaction.Rollback();
+                    return respuesta;
 
-                    // 8. Generar XML
-                    var generator = new ComplementoPago20XMLGenerator();
-                    string xmlSinTimbrar = generator.GenerarXML(complemento, empresa, configPAC);
-
-                    // Guardar XML sin timbrar
-                    ActualizarXMLSinTimbrar(complementoPagoID, xmlSinTimbrar, cnx, transaction);
-
-                    // 9. Timbrar con PAC
-                    var proveedorPAC = new FinkokPAC();
-                    respuesta = await proveedorPAC.TimbrarAsync(xmlSinTimbrar, configPAC);
-
-                    if (respuesta.Exitoso)
-                    {
-                        // 10. Actualizar complemento con datos del timbrado
-                        ActualizarComplementoTimbrado(complementoPagoID, respuesta, cnx, transaction);
-
-                        // 11. Actualizar saldos de facturas
-                        foreach (var facturaItem in request.Facturas)
-                        {
-                            ActualizarSaldoFactura(facturaItem.FacturaID, facturaItem.MontoPagar, cnx, transaction);
-                        }
-
-                        transaction.Commit();
-                        respuesta.Mensaje = "Complemento de pago timbrado exitosamente";
-                    }
-                    else
-                    {
-                        // Guardar error
-                        ActualizarComplementoError(complementoPagoID, respuesta.CodigoError, respuesta.Mensaje, cnx, transaction);
-                        transaction.Commit();
-                    }
+                    /* CÓDIGO ELIMINADO - Generación de XML y Timbrado
+                    // El código de timbrado fue completamente eliminado
+                    */
                 }
                 catch (Exception ex)
                 {
@@ -315,17 +288,16 @@ namespace CapaDatos
             return Convert.ToInt32(result);
         }
 
-        private CapaDatos.PAC.ConfiguracionEmpresa ObtenerConfiguracionEmpresa()
+        private ConfiguracionEmpresa ObtenerConfiguracionEmpresa()
         {
             // TODO: Obtener de tabla ConfiguracionEmpresa
-            return new CapaDatos.PAC.ConfiguracionEmpresa
+            return new ConfiguracionEmpresa
             {
                 RFC = "XAXX010101000",
                 RazonSocial = "EMPRESA DEMO SA DE CV",
                 RegimenFiscal = "601",
                 CodigoPostal = "00000",
-                NoCertificado = "00001000000000000000",
-                Certificado = ""
+                NoCertificado = "00001000000000000000"
             };
         }
 
@@ -707,8 +679,17 @@ namespace CapaDatos
                         return respuesta;
                     }
                     
-                    var xmlGenerator = new ComplementoPago20XMLGenerator();
-                    string xmlSinTimbrar = xmlGenerator.GenerarXML(complemento, empresa, pacConfig);
+                    // Generar XML
+                    var xmlGenerator = new Generadores.ComplementoPago20XMLGenerator();
+                    string xmlSinTimbrar = xmlGenerator.GenerarXML(complemento, empresa);
+                    
+                    if (string.IsNullOrEmpty(xmlSinTimbrar))
+                    {
+                        respuesta.Exitoso = false;
+                        respuesta.Mensaje = "Error al generar XML del Complemento de Pago";
+                        transaction.Rollback();
+                        return respuesta;
+                    }
 
                     complemento.XMLSinTimbrar = xmlSinTimbrar;
 
@@ -729,30 +710,15 @@ namespace CapaDatos
                     complemento.UsuarioRegistro = usuario;
                     int complementoPagoID = InsertarComplementoPago(complemento, cnx, transaction);
 
-                    // 6. Timbrar con PAC
-                    IProveedorPAC pac = ObtenerProveedorPAC(pacConfig.ProveedorPAC);
-                    respuesta = await pac.TimbrarComplementoPagoAsync(xmlSinTimbrar, pacConfig);
+                    // FUNCIONALIDAD DE TIMBRADO ELIMINADA
+                    respuesta.Exitoso = false;
+                    respuesta.Mensaje = "Funcionalidad de timbrado con PAC eliminada del sistema";
+                    transaction.Rollback();
+                    return respuesta;
 
-                    if (respuesta.Exitoso)
-                    {
-                        // Actualizar con datos del timbrado
-                        ActualizarComplementoTimbrado(complementoPagoID, respuesta, cnx, transaction);
-
-                        // Actualizar el ComplementoPagoID en VentaPagos
-                        string updatePago = "UPDATE VentaPagos SET ComplementoPagoID = @ComplementoID WHERE PagoID = @PagoID";
-                        SqlCommand cmdUpdate = new SqlCommand(updatePago, cnx, transaction);
-                        cmdUpdate.Parameters.AddWithValue("@ComplementoID", complementoPagoID);
-                        cmdUpdate.Parameters.AddWithValue("@PagoID", pagoID);
-                        cmdUpdate.ExecuteNonQuery();
-
-                        transaction.Commit();
-                        respuesta.Mensaje = "Complemento de pago timbrado exitosamente";
-                    }
-                    else
-                    {
-                        ActualizarComplementoError(complementoPagoID, respuesta.CodigoError, respuesta.Mensaje, cnx, transaction);
-                        transaction.Commit();
-                    }
+                    /* CÓDIGO ELIMINADO - Timbrado con PAC
+                    // El código de timbrado fue completamente eliminado
+                    */
                 }
                 catch (Exception ex)
                 {
@@ -765,25 +731,10 @@ namespace CapaDatos
             return respuesta;
         }
 
-        private IProveedorPAC ObtenerProveedorPAC(string nombrePAC)
-        {
-            switch (nombrePAC.ToUpper())
-            {
-                case "FINKOK":
-                    return new FinkokPAC();
-                
-                case "FACTURAMA":
-                    return new FacturamaPAC();
-                
-                case "SIMULADOR":
-                    return new SimuladorPAC();
-                
-                default:
-                    return new SimuladorPAC();
-            }
-        }
+        // MÉTODO ELIMINADO: ObtenerProveedorPAC
+        // Funcionalidad de PAC/Timbrado eliminada del sistema
 
-        private CapaDatos.PAC.ConfiguracionEmpresa ObtenerDatosEmpresa(SqlConnection cnx, SqlTransaction tran)
+        private ConfiguracionEmpresa ObtenerDatosEmpresa(SqlConnection cnx, SqlTransaction tran)
         {
             string query = @"
                 SELECT RFCEmisor, NombreEmisor, RegimenFiscal, CodigoPostal,
@@ -794,17 +745,18 @@ namespace CapaDatos
             SqlCommand cmd = new SqlCommand(query, cnx, tran);
             SqlDataReader dr = cmd.ExecuteReader();
 
-            CapaDatos.PAC.ConfiguracionEmpresa empresa = null;
+            ConfiguracionEmpresa empresa = null;
             if (dr.Read())
             {
-                empresa = new CapaDatos.PAC.ConfiguracionEmpresa
+                empresa = new ConfiguracionEmpresa
                 {
                     RFC = dr.IsDBNull(0) ? "XAXX010101000" : dr.GetString(0),
                     RazonSocial = dr.IsDBNull(1) ? "Empresa Demo" : dr.GetString(1),
                     RegimenFiscal = dr.IsDBNull(2) ? "601" : dr.GetString(2),
                     CodigoPostal = dr.IsDBNull(3) ? "00000" : dr.GetString(3),
-                    NoCertificado = dr.IsDBNull(4) ? null : dr.GetString(4),
-                    Certificado = dr.IsDBNull(5) ? null : dr.GetString(5)
+                    NoCertificado = dr.IsDBNull(4) ? null : dr.GetString(4)
+                    // TODO: Certificado debe obtenerse de ConfiguracionPAC o tabla CertificadosDigitales
+                    // Certificado = dr.IsDBNull(5) ? null : dr.GetString(5)
                 };
             }
             dr.Close();

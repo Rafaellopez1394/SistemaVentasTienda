@@ -6,6 +6,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using CapaModelo;
 using CapaDatos.PAC;
+using CapaDatos.Generadores;
 
 namespace CapaDatos
 {
@@ -332,13 +333,71 @@ namespace CapaDatos
             mensaje = string.Empty;
             Factura factura = null;
 
+            System.Diagnostics.Debug.WriteLine($"========================================");
+            System.Diagnostics.Debug.WriteLine($"=== CrearFacturaDesdeVenta INICIO ===");
+            System.Diagnostics.Debug.WriteLine($"========================================");
+            
+            if (request == null)
+            {
+                mensaje = "ERROR: request es null";
+                System.Diagnostics.Debug.WriteLine("❌ ERROR: request es null");
+                return null;
+            }
+            
+            System.Diagnostics.Debug.WriteLine($"Request recibido:");
+            System.Diagnostics.Debug.WriteLine($"  VentaID: {request.VentaID}");
+            System.Diagnostics.Debug.WriteLine($"  ReceptorRFC: {request.ReceptorRFC}");
+            System.Diagnostics.Debug.WriteLine($"  ReceptorNombre: {request.ReceptorNombre}");
+            System.Diagnostics.Debug.WriteLine($"  ReceptorUsoCFDI: {request.ReceptorUsoCFDI}");
+            System.Diagnostics.Debug.WriteLine($"  UsoCFDI: {request.UsoCFDI}");
+            System.Diagnostics.Debug.WriteLine($"  FormaPago: {request.FormaPago}");
+            System.Diagnostics.Debug.WriteLine($"  MetodoPago: {request.MetodoPago}");
+            System.Diagnostics.Debug.WriteLine($"  ReceptorCP: {request.ReceptorCP}");
+            System.Diagnostics.Debug.WriteLine($"  ReceptorRegimenFiscal: {request.ReceptorRegimenFiscal}");
+
             try
             {
                 using (SqlConnection cnx = new SqlConnection(Conexion.CN))
                 {
                     cnx.Open();
 
-                    // 1. Obtener datos de la venta
+                    // 1. Obtener configuración PAC activa primero
+                    var configPAC = ObtenerConfiguracionPAC(out string mensajePAC);
+                    if (configPAC == null)
+                    {
+                        mensaje = "ERROR: No hay configuración de PAC activa. " + mensajePAC;
+                        return null;
+                    }
+
+                    // 2. Obtener emisor de configuración
+                    string queryEmisor = @"SELECT RFC, RazonSocial, RegimenFiscal, CodigoPostal, 
+                                           NombreArchivoCertificado, NombreArchivoLlavePrivada, NombreArchivoPassword 
+                                           FROM ConfiguracionEmpresa WHERE ConfigEmpresaID = 1";
+                    SqlCommand cmdEmisor = new SqlCommand(queryEmisor, cnx);
+                    SqlDataReader drEmisor = cmdEmisor.ExecuteReader();
+                    
+                    string emisorRFC = null, emisorNombre = null, emisorRegimen = null, lugarExpedicion = null;
+                    string nombreArchivoCert = null, nombreArchivoKey = null, nombreArchivoPassword = null;
+                    
+                    if (drEmisor.Read())
+                    {
+                        emisorRFC = drEmisor["RFC"].ToString();
+                        emisorNombre = drEmisor["RazonSocial"].ToString();
+                        emisorRegimen = drEmisor["RegimenFiscal"].ToString();
+                        lugarExpedicion = drEmisor["CodigoPostal"].ToString();
+                        nombreArchivoCert = drEmisor["NombreArchivoCertificado"]?.ToString();
+                        nombreArchivoKey = drEmisor["NombreArchivoLlavePrivada"]?.ToString();
+                        nombreArchivoPassword = drEmisor["NombreArchivoPassword"]?.ToString();
+                    }
+                    else
+                    {
+                        drEmisor.Close();
+                        mensaje = "ERROR: No se encontró la configuración del emisor en ConfiguracionEmpresa";
+                        return null;
+                    }
+                    drEmisor.Close();
+
+                    // 3. Obtener datos de la venta
                     string queryVenta = @"
                         SELECT v.VentaID, v.Total AS TotalVenta, v.FechaVenta,
                                v.TipoVenta, 
@@ -384,7 +443,8 @@ namespace CapaDatos
                         FechaEmision = DateTime.Now,
                         ReceptorRFC = request.ReceptorRFC.ToUpper(),
                         ReceptorNombre = request.ReceptorNombre,
-                        ReceptorUsoCFDI = request.ReceptorUsoCFDI ?? "G03", // Por defecto: Gastos en general
+                        // Soportar tanto ReceptorUsoCFDI como UsoCFDI
+                        ReceptorUsoCFDI = request.ReceptorUsoCFDI ?? request.UsoCFDI ?? "G03", 
                         ReceptorDomicilioFiscalCP = request.ReceptorCP ?? "00000",
                         ReceptorRegimenFiscalReceptor = request.ReceptorRegimenFiscal ?? "616",
                         ReceptorEmail = request.ReceptorEmail,
@@ -394,20 +454,26 @@ namespace CapaDatos
                         Estatus = "PENDIENTE",
                         Version = "4.0",
                         TipoComprobante = "I",
-                        ProveedorPAC = "Facturama", // TODO: Obtener de configuración
+                        ProveedorPAC = configPAC.ProveedorPAC, // Obtener de configuración activa
+                        Moneda = "MXN",
+                        TipoCambio = 1,
+                        Exportacion = "01", // 01 = No aplica
+                        LugarExpedicion = lugarExpedicion,
+                        EmisorRFC = emisorRFC,
+                        EmisorNombre = emisorNombre,
+                        EmisorRegimenFiscal = emisorRegimen,
+                        EmisorNombreArchivoCertificado = nombreArchivoCert,
+                        EmisorNombreArchivoLlavePrivada = nombreArchivoKey,
+                        EmisorNombreArchivoPassword = nombreArchivoPassword,
                         Conceptos = new List<FacturaDetalle>() // Explicit initialization to be safe
                     };
-
-                    // Obtener emisor (de configuración)
-                    factura.EmisorRFC = "XAXX010101000"; // TODO: Obtener de configuración
-                    factura.EmisorNombre = "Empresa Demo"; // TODO: Obtener de configuración
-                    factura.EmisorRegimenFiscal = "601"; // TODO: Obtener de configuración
 
                     decimal subtotalTotal = 0;
                     decimal impuestosTotal = 0;
                     int secuencia = 1;
 
-                    // Procesar los detalles de la venta (ya leímos la primera fila arriba)
+                    // Procesar los detalles de la venta
+                    // NOTA: Ya hicimos dr.Read() arriba, así que el reader ya está en la primera fila
                     do
                     {
                         decimal tasaIVA = Convert.ToDecimal(dr["TasaIVA"]);
@@ -427,11 +493,30 @@ namespace CapaDatos
                             objetoImp = "02"; // Sí objeto de impuestos
                         }
                         
+                        // Validación de ClaveProdServ con logging
+                        string claveProdServDB = dr["ClaveProdServSAT"]?.ToString();
+                        string codigoInterno = dr["CodigoInterno"]?.ToString();
+                        string claveProdServ = "01010101"; // Default
+                        
+                        System.Diagnostics.Debug.WriteLine($"[CD_Factura] Producto: {dr["Nombre"]}");
+                        System.Diagnostics.Debug.WriteLine($"[CD_Factura] ClaveProdServSAT DB: '{claveProdServDB}' (Length: {claveProdServDB?.Length ?? 0})");
+                        System.Diagnostics.Debug.WriteLine($"[CD_Factura] CodigoInterno DB: '{codigoInterno}'");
+                        
+                        if (!string.IsNullOrWhiteSpace(claveProdServDB) && claveProdServDB.Length == 8)
+                        {
+                            claveProdServ = claveProdServDB;
+                            System.Diagnostics.Debug.WriteLine($"[CD_Factura] ✅ Usando ClaveProdServ de BD: {claveProdServ}");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine($"[CD_Factura] ⚠️ ClaveProdServ inválido, usando default: {claveProdServ}");
+                        }
+                        
                         var detalle = new FacturaDetalle
                         {
                             Secuencia = secuencia++,
-                            ClaveProdServ = dr["ClaveProdServSAT"]?.ToString() ?? "01010101",
-                            NoIdentificacion = dr["CodigoInterno"]?.ToString(),
+                            ClaveProdServ = claveProdServ,
+                            NoIdentificacion = !string.IsNullOrWhiteSpace(codigoInterno) ? codigoInterno : "N/A",
                             Cantidad = Convert.ToDecimal(dr["Cantidad"]),
                             ClaveUnidad = dr["ClaveUnidadSAT"]?.ToString() ?? "H87",
                             Unidad = "Pieza",
@@ -470,6 +555,9 @@ namespace CapaDatos
                     factura.TotalImpuestosTrasladados = impuestosTotal;
                     factura.Total = subtotalTotal + impuestosTotal;
 
+                    System.Diagnostics.Debug.WriteLine($"✅ Conceptos agregados: {factura.Conceptos.Count}");
+                    System.Diagnostics.Debug.WriteLine($"   Subtotal: {subtotalTotal:C}, IVA: {impuestosTotal:C}, Total: {factura.Total:C}");
+
                     // 2. Generar Serie y Folio
                     factura.Serie = "A";
                     SqlCommand cmdFolio = new SqlCommand("GenerarFolioFactura", cnx);
@@ -479,6 +567,11 @@ namespace CapaDatos
                     cmdFolio.Parameters.Add(pFolio);
                     cmdFolio.ExecuteNonQuery();
                     factura.Folio = pFolio.Value.ToString();
+
+                    System.Diagnostics.Debug.WriteLine($"✅ Serie/Folio generado: {factura.Serie}-{factura.Folio}");
+                    System.Diagnostics.Debug.WriteLine($"========================================");
+                    System.Diagnostics.Debug.WriteLine($"=== CrearFacturaDesdeVenta COMPLETADO ===");
+                    System.Diagnostics.Debug.WriteLine($"========================================");
 
                     mensaje = "Factura preparada correctamente";
                 }
@@ -517,7 +610,8 @@ namespace CapaDatos
                                 ReceptorRFC, ReceptorNombre, ReceptorUsoCFDI, ReceptorDomicilioFiscalCP, 
                                 ReceptorRegimenFiscalReceptor, ReceptorEmail,
                                 FormaPago, MetodoPago, ProveedorPAC, Estatus,
-                                XMLOriginal, UsuarioCreacion, FechaCreacion
+                                XMLOriginal, UUID, XMLTimbrado, FechaTimbrado, SelloCFD, SelloSAT, 
+                                NoCertificadoSAT, CadenaOriginalSAT, UsuarioCreacion, FechaCreacion
                             ) VALUES (
                                 @FacturaID, @VentaID, @Serie, @Folio, @FechaEmision, @Version, @TipoComprobante,
                                 @Subtotal, @Descuento, @Total, @TotalImpuestosTrasladados, @TotalImpuestosRetenidos,
@@ -525,7 +619,8 @@ namespace CapaDatos
                                 @ReceptorRFC, @ReceptorNombre, @ReceptorUsoCFDI, @ReceptorDomicilioFiscalCP,
                                 @ReceptorRegimenFiscalReceptor, @ReceptorEmail,
                                 @FormaPago, @MetodoPago, @ProveedorPAC, @Estatus,
-                                @XMLOriginal, @UsuarioCreacion, GETDATE()
+                                @XMLOriginal, @UUID, @XMLTimbrado, @FechaTimbrado, @SelloCFD, @SelloSAT,
+                                @NoCertificadoSAT, @CadenaOriginalSAT, @UsuarioCreacion, GETDATE()
                             )";
 
                         SqlCommand cmdFactura = new SqlCommand(queryFactura, cnx, tran);
@@ -555,6 +650,13 @@ namespace CapaDatos
                         cmdFactura.Parameters.AddWithValue("@ProveedorPAC", factura.ProveedorPAC);
                         cmdFactura.Parameters.AddWithValue("@Estatus", factura.Estatus);
                         cmdFactura.Parameters.AddWithValue("@XMLOriginal", factura.XMLOriginal ?? (object)DBNull.Value);
+                        cmdFactura.Parameters.AddWithValue("@UUID", factura.UUID ?? (object)DBNull.Value);
+                        cmdFactura.Parameters.AddWithValue("@XMLTimbrado", factura.XMLTimbrado ?? (object)DBNull.Value);
+                        cmdFactura.Parameters.AddWithValue("@FechaTimbrado", factura.FechaTimbrado ?? (object)DBNull.Value);
+                        cmdFactura.Parameters.AddWithValue("@SelloCFD", factura.SelloCFD ?? (object)DBNull.Value);
+                        cmdFactura.Parameters.AddWithValue("@SelloSAT", factura.SelloSAT ?? (object)DBNull.Value);
+                        cmdFactura.Parameters.AddWithValue("@NoCertificadoSAT", factura.NoCertificadoSAT ?? (object)DBNull.Value);
+                        cmdFactura.Parameters.AddWithValue("@CadenaOriginalSAT", factura.CadenaOriginalSAT ?? (object)DBNull.Value);
                         cmdFactura.Parameters.AddWithValue("@UsuarioCreacion", factura.UsuarioCreacion);
                         cmdFactura.ExecuteNonQuery();
 
@@ -837,543 +939,570 @@ namespace CapaDatos
             };
         }
 
+        #region Timbrado con FiscalAPI
+
         /// <summary>
-        /// Proceso completo: Crear factura → Generar XML → Timbrar → Guardar
+        /// Genera y timbra una factura usando FiscalAPI (sin SDK)
+        /// Compatible con .NET Framework 4.6
         /// </summary>
-        public async Task<Respuesta<object>> GenerarYTimbrarFactura(GenerarFacturaRequest request, string usuarioCreacion)
+        public async Task<RespuestaTimbrado> GenerarYTimbrarFactura(
+            Guid ventaID,
+            string rfcReceptor,
+            string nombreReceptor,
+            string codigoPostalReceptor,
+            string regimenFiscalReceptor,
+            string usoCFDI,
+            string formaPago,
+            string metodoPago,
+            string serie,
+            string usuario)
         {
-            var respuesta = new Respuesta<object> { estado = false };
+            var respuesta = new RespuestaTimbrado
+            {
+                Exitoso = false,
+                FechaTimbrado = DateTime.Now
+            };
 
             try
             {
-                // 1. Crear factura desde venta
-                var factura = CrearFacturaDesdeVenta(request, out string mensajeCrear);
-                if (factura == null)
+                // 1. Detectar PAC activo (FiscalAPI o Prodigia)
+                var configFiscalAPI = ObtenerConfiguracionFiscalAPI();
+                if (configFiscalAPI != null && configFiscalAPI.Activo)
                 {
-                    respuesta.valor = mensajeCrear;
+                    // Usar FiscalAPI
+                    System.Diagnostics.Debug.WriteLine("✅ Usando FiscalAPI en ambiente: " + configFiscalAPI.Ambiente);
+                    return await TimbrarConFiscalAPI(
+                        ventaID, rfcReceptor, nombreReceptor, codigoPostalReceptor,
+                        regimenFiscalReceptor, usoCFDI, formaPago, metodoPago, serie, usuario);
+                }
+
+                // Fallback a Prodigia
+                var configuracion = ObtenerConfiguracionProdigia();
+                if (configuracion == null)
+                {
+                    respuesta.Mensaje = "No hay configuración activa de PAC (FiscalAPI o Prodigia)";
+                    respuesta.CodigoError = "CONFIG_NOT_FOUND";
                     return respuesta;
                 }
 
-                factura.UsuarioCreacion = usuarioCreacion;
-
-                // 2. Generar XML sin timbrar
-                var generadorXML = new CFDI40XMLGenerator();
-                string xmlSinTimbrar = generadorXML.GenerarXML(factura);
-
-                // Validar XML
-                if (!generadorXML.ValidarXML(xmlSinTimbrar, out string errorValidacion))
+                // 2. Obtener venta y detalles
+                var venta = CD_Venta.Instancia.ObtenerDetalle(ventaID);
+                if (venta == null)
                 {
-                    respuesta.valor = "Error en XML: " + errorValidacion;
+                    respuesta.Mensaje = $"Venta no encontrada: {ventaID}";
+                    respuesta.CodigoError = "VENTA_NOT_FOUND";
                     return respuesta;
                 }
 
-                factura.XMLOriginal = xmlSinTimbrar;
-
-                // 3. Guardar factura en BD (estatus PENDIENTE)
-                if (!GuardarFactura(factura, out string mensajeGuardar))
+                // 3. Construir factura
+                var factura = new Factura
                 {
-                    respuesta.valor = mensajeGuardar;
-                    return respuesta;
-                }
-
-                // 4. Obtener configuración del PAC
-                var config = ObtenerConfiguracionPAC(out string mensajeConfig);
-                if (config == null)
-                {
-                    respuesta.valor = "Error al obtener configuración PAC: " + mensajeConfig;
-                    return respuesta;
-                }
-
-                // 5. Timbrar con el PAC (Finkok u otro)
-                IProveedorPAC proveedorPAC = ObtenerProveedorPAC(config.ProveedorPAC);
-                var respuestaTimbrado = await proveedorPAC.TimbrarAsync(xmlSinTimbrar, config);
-
-                if (!respuestaTimbrado.Exitoso)
-                {
-                    // No duplicar "Error al timbrar" si ya viene en el mensaje
-                    respuesta.valor = respuestaTimbrado.Mensaje.Contains("Error") 
-                        ? respuestaTimbrado.Mensaje 
-                        : "Error al timbrar: " + respuestaTimbrado.Mensaje;
-                    return respuesta;
-                }
-
-                // 6. Actualizar factura con datos del timbrado
-                if (!ActualizarConTimbrado(factura.FacturaID, respuestaTimbrado, out string mensajeActualizar))
-                {
-                    respuesta.valor = mensajeActualizar;
-                    return respuesta;
-                }
-
-                // 7. Respuesta exitosa
-                respuesta.estado = true;
-                respuesta.valor = "Factura timbrada exitosamente";
-                respuesta.objeto = new
-                {
-                    FacturaID = factura.FacturaID,
-                    UUID = respuestaTimbrado.UUID,
-                    Serie = factura.Serie,
-                    Folio = factura.Folio,
-                    Total = factura.Total
+                    FacturaID = Guid.NewGuid(),
+                    VentaID = ventaID,
+                    Serie = serie,
+                    Folio = ObtenerSiguienteFolio(serie).ToString(),
+                    FechaEmision = DateTime.Now,
+                    Version = "4.0",
+                    TipoComprobante = "I",
+                    
+                    // Emisor
+                    RFCEmisor = configuracion.RfcEmisor,
+                    NombreEmisor = configuracion.NombreEmisor,
+                    RegimenFiscalEmisor = configuracion.RegimenFiscal,
+                    CodigoPostalEmisor = configuracion.CodigoPostal,
+                    
+                    // Receptor
+                    ReceptorRFC = rfcReceptor,
+                    ReceptorNombre = nombreReceptor,
+                    ReceptorDomicilioFiscalCP = codigoPostalReceptor,
+                    ReceptorRegimenFiscalReceptor = regimenFiscalReceptor,
+                    ReceptorUsoCFDI = usoCFDI,
+                    
+                    // Pago
+                    FormaPago = formaPago,
+                    MetodoPago = metodoPago ?? "PUE",
+                    
+                    // Totales - calcular desde detalles ya que VentaCliente solo tiene Total
+                    Subtotal = venta.Total / 1.16m, // Aproximación - idealmente calcular desde detalles
+                    TotalImpuestosTrasladados = venta.Total - (venta.Total / 1.16m),
+                    Total = venta.Total,
+                    
+                    Estatus = "PENDIENTE",
+                    UsuarioCreacion = usuario,
+                    FechaCreacion = DateTime.Now
                 };
+
+                // 4. Convertir detalles de venta a conceptos de factura
+                factura.Conceptos = venta.Detalle.Select(d => {
+                    var importe = d.Cantidad * d.PrecioVenta;
+                    var subtotal = importe / 1.16m; // Asumiendo IVA 16%
+                    var iva = importe - subtotal;
+                    
+                    return new FacturaDetalle
+                    {
+                        NoIdentificacion = d.CodigoInterno,
+                        Descripcion = d.Producto,
+                        Cantidad = d.Cantidad,
+                        ValorUnitario = d.PrecioVenta / 1.16m, // Precio sin IVA
+                        Importe = subtotal, // Importe sin IVA
+                        ClaveProdServ = "01010101", // Código genérico SAT
+                        ClaveUnidad = "H87", // Pieza
+                        Unidad = "Pieza",
+                        ObjetoImp = "02", // Sí objeto de impuesto
+                        Impuestos = new List<FacturaImpuesto>
+                        {
+                            new FacturaImpuesto
+                            {
+                                TipoImpuesto = "TRASLADO",
+                                Impuesto = "002", // IVA
+                                TipoFactor = "Tasa",
+                                TasaOCuota = 0.16m,
+                                Base = subtotal,
+                                Importe = iva
+                            }
+                        }
+                    };
+                }).ToList();
+
+                // 5. Generar XML CFDI 4.0 completo
+                var generadorXml = new CFDI40XMLGenerator(configuracion);
+                string xmlCfdi = generadorXml.GenerarXML(factura);
+
+                // 6. Timbrar con Prodigia
+                using (var prodigiaService = new ProdigiaService(configuracion))
+                {
+                    respuesta = prodigiaService.CrearYTimbrarCFDI(xmlCfdi);
+                }
+
+                // 8. Si el timbrado fue exitoso, guardar en BD
+                if (respuesta.Exitoso)
+                {
+                    factura.UUID = respuesta.UUID;
+                    factura.FechaTimbrado = respuesta.FechaTimbrado;
+                    factura.XMLTimbrado = respuesta.XMLTimbrado;
+                    factura.SelloCFD = respuesta.SelloCFD;
+                    factura.SelloSAT = respuesta.SelloSAT;
+                    factura.NoCertificadoSAT = respuesta.NoCertificadoSAT;
+                    factura.CadenaOriginalSAT = respuesta.CadenaOriginal;
+                    factura.Estatus = "TIMBRADA";
+
+                    // Guardar factura en BD
+                    bool guardado = GuardarFactura(factura, out string mensajeGuardado);
+                    
+                    if (!guardado)
+                    {
+                        respuesta.Mensaje += $" | ADVERTENCIA: XML timbrado correctamente pero no se pudo guardar en BD: {mensajeGuardado}";
+                    }
+                }
+
+                return respuesta;
             }
             catch (Exception ex)
             {
-                respuesta.valor = "Error general: " + ex.Message;
+                respuesta.Exitoso = false;
+                respuesta.Mensaje = $"Error al generar factura: {ex.Message}";
+                respuesta.CodigoError = "EXCEPTION";
+                respuesta.ErrorTecnico = ex.ToString();
+                return respuesta;
             }
-
-            return respuesta;
         }
 
         /// <summary>
-        /// Cancela un CFDI con firma digital
+        /// Cancelar CFDI timbrado
         /// </summary>
-        public async Task<RespuestaCancelacionCFDI> CancelarCFDI(Guid facturaId, string motivoCancelacion, 
-            string uuidSustitucion, string usuario)
+        public async Task<RespuestaCancelacionCFDI> CancelarCFDI(
+            string uuid,
+            string motivo,
+            string uuidSustitucion,
+            string usuario)
         {
-            var respuesta = new RespuestaCancelacionCFDI();
-
-            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            var respuesta = new RespuestaCancelacionCFDI
             {
-                cnx.Open();
-                SqlTransaction transaction = cnx.BeginTransaction();
+                Exitoso = false,
+                UUID = uuid
+            };
 
-                try
+            try
+            {
+                // Validar 72 horas
+                string mensaje;
+                var factura = ObtenerPorUUID(uuid, out mensaje);
+                if (factura == null)
                 {
-                    System.Diagnostics.Debug.WriteLine($"=== INICIO CANCELACIÓN ===");
-                    System.Diagnostics.Debug.WriteLine($"FacturaID: {facturaId}");
-                    System.Diagnostics.Debug.WriteLine($"Motivo: {motivoCancelacion}");
+                    respuesta.Mensaje = $"Factura no encontrada con UUID: {uuid}";
+                    return respuesta;
+                }
 
-                    // 1. Obtener datos de la factura
-                    System.Diagnostics.Debug.WriteLine("Paso 1: Consultando factura...");
-                    string queryFactura = @"
-                        SELECT FacturaID, UUID, EmisorRFC, FechaTimbrado, Estatus
+                TimeSpan tiempoTranscurrido = DateTime.Now - factura.FechaTimbrado.Value;
+                if (tiempoTranscurrido.TotalHours > 72)
+                {
+                    respuesta.Mensaje = "No se puede cancelar: Han transcurrido más de 72 horas desde el timbrado";
+                    respuesta.CodigoError = "TIME_EXCEEDED";
+                    return respuesta;
+                }
+
+                // Obtener configuración
+                var configuracion = ObtenerConfiguracionFiscalAPI();
+                if (configuracion == null)
+                {
+                    respuesta.Mensaje = "Configuración de FiscalAPI no encontrada";
+                    return respuesta;
+                }
+
+                // Cancelar con FiscalAPI
+                using (var fiscalService = new FiscalAPIService(configuracion))
+                {
+                    respuesta = await fiscalService.CancelarCFDI(uuid, motivo, uuidSustitucion);
+                }
+
+                // Actualizar estado en BD si fue exitoso
+                if (respuesta.Exitoso)
+                {
+                    ActualizarEstatusCancelacion(uuid, respuesta.EstatusCancelacion, 
+                        respuesta.FechaCancelacion, motivo, usuario);
+                }
+
+                return respuesta;
+            }
+            catch (Exception ex)
+            {
+                respuesta.Mensaje = $"Error al cancelar CFDI: {ex.Message}";
+                respuesta.ErrorTecnico = ex.ToString();
+                return respuesta;
+            }
+        }
+
+        /// <summary>
+        /// Obtiene la configuración de FiscalAPI desde la base de datos
+        /// </summary>
+        private ConfiguracionProdigia ObtenerConfiguracionProdigia()
+        {
+            try
+            {
+                using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+                {
+                    cnx.Open();
+
+                    string query = @"
+                        SELECT TOP 1 ConfiguracionID, Usuario, Password, Contrato, Ambiente, 
+                               RfcEmisor, NombreEmisor, RegimenFiscal, 
+                               CertificadoBase64, LlavePrivadaBase64, PasswordLlave,
+                               CodigoPostal, Activo
+                        FROM ConfiguracionProdigia
+                        WHERE Activo = 1
+                        ORDER BY FechaCreacion DESC";
+
+                    SqlCommand cmd = new SqlCommand(query, cnx);
+
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        if (dr.Read())
+                        {
+                            return new ConfiguracionProdigia
+                            {
+                                ConfiguracionID = Convert.ToInt32(dr["ConfiguracionID"]),
+                                Usuario = dr["Usuario"].ToString(),
+                                Password = dr["Password"].ToString(),
+                                Contrato = dr["Contrato"].ToString(),
+                                Ambiente = dr["Ambiente"].ToString(),
+                                RfcEmisor = dr["RfcEmisor"].ToString(),
+                                NombreEmisor = dr["NombreEmisor"].ToString(),
+                                RegimenFiscal = dr["RegimenFiscal"].ToString(),
+                                CertificadoBase64 = dr["CertificadoBase64"]?.ToString(),
+                                LlavePrivadaBase64 = dr["LlavePrivadaBase64"]?.ToString(),
+                                PasswordLlave = dr["PasswordLlave"]?.ToString(),
+                                CodigoPostal = dr["CodigoPostal"].ToString(),
+                                Activo = Convert.ToBoolean(dr["Activo"])
+                            };
+                        }
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        private ConfiguracionFiscalAPI ObtenerConfiguracionFiscalAPI()
+        {
+            try
+            {
+                using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+                {
+                    cnx.Open();
+
+                    string query = @"
+                        SELECT TOP 1 ConfiguracionID, ApiKey, Tenant, Ambiente, RfcEmisor, NombreEmisor,
+                               RegimenFiscal, CertificadoBase64, LlavePrivadaBase64, PasswordLlave,
+                               CodigoPostal, Activo
+                        FROM ConfiguracionFiscalAPI
+                        WHERE Activo = 1
+                        ORDER BY FechaCreacion DESC";
+
+                    SqlCommand cmd = new SqlCommand(query, cnx);
+
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        if (dr.Read())
+                        {
+                            return new ConfiguracionFiscalAPI
+                            {
+                                ConfiguracionID = Convert.ToInt32(dr["ConfiguracionID"]),
+                                ApiKey = dr["ApiKey"].ToString(),
+                                Tenant = dr["Tenant"].ToString(),
+                                Ambiente = dr["Ambiente"].ToString(),
+                                RfcEmisor = dr["RfcEmisor"].ToString(),
+                                NombreEmisor = dr["NombreEmisor"].ToString(),
+                                RegimenFiscal = dr["RegimenFiscal"].ToString(),
+                                CertificadoBase64 = dr["CertificadoBase64"]?.ToString(),
+                                LlavePrivadaBase64 = dr["LlavePrivadaBase64"]?.ToString(),
+                                PasswordLlave = dr["PasswordLlave"]?.ToString(),
+                                CodigoPostal = dr["CodigoPostal"].ToString(),
+                                Activo = Convert.ToBoolean(dr["Activo"])
+                            };
+                        }
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception)
+            {
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Obtiene el siguiente número de folio para una serie
+        /// </summary>
+        private int ObtenerSiguienteFolio(string serie)
+        {
+            try
+            {
+                using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+                {
+                    cnx.Open();
+
+                    string query = @"
+                        SELECT ISNULL(MAX(CAST(Folio AS INT)), 0) + 1
                         FROM Facturas
-                        WHERE FacturaID = @FacturaId";
+                        WHERE Serie = @Serie";
 
-                    SqlCommand cmd = new SqlCommand(queryFactura, cnx, transaction);
-                    cmd.Parameters.AddWithValue("@FacturaId", facturaId);
+                    SqlCommand cmd = new SqlCommand(query, cnx);
+                    cmd.Parameters.AddWithValue("@Serie", serie ?? "A");
 
-                    System.Diagnostics.Debug.WriteLine("Ejecutando consulta SQL...");
+                    object result = cmd.ExecuteScalar();
+                    return result != null ? Convert.ToInt32(result) : 1;
+                }
+            }
+            catch
+            {
+                return 1;
+            }
+        }
 
-                    Factura factura = null;
-                    using (SqlDataReader reader = cmd.ExecuteReader())
-                    {
-                        if (reader.Read())
-                        {
-                            try
-                            {
-                                factura = new Factura
-                                {
-                                    Conceptos = new List<FacturaDetalle>()
-                                };
-                                
-                                // Leer cada campo individualmente con manejo de errores (conversiones seguras)
-                                try {
-                                    var v = reader.GetValue(0);
-                                    if (v == null || v == DBNull.Value) throw new Exception("FacturaID nulo");
-                                    factura.FacturaID = v is Guid g ? g : Guid.Parse(v.ToString());
-                                }
-                                catch (Exception ex) { throw new Exception($"Error leyendo FacturaID: {ex.Message}"); }
+        /// <summary>
+        /// Actualiza el estado de cancelación de una factura
+        /// </summary>
+        private void ActualizarEstatusCancelacion(string uuid, string estatusCancelacion, 
+            DateTime? fechaCancelacion, string motivo, string usuario)
+        {
+            try
+            {
+                using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+                {
+                    cnx.Open();
 
-                                try {
-                                    var v = reader.GetValue(1);
-                                    factura.UUID = (v == null || v == DBNull.Value) ? null : v.ToString();
-                                }
-                                catch (Exception ex) { throw new Exception($"Error leyendo UUID: {ex.Message}"); }
+                    string query = @"
+                        UPDATE Facturas
+                        SET Estatus = @EstatusCancelacion,
+                            FechaCancelacion = @FechaCancelacion,
+                            MotivoCancelacion = @Motivo,
+                            UsuarioModificacion = @Usuario,
+                            FechaModificacion = GETDATE()
+                        WHERE UUID = @UUID";
 
-                                try {
-                                    var v = reader.GetValue(2);
-                                    factura.EmisorRFC = (v == null || v == DBNull.Value) ? null : v.ToString();
-                                }
-                                catch (Exception ex) { throw new Exception($"Error leyendo EmisorRFC: {ex.Message}"); }
+                    SqlCommand cmd = new SqlCommand(query, cnx);
+                    cmd.Parameters.AddWithValue("@UUID", uuid);
+                    cmd.Parameters.AddWithValue("@EstatusCancelacion", estatusCancelacion ?? "CANCELADO");
+                    cmd.Parameters.AddWithValue("@FechaCancelacion", (object)fechaCancelacion ?? DBNull.Value);
+                    cmd.Parameters.AddWithValue("@Motivo", motivo ?? string.Empty);
+                    cmd.Parameters.AddWithValue("@Usuario", usuario);
 
-                                try {
-                                    if (reader.IsDBNull(3)) {
-                                        factura.FechaTimbrado = null;
-                                    } else {
-                                        var v = reader.GetValue(3);
-                                        factura.FechaTimbrado = Convert.ToDateTime(v);
-                                    }
-                                }
-                                catch (Exception ex) { throw new Exception($"Error leyendo FechaTimbrado: {ex.Message}"); }
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch
+            {
+                // Log error silencioso
+            }
+        }
 
-                                try {
-                                    var v = reader.GetValue(4);
-                                    string estatus = (v == null || v == DBNull.Value) ? string.Empty : v.ToString();
-                                    factura.EsCancelada = estatus.Equals("CANCELADA", StringComparison.OrdinalIgnoreCase);
-                                }
-                                catch (Exception ex) { throw new Exception($"Error leyendo Estatus: {ex.Message}"); }
-                            }
-                            catch (InvalidCastException ex)
-                            {
-                                respuesta.Exitoso = false;
-                                respuesta.Mensaje = $"Error de conversión al leer datos de factura: {ex.Message}";
-                                return respuesta;
-                            }
-                        }
-                    }
+        /// <summary>
+        /// Timbrar factura usando FiscalAPI
+        /// </summary>
+        private async Task<RespuestaTimbrado> TimbrarConFiscalAPI(
+            Guid ventaID,
+            string rfcReceptor,
+            string nombreReceptor,
+            string codigoPostalReceptor,
+            string regimenFiscalReceptor,
+            string usoCFDI,
+            string formaPago,
+            string metodoPago,
+            string serie,
+            string usuario)
+        {
+            var respuesta = new RespuestaTimbrado
+            {
+                Exitoso = false,
+                FechaTimbrado = DateTime.Now
+            };
 
-                    System.Diagnostics.Debug.WriteLine("Factura leída correctamente");
+            try
+            {
+                // 1. Obtener configuración FiscalAPI
+                var config = ObtenerConfiguracionFiscalAPI();
+                if (config == null || !config.Activo)
+                {
+                    respuesta.Mensaje = "FiscalAPI no configurado o inactivo";
+                    return respuesta;
+                }
 
-                    if (factura == null)
-                    {
-                        System.Diagnostics.Debug.WriteLine("ERROR: Factura no encontrada");
-                        respuesta.Exitoso = false;
-                        respuesta.Mensaje = "Factura no encontrada";
-                        return respuesta;
-                    }
+                // 2. Obtener venta
+                var venta = CD_Venta.Instancia.ObtenerDetalle(ventaID);
+                if (venta == null)
+                {
+                    respuesta.Mensaje = $"Venta no encontrada: {ventaID}";
+                    return respuesta;
+                }
 
-                    System.Diagnostics.Debug.WriteLine("Paso 2: Validaciones...");
-
-                    // 2. Validaciones
-                    if (string.IsNullOrEmpty(factura.UUID))
-                    {
-                        System.Diagnostics.Debug.WriteLine("ERROR: UUID vacío");
-                        respuesta.Exitoso = false;
-                        respuesta.Mensaje = "La factura no tiene UUID (no está timbrada)";
-                        return respuesta;
-                    }
-
-                    if (factura.EsCancelada)
-                    {
-                        System.Diagnostics.Debug.WriteLine("ERROR: Factura ya cancelada");
-                        respuesta.Exitoso = false;
-                        respuesta.Mensaje = "La factura ya está cancelada";
-                        return respuesta;
-                    }
-
-                    System.Diagnostics.Debug.WriteLine("Paso 3: Validando plazo...");
-
-                    // 3. Validar plazo de 72 horas
-                    if (factura.FechaTimbrado.HasValue)
-                    {
-                        TimeSpan tiempoTranscurrido = DateTime.Now - factura.FechaTimbrado.Value;
-                        if (tiempoTranscurrido.TotalHours > 72)
-                        {
-                            respuesta.Exitoso = false;
-                            respuesta.Mensaje = "Ha excedido el plazo de 72 horas para cancelar el CFDI";
-                            return respuesta;
-                        }
-                    }
-
-                    // 4. Validar motivo y UUID de sustitución
-                    if (motivoCancelacion == "01" && string.IsNullOrEmpty(uuidSustitucion))
-                    {
-                        respuesta.Exitoso = false;
-                        respuesta.Mensaje = "El motivo 01 requiere UUID de sustitución";
-                        return respuesta;
-                    }
-
-                    // 5. Registrar solicitud de cancelación (skip if table doesn't exist or has wrong schema)
-                    int cancelacionId = -1;
-                    try
-                    {
-                        string queryInsertSolicitud = @"
-                            INSERT INTO CFDICancelaciones 
-                            (FacturaID, UUID, MotivoCancelacion, DescripcionMotivo, UUIDSustitucion, 
-                             FechaSolicitud, EstadoCancelacion, UsuarioSolicita)
-                            VALUES 
-                            (@FacturaID, @UUID, @Motivo, @DescripcionMotivo, @UUIDSustitucion, 
-                             GETDATE(), 'PENDIENTE', @Usuario);
-                            SELECT CAST(SCOPE_IDENTITY() AS INT);";
-
-                        cmd = new SqlCommand(queryInsertSolicitud, cnx, transaction);
-                        cmd.Parameters.AddWithValue("@FacturaID", facturaId);
-
-                        // UUID debe ser UNIQUEIDENTIFIER; intentar parsear
-                        Guid guidUuid;
-                        if (!Guid.TryParse(factura.UUID, out guidUuid))
-                        {
-                            throw new Exception("UUID de la factura no es un GUID válido");
-                        }
-                        var pUuid = new SqlParameter("@UUID", SqlDbType.UniqueIdentifier) { Value = guidUuid };
-                        cmd.Parameters.Add(pUuid);
-
-                        cmd.Parameters.AddWithValue("@Motivo", motivoCancelacion);
-                        cmd.Parameters.AddWithValue("@DescripcionMotivo", ObtenerDescripcionMotivo(motivoCancelacion));
-
-                        // UUIDSustitucion solo aplica para motivo 01 y debe ser GUID válido
-                        if (motivoCancelacion == "01" && !string.IsNullOrWhiteSpace(uuidSustitucion) && Guid.TryParse(uuidSustitucion, out var guidSust))
-                        {
-                            var pSust = new SqlParameter("@UUIDSustitucion", SqlDbType.UniqueIdentifier) { Value = guidSust };
-                            cmd.Parameters.Add(pSust);
-                        }
-                        else
-                        {
-                            var pSust = new SqlParameter("@UUIDSustitucion", SqlDbType.UniqueIdentifier) { Value = DBNull.Value };
-                            cmd.Parameters.Add(pSust);
-                        }
-
-                        cmd.Parameters.AddWithValue("@Usuario", usuario);
-
-                        object result = cmd.ExecuteScalar();
-                        cancelacionId = result != null ? Convert.ToInt32(result) : -1;
-                    }
-                    catch (SqlException)
-                    {
-                        // Table doesn't exist or has incompatible schema - continue without logging to CFDICancelaciones
-                        System.Diagnostics.Debug.WriteLine("CFDICancelaciones table not available, skipping audit log");
-                        cancelacionId = -1;
-                    }
-
-                    // 6. Obtener configuración PAC
-                    ConfiguracionPAC config = ObtenerConfiguracionPAC(cnx, transaction);
+                // 3. Construir factura
+                var factura = new Factura
+                {
+                    FacturaID = Guid.NewGuid(),
+                    VentaID = ventaID,
+                    Serie = serie ?? "F",
+                    Folio = ObtenerSiguienteFolio(serie).ToString(),
+                    FechaEmision = DateTime.Now,
+                    Version = "4.0",
+                    TipoComprobante = "I",
                     
-                    if (config == null)
+                    // Emisor
+                    EmisorRFC = config.RfcEmisor,
+                    EmisorNombre = config.NombreEmisor,
+                    EmisorRegimenFiscal = config.RegimenFiscal,
+                    CodigoPostalEmisor = config.CodigoPostal,
+                    
+                    // Receptor
+                    ReceptorRFC = rfcReceptor,
+                    ReceptorNombre = nombreReceptor,
+                    ReceptorDomicilioFiscalCP = codigoPostalReceptor,
+                    ReceptorRegimenFiscalReceptor = regimenFiscalReceptor,
+                    ReceptorUsoCFDI = usoCFDI,
+                    
+                    // Pago
+                    FormaPago = formaPago,
+                    MetodoPago = metodoPago ?? "PUE",
+                    
+                    // Totales
+                    Subtotal = venta.Total / 1.16m,
+                    TotalImpuestosTrasladados = venta.Total - (venta.Total / 1.16m),
+                    Total = venta.Total,
+                    
+                    ProveedorPAC = "FiscalAPI",
+                    Estatus = "PENDIENTE",
+                    UsuarioCreacion = usuario,
+                    FechaCreacion = DateTime.Now
+                };
+
+                // 4. Convertir detalles a conceptos
+                factura.Conceptos = venta.Detalle.Select(d => {
+                    var importe = d.Cantidad * d.PrecioVenta;
+                    var subtotal = importe / 1.16m;
+                    var iva = importe - subtotal;
+                    
+                    return new FacturaDetalle
                     {
-                        respuesta.Exitoso = false;
-                        respuesta.Mensaje = "No se encontró configuración del PAC activa";
-                        transaction.Rollback();
-                        return respuesta;
-                    }
-
-                    // 7. Llamar al PAC para cancelar
-                    IProveedorPAC proveedorPAC = ObtenerProveedorPAC(config.ProveedorPAC);
-                    var respuestaPAC = await proveedorPAC.CancelarAsync(
-                        factura.UUID, 
-                        factura.EmisorRFC, 
-                        motivoCancelacion, 
-                        uuidSustitucion, 
-                        config
-                    );
-
-                    // Mapear respuesta del PAC al modelo de respuesta
-                    respuesta.Exitoso = respuestaPAC.Exitoso;
-                    respuesta.Mensaje = respuestaPAC.Mensaje;
-                    respuesta.CodigoError = respuestaPAC.CodigoError;
-                    respuesta.EstatusSAT = respuestaPAC.EstatusSAT;
-                    respuesta.EstatusUUID = respuestaPAC.EstatusUUID;
-                    respuesta.FechaRespuesta = respuestaPAC.FechaRespuesta ?? DateTime.Now;
-                    respuesta.AcuseCancelacion = respuestaPAC.AcuseCancelacion;
-
-                    // 8. Actualizar resultado de la cancelación
-                    if (respuesta.Exitoso)
-                    {
-                        // Actualizar solicitud de cancelación (if table exists and record was created)
-                        if (cancelacionId > 0)
+                        NoIdentificacion = d.CodigoInterno,
+                        Descripcion = d.Producto,
+                        Cantidad = d.Cantidad,
+                        ValorUnitario = d.PrecioVenta / 1.16m,
+                        Importe = subtotal,
+                        ClaveProdServ = "01010101",
+                        ClaveUnidad = "H87",
+                        Unidad = "Pieza",
+                        ObjetoImp = "02",
+                        Impuestos = new List<FacturaImpuesto>
                         {
-                            try
+                            new FacturaImpuesto
                             {
-                                string queryUpdateCancelacion = @"
-                                    UPDATE CFDICancelaciones
-                                    SET FechaCancelacion = @FechaCancelacion,
-                                        EstadoCancelacion = 'ACEPTADA',
-                                        CodigoRespuesta = @CodigoRespuesta,
-                                        MensajeRespuesta = @MensajeRespuesta,
-                                        AcuseCancelacion = @AcuseCancelacion
-                                    WHERE CancelacionID = @CancelacionID";
-
-                                cmd = new SqlCommand(queryUpdateCancelacion, cnx, transaction);
-                                cmd.Parameters.AddWithValue("@CancelacionID", cancelacionId);
-                                cmd.Parameters.AddWithValue("@FechaCancelacion", respuesta.FechaRespuesta);
-                                cmd.Parameters.AddWithValue("@CodigoRespuesta", (object)respuesta.EstatusSAT ?? DBNull.Value);
-                                cmd.Parameters.AddWithValue("@MensajeRespuesta", respuesta.Mensaje);
-                                cmd.Parameters.AddWithValue("@AcuseCancelacion", (object)respuesta.AcuseCancelacion ?? DBNull.Value);
-                                cmd.ExecuteNonQuery();
-                            }
-                            catch (SqlException)
-                            {
-                                // Ignore if table doesn't exist
+                                TipoImpuesto = "TRASLADO",
+                                Impuesto = "002",
+                                TipoFactor = "Tasa",
+                                TasaOCuota = 0.16m,
+                                Base = subtotal,
+                                Importe = iva
                             }
                         }
+                    };
+                }).ToList();
 
-                        // Actualizar factura
-                        string queryUpdateFactura = @"
-                            UPDATE Facturas
-                            SET Estatus = 'CANCELADA',
-                                FechaCancelacion = @FechaCancelacion,
-                                MotivoCancelacion = @Motivo
-                            WHERE UUID = @UUID";
+                // 5. Generar request para FiscalAPI
+                var generador = new FiscalAPICFDI40Generator(config);
+                var request = generador.GenerarRequest(factura);
 
-                        cmd = new SqlCommand(queryUpdateFactura, cnx, transaction);
-                        cmd.Parameters.AddWithValue("@UUID", factura.UUID ?? string.Empty);
-                        cmd.Parameters.AddWithValue("@FechaCancelacion", respuesta.FechaRespuesta);
-                        cmd.Parameters.AddWithValue("@Motivo", motivoCancelacion);
-                        cmd.ExecuteNonQuery();
+                // 6. Timbrar con FiscalAPI
+                var fiscalService = new FiscalAPIService(config);
+                var resultado = await fiscalService.CrearYTimbrarCFDI(request);
 
-                        transaction.Commit();
+                if (resultado.Exitoso)
+                {
+                    // Actualizar factura con datos del timbrado
+                    factura.UUID = resultado.UUID;
+                    factura.FechaTimbrado = resultado.FechaTimbrado;
+                    factura.XMLTimbrado = resultado.XMLTimbrado;
+                    factura.SelloCFD = resultado.SelloCFD;
+                    factura.SelloSAT = resultado.SelloSAT;
+                    factura.NoCertificadoSAT = resultado.NoCertificadoSAT;
+                    factura.CadenaOriginalSAT = resultado.CadenaOriginal;
+                    factura.Estatus = "TIMBRADA";
+
+                    // Guardar en BD
+                    bool guardado = GuardarFactura(factura, out string mensajeGuardado);
+                    
+                    if (!guardado)
+                    {
+                        respuesta.Mensaje = $"XML timbrado correctamente pero no se pudo guardar en BD: {mensajeGuardado}";
                     }
                     else
                     {
-                        // Actualizar solicitud con error (if table exists and record was created)
-                        if (cancelacionId > 0)
-                        {
-                            try
-                            {
-                                string queryUpdateError = @"
-                                    UPDATE CFDICancelaciones
-                                    SET EstadoCancelacion = 'ERROR',
-                                        CodigoRespuesta = @CodigoError,
-                                        MensajeRespuesta = @MensajeError
-                                    WHERE CancelacionID = @CancelacionID";
-
-                                cmd = new SqlCommand(queryUpdateError, cnx, transaction);
-                                cmd.Parameters.AddWithValue("@CancelacionID", cancelacionId);
-                                cmd.Parameters.AddWithValue("@CodigoError", (object)respuesta.CodigoError ?? DBNull.Value);
-                                cmd.Parameters.AddWithValue("@MensajeError", respuesta.Mensaje);
-                                cmd.ExecuteNonQuery();
-                            }
-                            catch (SqlException)
-                            {
-                                // Ignore if table doesn't exist
-                            }
-                        }
-
-                        transaction.Commit();
+                        respuesta.Exitoso = true;
+                        respuesta.UUID = resultado.UUID;
+                        respuesta.XMLTimbrado = resultado.XMLTimbrado;
+                        respuesta.Mensaje = "Factura timbrada exitosamente con FiscalAPI";
                     }
-                }
-                catch (Exception ex)
-                {
-                    transaction.Rollback();
-                    respuesta.Exitoso = false;
-                    // Log detallado y mensaje claro (evitar interpolar métodos void)
-                    System.Diagnostics.Debug.WriteLine(ex.StackTrace);
-                    respuesta.Mensaje = $"Error al procesar cancelación: {ex.Message}";
-                    
-                    // Log detallado para debugging
-                    System.Diagnostics.Debug.WriteLine($"=== ERROR CANCELACIÓN ===");
-                    System.Diagnostics.Debug.WriteLine($"Mensaje: {ex.Message}");
-                    System.Diagnostics.Debug.WriteLine($"Tipo: {ex.GetType().Name}");
-                    System.Diagnostics.Debug.WriteLine($"Stack: {ex.StackTrace}");
-                    System.Diagnostics.Debug.WriteLine($"=========================");
-                }
-            }
-
-            return respuesta;
-        }
-
-        /// <summary>
-        /// Obtiene la descripción del motivo de cancelación según catálogo SAT
-        /// </summary>
-        private string ObtenerDescripcionMotivo(string codigo)
-        {
-            switch (codigo)
-            {
-                case "01": return "Comprobante emitido con errores con relación";
-                case "02": return "Comprobante emitido con errores sin relación";
-                case "03": return "No se llevó a cabo la operación";
-                case "04": return "Operación nominativa relacionada en la factura global";
-                default: return "Motivo no especificado";
-            }
-        }
-
-        /// <summary>
-        /// Obtiene configuración PAC desde base de datos
-        /// </summary>
-        private ConfiguracionPAC ObtenerConfiguracionPAC(SqlConnection cnx, SqlTransaction transaction)
-        {
-            // Detectar nombre de columna para el password de la llave privada
-            string passwordColumn = null;
-            using (var colCmd = new SqlCommand(@"SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('ConfiguracionPAC') AND name = 'PasswordLlavePrivada'", cnx, transaction))
-            {
-                object existsPrivada = colCmd.ExecuteScalar();
-                if (existsPrivada != null && Convert.ToInt32(existsPrivada) > 0)
-                {
-                    passwordColumn = "PasswordLlavePrivada";
                 }
                 else
                 {
-                    using (var colCmdAlt = new SqlCommand(@"SELECT COUNT(*) FROM sys.columns WHERE object_id = OBJECT_ID('ConfiguracionPAC') AND name = 'PasswordLlave'", cnx, transaction))
-                    {
-                        object existsLlave = colCmdAlt.ExecuteScalar();
-                        if (existsLlave != null && Convert.ToInt32(existsLlave) > 0)
-                        {
-                            passwordColumn = "PasswordLlave";
-                        }
-                    }
+                    respuesta.Mensaje = resultado.Mensaje;
                 }
+
+                return respuesta;
             }
-
-            string query = @"
-                SELECT TOP 1 ProveedorPAC, EsProduccion, UrlTimbrado, UrlCancelacion, UrlConsulta,
-                       Usuario, Password, RutaCertificado, RutaLlavePrivada, {0}, TimeoutSegundos
-                FROM ConfiguracionPAC
-                WHERE Activo = 1";
-
-            // Si no existe ninguna columna de password para llave, devolver configuración por defecto
-            if (string.IsNullOrEmpty(passwordColumn))
+            catch (Exception ex)
             {
-                return new ConfiguracionPAC
-                {
-                    ProveedorPAC = "Finkok",
-                    EsProduccion = false,
-                    UrlTimbrado = "https://demo-facturacion.finkok.com/servicios/soap/stamp.wsdl",
-                    UrlCancelacion = "https://demo-facturacion.finkok.com/servicios/soap/cancel.wsdl",
-                    UrlConsulta = "https://demo-facturacion.finkok.com/servicios/soap/utilities.wsdl",
-                    Usuario = "usuario_demo",
-                    Password = "password_demo",
-                    TimeoutSegundos = 30
-                };
+                respuesta.Mensaje = $"Error al timbrar con FiscalAPI: {ex.Message}";
+                System.Diagnostics.Debug.WriteLine($"❌ Excepción: {ex.StackTrace}");
+                return respuesta;
             }
-
-            query = string.Format(query, passwordColumn);
-            SqlCommand cmd = new SqlCommand(query, cnx, transaction);
-
-            using (SqlDataReader reader = cmd.ExecuteReader())
-            {
-                if (reader.Read())
-                {
-                    // Índices: 0=ProveedorPAC,1=EsProduccion,2=UrlTimbrado,3=UrlCancelacion,4=UrlConsulta,
-                    // 5=Usuario,6=Password,7=RutaCertificado,8=RutaLlavePrivada,9=PasswordLlave(Privada),10=TimeoutSegundos
-                    var pwdLlave = reader.IsDBNull(9) ? null : reader.GetString(9);
-                    return new ConfiguracionPAC
-                    {
-                        ProveedorPAC = reader.GetString(0),
-                        EsProduccion = reader.GetBoolean(1),
-                        UrlTimbrado = reader.GetString(2),
-                        UrlCancelacion = reader.GetString(3),
-                        UrlConsulta = reader.GetString(4),
-                        Usuario = reader.GetString(5),
-                        Password = reader.GetString(6),
-                        RutaCertificado = reader.IsDBNull(7) ? null : reader.GetString(7),
-                        RutaLlavePrivada = reader.IsDBNull(8) ? null : reader.GetString(8),
-                        PasswordLlavePrivada = pwdLlave,
-                        PasswordLlave = pwdLlave,
-                        TimeoutSegundos = reader.GetInt32(10)
-                    };
-                }
-            }
-
-            // Si no hay configuración, retornar valores demo de Finkok
-            return new ConfiguracionPAC
-            {
-                ProveedorPAC = "Finkok",
-                EsProduccion = false,
-                UrlTimbrado = "https://demo-facturacion.finkok.com/servicios/soap/stamp.wsdl",
-                UrlCancelacion = "https://demo-facturacion.finkok.com/servicios/soap/cancel.wsdl",
-                UrlConsulta = "https://demo-facturacion.finkok.com/servicios/soap/utilities.wsdl",
-                Usuario = "usuario_demo",
-                Password = "password_demo",
-                TimeoutSegundos = 30
-            };
         }
 
-        /// <summary>
-        /// Factory para obtener el proveedor PAC según configuración
-        /// </summary>
-        private IProveedorPAC ObtenerProveedorPAC(string nombrePAC)
-        {
-            switch (nombrePAC.ToUpper())
-            {
-                case "FINKOK":
-                    return new FinkokPAC();
-                
-                case "FACTURAMA":
-                    return new FacturamaPAC();
-                
-                case "SIMULADOR":
-                    return new SimuladorPAC();
-                
-                // Agregar más proveedores aquí:
-                // case "SW-SAPIEN":
-                //     return new SWSapienPAC();
-                // case "DIVERZA":
-                //     return new DiverzaPAC();
-                
-                default:
-                    return new SimuladorPAC(); // Por defecto: simulador para pruebas
-            }
-        }
+        #endregion
+
     }
 
 }

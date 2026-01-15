@@ -838,6 +838,71 @@ namespace CapaDatos
                 }
             }
         }
+
+        /// <summary>
+        /// Busca una venta por su número de venta
+        /// </summary>
+        public VentaCliente BuscarVentaPorNumero(string numeroVenta)
+        {
+            VentaCliente venta = null;
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                string query = @"
+                    SELECT TOP 1 
+                        v.VentaID,
+                        v.NumeroVenta,
+                        v.ClienteID,
+                        ISNULL(c.RazonSocial, 'PÚBLICO GENERAL') AS RazonSocial,
+                        v.FechaVenta,
+                        v.Total,
+                        v.Estatus,
+                        v.FechaVencimiento,
+                        v.TotalPagado,
+                        v.SaldoPendiente,
+                        v.Usuario,
+                        v.SucursalID,
+                        s.Nombre AS NombreSucursal
+                    FROM VentasClientes v
+                    LEFT JOIN Clientes c ON v.ClienteID = c.ClienteID
+                    LEFT JOIN Sucursales s ON v.SucursalID = s.SucursalID
+                    WHERE v.NumeroVenta = @NumeroVenta";
+                
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@NumeroVenta", numeroVenta);
+
+                try
+                {
+                    cnx.Open();
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        if (dr.Read())
+                        {
+                            venta = new VentaCliente
+                            {
+                                VentaID = dr.GetGuid(dr.GetOrdinal("VentaID")),
+                                NumeroVenta = dr.GetString(dr.GetOrdinal("NumeroVenta")),
+                                ClienteID = dr.IsDBNull(dr.GetOrdinal("ClienteID")) ? Guid.Empty : dr.GetGuid(dr.GetOrdinal("ClienteID")),
+                                RazonSocial = dr.GetString(dr.GetOrdinal("RazonSocial")),
+                                FechaVenta = dr.GetDateTime(dr.GetOrdinal("FechaVenta")),
+                                Total = dr.GetDecimal(dr.GetOrdinal("Total")),
+                                Estatus = dr.GetString(dr.GetOrdinal("Estatus")),
+                                FechaVencimiento = dr.IsDBNull(dr.GetOrdinal("FechaVencimiento")) ? (DateTime?)null : dr.GetDateTime(dr.GetOrdinal("FechaVencimiento")),
+                                TotalPagado = dr.GetDecimal(dr.GetOrdinal("TotalPagado")),
+                                SaldoPendiente = dr.GetDecimal(dr.GetOrdinal("SaldoPendiente")),
+                                Usuario = dr.GetString(dr.GetOrdinal("Usuario")),
+                                SucursalID = dr.GetInt32(dr.GetOrdinal("SucursalID")),
+                                NombreSucursal = dr.IsDBNull(dr.GetOrdinal("NombreSucursal")) ? "" : dr.GetString(dr.GetOrdinal("NombreSucursal"))
+                            };
+                        }
+                    }
+                }
+                catch (Exception)
+                {
+                    return null;
+                }
+            }
+            return venta;
+        }
     }
 }
 

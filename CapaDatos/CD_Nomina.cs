@@ -752,10 +752,19 @@ namespace CapaDatos
 
         /// <summary>
         /// Timbra un recibo de nómina individual (por empleado)
-        /// Genera CFDI 4.0 con Complemento de Nómina 1.2
+        /// FUNCIONALIDAD ELIMINADA - Generaba CFDI 4.0 con Complemento de Nómina 1.2
         /// </summary>
         public async System.Threading.Tasks.Task<RespuestaTimbrado> TimbrarCFDINomina(int nominaDetalleID, string usuario)
         {
+            var respuesta = new RespuestaTimbrado
+            {
+                Exitoso = false,
+                Mensaje = "Funcionalidad de timbrado CFDI Nómina eliminada del sistema"
+            };
+            
+            return await System.Threading.Tasks.Task.FromResult(respuesta);
+            
+            /* CÓDIGO ELIMINADO - Timbrado de nómina
             var respuesta = new RespuestaTimbrado();
 
             using (SqlConnection conn = new SqlConnection(Conexion.CN))
@@ -786,16 +795,22 @@ namespace CapaDatos
                     var configEmpresa = ObtenerConfiguracionEmpresa();
                     var configPAC = ObtenerConfiguracionPAC();
 
-                    // 3. Generar XML sin timbrar
-                    var generador = new PAC.CFDINomina12XMLGenerator();
-                    string xmlSinTimbrar = generador.GenerarXML(recibo, configEmpresa, configPAC);
+                    // 3. Generar XML sin timbrar - TODO: Implementar
+                    // var generador = new PAC.CFDINomina12XMLGenerator();
+                    // string xmlSinTimbrar = generador.GenerarXML(recibo, configEmpresa, configPAC);
+                    string xmlSinTimbrar = "<?xml version=\"1.0\" encoding=\"utf-8\"?><!-- XML de nómina no implementado -->";
 
                     // 4. Insertar registro en NominasCFDI con estado PENDIENTE
                     int nominaCFDIID = InsertarNominaCFDI(recibo, xmlSinTimbrar, usuario, conn, tran);
 
-                    // 5. Timbrar con Finkok
-                    var finkokPAC = new PAC.FinkokPAC();
-                    respuesta = await finkokPAC.TimbrarNominaAsync(xmlSinTimbrar, configPAC);
+                    // 5. Timbrar con Finkok - TODO: Implementar
+                    // var finkokPAC = new PAC.FinkokPAC();
+                    // respuesta = await finkokPAC.TimbrarNominaAsync(xmlSinTimbrar, configPAC);
+                    respuesta = new RespuestaTimbrado
+                    {
+                        Exitoso = false,
+                        Mensaje = "Timbrado de nómina no implementado"
+                    };
 
                     // 6. Actualizar registro según resultado
                     if (respuesta.Exitoso)
@@ -827,6 +842,7 @@ namespace CapaDatos
             }
 
             return respuesta;
+            */
         }
 
         private NominaDetalle ObtenerReciboCompleto(int nominaDetalleID, SqlConnection conn, SqlTransaction tran)
@@ -931,10 +947,10 @@ namespace CapaDatos
             return lista;
         }
 
-        private PAC.ConfiguracionEmpresa ObtenerConfiguracionEmpresa()
+        private ConfiguracionEmpresa ObtenerConfiguracionEmpresa()
         {
             // TODO: Obtener de tabla ConfiguracionEmpresa o Web.config
-            return new PAC.ConfiguracionEmpresa
+            return new ConfiguracionEmpresa
             {
                 RFC = "XAXX010101000",
                 RazonSocial = "EMPRESA EJEMPLO SA DE CV",

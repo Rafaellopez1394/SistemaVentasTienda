@@ -9,8 +9,11 @@
                 <h1 class="m-0"><i class="fas fa-certificate"></i> Certificados Digitales (CSD)</h1>
             </div>
             <div class="col-sm-6">
+                <button class="btn btn-success float-right ml-2" onclick="mostrarModalSubirFiscalAPI()">
+                    <i class="fas fa-cloud-upload-alt"></i> Subir a FiscalAPI
+                </button>
                 <button class="btn btn-primary float-right" onclick="mostrarModalCargar()">
-                    <i class="fas fa-plus"></i> Cargar Certificado
+                    <i class="fas fa-plus"></i> Cargar Local
                 </button>
             </div>
         </div>
@@ -25,26 +28,84 @@
             <span id="mensajeVigencia"></span>
         </div>
 
-        <!-- Tabla de certificados -->
-        <div class="card">
-            <div class="card-header">
-                <h3 class="card-title"><i class="fas fa-list"></i> Certificados Registrados</h3>
+        <!-- Tabs para separar certificados locales y FiscalAPI -->
+        <ul class="nav nav-tabs" id="certificadosTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" id="local-tab" data-toggle="tab" href="#local" role="tab">
+                    <i class="fas fa-database"></i> Certificados Locales
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" id="fiscalapi-tab" data-toggle="tab" href="#fiscalapi" role="tab" onclick="cargarCertificadosFiscalAPI()">
+                    <i class="fas fa-cloud"></i> FiscalAPI
+                </a>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="certificadosTabContent">
+            <!-- Tab: Certificados Locales -->
+            <div class="tab-pane fade show active" id="local" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title"><i class="fas fa-list"></i> Certificados Locales</h3>
+                    </div>
+                    <div class="card-body">
+                        <table id="tablaCertificados" class="table table-bordered table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>RFC</th>
+                                    <th>No. Certificado</th>
+                                    <th>Vigencia</th>
+                                    <th>Estado</th>
+                                    <th>Predeterminado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
-            <div class="card-body">
-                <table id="tablaCertificados" class="table table-bordered table-hover">
-                    <thead>
-                        <tr>
-                            <th>Nombre</th>
-                            <th>RFC</th>
-                            <th>No. Certificado</th>
-                            <th>Vigencia</th>
-                            <th>Estado</th>
-                            <th>Predeterminado</th>
-                            <th>Acciones</th>
-                        </tr>
-                    </thead>
-                    <tbody></tbody>
-                </table>
+
+            <!-- Tab: FiscalAPI -->
+            <div class="tab-pane fade" id="fiscalapi" role="tabpanel">
+                <div class="card">
+                    <div class="card-header bg-success">
+                        <h3 class="card-title text-white"><i class="fas fa-cloud"></i> Certificados en FiscalAPI</h3>
+                        <div class="card-tools">
+                            <button class="btn btn-sm btn-light" onclick="mostrarInfoCertificadosPrueba()">
+                                <i class="fas fa-info-circle"></i> Certificados de Prueba
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info">
+                            <i class="fas fa-info-circle"></i>
+                            <strong>Información:</strong> Los certificados subidos a FiscalAPI se utilizan automáticamente para timbrar facturas.
+                            El ambiente actual es: <strong id="ambienteFiscalAPI">Cargando...</strong>
+                        </div>
+                        <table id="tablaCertificadosFiscalAPI" class="table table-bordered table-hover">
+                            <thead>
+                                <tr>
+                                    <th>RFC</th>
+                                    <th>Razón Social</th>
+                                    <th>Vigencia Inicio</th>
+                                    <th>Vigencia Fin</th>
+                                    <th>Estado</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td colspan="6" class="text-center">
+                                        <i class="fas fa-spinner fa-spin"></i> Cargando certificados...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -148,10 +209,134 @@
     </div>
 </div>
 
+<!-- Modal Subir a FiscalAPI -->
+<div class="modal fade" id="modalSubirFiscalAPI" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="fas fa-cloud-upload-alt"></i> Subir Certificado a FiscalAPI</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i> <strong>Importante:</strong>
+                    Los certificados se suben directamente a FiscalAPI para usarse en el timbrado de facturas.
+                </div>
+
+                <form id="formSubirFiscalAPI" enctype="multipart/form-data">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label>RFC *</label>
+                                <input type="text" class="form-control" id="rfcFiscalAPI" name="rfc" required maxlength="13"
+                                       placeholder="ABC123456XYZ" style="text-transform: uppercase;">
+                                <small class="form-text text-muted">El RFC debe coincidir con el certificado</small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Archivo .cer (Certificado) *</label>
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="certificadoFiscalAPI" name="certificado" accept=".cer" required>
+                                    <label class="custom-file-label" for="certificadoFiscalAPI">Seleccionar archivo .cer</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Archivo .key (Llave Privada) *</label>
+                                <div class="custom-file">
+                                    <input type="file" class="custom-file-input" id="llavePrivadaFiscalAPI" name="llavePrivada" accept=".key" required>
+                                    <label class="custom-file-label" for="llavePrivadaFiscalAPI">Seleccionar archivo .key</label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <label>Contraseña de la Llave Privada *</label>
+                                <input type="password" class="form-control" id="passwordFiscalAPI" name="password" required
+                                       placeholder="Contraseña del archivo .key">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <strong>Certificados de Prueba SAT:</strong>
+                        <ul class="mb-0 pl-3">
+                            <li>RFC: <code>EKU9003173C9</code></li>
+                            <li>Password: <code>12345678a</code></li>
+                            <li><a href="https://fiscalapi-resources.s3.amazonaws.com/certificates.zip" target="_blank">
+                                Descargar certificados de prueba</a></li>
+                        </ul>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="subirCertificadoFiscalAPI()">
+                    <i class="fas fa-cloud-upload-alt"></i> Subir a FiscalAPI
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Info Certificados de Prueba -->
+<div class="modal fade" id="modalInfoPrueba" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title"><i class="fas fa-info-circle"></i> Certificados de Prueba</h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <h6><strong>Certificados del SAT para Pruebas</strong></h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>RFC:</strong></td>
+                        <td><code>EKU9003173C9</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Razón Social:</strong></td>
+                        <td>ESCUELA KEMPER URGATE</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Contraseña:</strong></td>
+                        <td><code>12345678a</code></td>
+                    </tr>
+                </table>
+                
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Estos certificados son SOLO para pruebas y NO son válidos para facturación real.
+                </div>
+
+                <a href="https://fiscalapi-resources.s3.amazonaws.com/certificates.zip" 
+                   class="btn btn-primary btn-block" target="_blank">
+                    <i class="fas fa-download"></i> Descargar Certificados
+                </a>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <style>
     .badge-vigente { background-color: #28a745; }
     .badge-por-vencer { background-color: #ffc107; color: #000; }
     .badge-vencido { background-color: #dc3545; }
+    .nav-tabs .nav-link.active {
+        background-color: #fff;
+        border-color: #dee2e6 #dee2e6 #fff;
+    }
 </style>
 
 @section scripts {

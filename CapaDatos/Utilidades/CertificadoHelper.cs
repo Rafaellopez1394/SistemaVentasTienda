@@ -358,4 +358,168 @@ namespace CapaDatos.Utilidades
     }
 
     #endregion
+
+    #region Métodos adicionales para FiscalAPI
+
+    public static class CertificadoHelperFiscalAPI
+    {
+        /// <summary>
+        /// Convierte un archivo .cer a Base64 para FiscalAPI
+        /// </summary>
+        /// <param name="rutaCer">Ruta completa al archivo .cer</param>
+        /// <returns>String Base64 del certificado</returns>
+        public static string CertificadoABase64(string rutaCer)
+        {
+            if (!File.Exists(rutaCer))
+                throw new FileNotFoundException($"Archivo .cer no encontrado: {rutaCer}");
+
+            try
+            {
+                byte[] certBytes = File.ReadAllBytes(rutaCer);
+                X509Certificate2 cert = new X509Certificate2(certBytes);
+                return Convert.ToBase64String(certBytes);
+            }
+            catch (CryptographicException ex)
+            {
+                throw new Exception($"Error al procesar certificado .cer: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Convierte un archivo .key (llave privada) a Base64 para FiscalAPI
+        /// </summary>
+        /// <param name="rutaKey">Ruta completa al archivo .key</param>
+        /// <returns>String Base64 de la llave privada</returns>
+        public static string LlavePrivadaABase64(string rutaKey)
+        {
+            if (!File.Exists(rutaKey))
+                throw new FileNotFoundException($"Archivo .key no encontrado: {rutaKey}");
+
+            try
+            {
+                byte[] keyBytes = File.ReadAllBytes(rutaKey);
+                return Convert.ToBase64String(keyBytes);
+            }
+            catch (Exception ex)
+            {
+                throw new Exception($"Error al procesar llave privada .key: {ex.Message}", ex);
+            }
+        }
+
+        /// <summary>
+        /// Valida fechas de vigencia del certificado
+        /// </summary>
+        public static ValidacionCertificadoResult ValidarVigencia(string rutaCer)
+        {
+            if (!File.Exists(rutaCer))
+                return new ValidacionCertificadoResult
+                {
+                    Valido = false,
+                    Mensaje = $"Archivo no encontrado: {rutaCer}"
+                };
+
+            try
+            {
+                byte[] certBytes = File.ReadAllBytes(rutaCer);
+                X509Certificate2 cert = new X509Certificate2(certBytes);
+
+                DateTime ahora = DateTime.Now;
+                DateTime inicio = cert.NotBefore;
+                DateTime fin = cert.NotAfter;
+
+                if (ahora < inicio)
+                {
+                    return new ValidacionCertificadoResult
+                    {
+                        Valido = false,
+                        Mensaje = $"Certificado aún no es válido. Válido desde: {inicio:dd/MM/yyyy}",
+                        FechaInicio = inicio,
+                        FechaFin = fin
+                    };
+                }
+
+                if (ahora > fin)
+                {
+                    return new ValidacionCertificadoResult
+                    {
+                        Valido = false,
+                        Mensaje = $"Certificado VENCIDO. Expiró el: {fin:dd/MM/yyyy}",
+                        FechaInicio = inicio,
+                        FechaFin = fin
+                    };
+                }
+
+                TimeSpan diasRestantes = fin - ahora;
+                string advertencia = diasRestantes.TotalDays <= 30
+                    ? $" ⚠️ Vence en {(int)diasRestantes.TotalDays} días"
+                    : "";
+
+                return new ValidacionCertificadoResult
+                {
+                    Valido = true,
+                    Mensaje = $"Certificado válido hasta: {fin:dd/MM/yyyy}{advertencia}",
+                    FechaInicio = inicio,
+                    FechaFin = fin,
+                    DiasRestantes = (int)diasRestantes.TotalDays
+                };
+            }
+            catch (CryptographicException ex)
+            {
+                return new ValidacionCertificadoResult
+                {
+                    Valido = false,
+                    Mensaje = $"Error al validar certificado: {ex.Message}"
+                };
+            }
+        }
+
+        /// <summary>
+        /// Extrae el RFC del certificado
+        /// </summary>
+        public static string ObtenerRFCDeCertificado(string rutaCer)
+        {
+            if (!File.Exists(rutaCer))
+                throw new FileNotFoundException($"Archivo .cer no encontrado: {rutaCer}");
+
+            try
+            {
+                byte[] certBytes = File.ReadAllBytes(rutaCer);
+                X509Certificate2 cert = new X509Certificate2(certBytes);
+
+                string subject = cert.Subject;
+                string[] partes = subject.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+                
+                foreach (string parte in partes)
+                {
+                    string limpio = parte.Trim();
+                    if (limpio.StartsWith("SERIALNUMBER=", StringComparison.OrdinalIgnoreCase) ||
+                        limpio.StartsWith("OID.2.5.4.5=", StringComparison.OrdinalIgnoreCase))
+                    {
+                        string rfc = limpio.Split('=')[1].Trim().Replace(" ", "");
+                        return rfc;
+                    }
+                }
+
+                throw new Exception("No se encontró el RFC en el certificado");
+            }
+            catch (CryptographicException ex)
+            {
+                throw new Exception($"Error al leer RFC del certificado: {ex.Message}", ex);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Resultado de la validación del certificado
+    /// </summary>
+    public class ValidacionCertificadoResult
+    {
+        public bool Valido { get; set; }
+        public string Mensaje { get; set; }
+        public DateTime? FechaInicio { get; set; }
+        public DateTime? FechaFin { get; set; }
+        public int DiasRestantes { get; set; }
+    }
+
+    #endregion
 }

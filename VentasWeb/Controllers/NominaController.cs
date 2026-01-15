@@ -409,28 +409,14 @@ namespace VentasWeb.Controllers
 
                 string usuario = Session["Usuario"].ToString();
 
-                // Timbrar el recibo
-                var respuesta = await CD_Nomina.Instancia.TimbrarCFDINomina(reciboId, usuario);
+                // FUNCIONALIDAD DE TIMBRADO ELIMINADA
+                return Json(new
+                {
+                    success = false,
+                    message = "Funcionalidad de timbrado CFDI Nómina eliminada del sistema"
+                });
 
-                if (respuesta.Exitoso)
-                {
-                    return Json(new
-                    {
-                        success = true,
-                        message = respuesta.Mensaje,
-                        uuid = respuesta.UUID,
-                        fechaTimbrado = respuesta.FechaTimbrado.HasValue ? respuesta.FechaTimbrado.Value.ToString("dd/MM/yyyy HH:mm:ss") : ""
-                    });
-                }
-                else
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        message = respuesta.Mensaje,
-                        codigoError = respuesta.CodigoError
-                    });
-                }
+                /* CÓDIGO ELIMINADO - Timbrado de nómina */
             }
             catch (Exception ex)
             {

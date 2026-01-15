@@ -26,7 +26,7 @@ namespace CapaDatos
                            p.CodigoInterno,
                            p.TasaIVAID, iva.Descripcion AS TasaIVADescripcion, iva.Porcentaje AS TasaIVAPorcentaje,
                            p.TasaIEPSID, ieps.Descripcion AS TasaIEPSDescripcion, ieps.Porcentaje AS TasaIEPSPorcentaje,
-                           p.Exento, p.Estatus
+                           p.Exento, p.Estatus, p.StockMinimo
                     FROM Productos p
                     INNER JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
                     INNER JOIN CatClaveProdServSAT sat ON p.ClaveProdServSAT = sat.ClaveProdServSAT
@@ -58,7 +58,8 @@ namespace CapaDatos
                             TasaIEPSDescripcion = dr["TasaIEPSDescripcion"]?.ToString(),
                             TasaIEPSPorcentaje = dr["TasaIEPSPorcentaje"] == DBNull.Value ? 0 : (decimal)dr["TasaIEPSPorcentaje"],
                             Exento = (bool)dr["Exento"],
-                            Estatus = (bool)dr["Estatus"]
+                            Estatus = (bool)dr["Estatus"],
+                            StockMinimo = dr["StockMinimo"] as int?
                         });
                     }
                 }
@@ -84,6 +85,7 @@ namespace CapaDatos
                 cmd.Parameters.AddWithValue("@TasaIVAID", p.TasaIVAID);
                 cmd.Parameters.AddWithValue("@TasaIEPSID", p.TasaIEPSID ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@Exento", p.Exento);
+                cmd.Parameters.AddWithValue("@StockMinimo", p.StockMinimo ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@Usuario", p.Usuario ?? "system");
                 try { cnx.Open(); cmd.ExecuteNonQuery(); return true; }
                 catch { return false; }
@@ -104,6 +106,7 @@ namespace CapaDatos
                 cmd.Parameters.AddWithValue("@TasaIVAID", p.TasaIVAID);
                 cmd.Parameters.AddWithValue("@TasaIEPSID", p.TasaIEPSID ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@Exento", p.Exento);
+                cmd.Parameters.AddWithValue("@StockMinimo", p.StockMinimo ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@Usuario", p.Usuario ?? "system");
                 try { cnx.Open(); cmd.ExecuteNonQuery(); return true; }
                 catch { return false; }
@@ -855,15 +858,20 @@ namespace CapaDatos
             using (var cnx = new SqlConnection(Conexion.CN))
             {
                 var query = @"
-                    SELECT p.ProductoID, p.Nombre, p.CodigoInterno, ps.Stock,
+                    SELECT p.ProductoID, p.Nombre, p.CodigoInterno, 
+                           SUM(l.CantidadDisponible) AS Stock,
                            p.VentaPorGramaje, p.PrecioPorKilo, p.UnidadMedidaBase,
                            c.Nombre AS NombreCategoria
                     FROM Productos p
-                    INNER JOIN ProductosSucursal ps ON p.ProductoID = ps.ProductoID
+                    INNER JOIN LotesProducto l ON p.ProductoID = l.ProductoID
                     LEFT JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
-                    WHERE ps.SucursalID = @SucursalID 
-                      AND ps.Stock > 0 
+                    WHERE l.SucursalID = @SucursalID 
+                      AND l.CantidadDisponible > 0 
+                      AND l.Estatus = 1
                       AND p.Estatus = 1
+                    GROUP BY p.ProductoID, p.Nombre, p.CodigoInterno, 
+                             p.VentaPorGramaje, p.PrecioPorKilo, p.UnidadMedidaBase,
+                             c.Nombre
                     ORDER BY p.Nombre";
 
                 var cmd = new SqlCommand(query, cnx);
@@ -878,6 +886,7 @@ namespace CapaDatos
                             ProductoID = (int)dr["ProductoID"],
                             Nombre = dr["Nombre"].ToString()!,
                             CodigoInterno = dr["CodigoInterno"] as string,
+                            StockActual = dr["Stock"] != DBNull.Value ? Convert.ToInt32(dr["Stock"]) : 0,
                             NombreCategoria = dr["NombreCategoria"]?.ToString(),
                             VentaPorGramaje = dr["VentaPorGramaje"] != DBNull.Value && (bool)dr["VentaPorGramaje"],
                             PrecioPorKilo = dr["PrecioPorKilo"] as decimal?,
@@ -1090,12 +1099,11 @@ namespace CapaDatos
                         LEFT JOIN (
                             SELECT 
                                 cd.ProductoID,
-                                c.SucursalID,
                                 MAX(c.FechaCompra) AS FechaCompra
                             FROM ComprasDetalle cd
                             INNER JOIN Compras c ON cd.CompraID = c.CompraID
-                            GROUP BY cd.ProductoID, c.SucursalID
-                        ) ultimaCompra ON p.ProductoID = ultimaCompra.ProductoID AND s.SucursalID = ultimaCompra.SucursalID
+                            GROUP BY cd.ProductoID
+                        ) ultimaCompra ON p.ProductoID = ultimaCompra.ProductoID
                         WHERE p.Estatus = 1
                           AND p.StockMinimo IS NOT NULL
                           AND p.StockMinimo > 0
@@ -1146,8 +1154,16 @@ namespace CapaDatos
             }
             catch (Exception ex)
             {
-                // Log error
-                lista = new List<AlertaInventario>();
+                // Log error con detalles completos
+                System.Diagnostics.Debug.WriteLine("Error en ObtenerProductosBajoStockMinimo: " + ex.Message);
+                System.Diagnostics.Debug.WriteLine("StackTrace: " + ex.StackTrace);
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("InnerException: " + ex.InnerException.Message);
+                }
+                
+                // Lanzar la excepción para que el controlador la capture y devuelva al cliente
+                throw;
             }
             
             return lista;

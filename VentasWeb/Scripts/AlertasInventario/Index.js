@@ -25,26 +25,56 @@ $(document).ready(function () {
 function cargarAlertas() {
     $('#btnActualizar').prop('disabled', true).html('<i class="fa fa-spinner fa-spin"></i> Actualizando...');
     
-    var sucursalId = $('#filtroSucursal').val();
+    var sucursalId = $('#filtroSucursal').val() || '0';
+    
+    console.log('Cargando alertas con sucursalId:', sucursalId);
     
     $.ajax({
         url: '/AlertasInventario/ObtenerAlertas',
         type: 'GET',
         data: { sucursalId: sucursalId },
         success: function (response) {
+            console.log('Respuesta recibida:', response);
+            console.log('response.success:', response.success);
+            console.log('response.data type:', typeof response.data);
+            console.log('response.data:', response.data);
+            console.log('Cantidad de alertas:', response.data ? response.data.length : 0);
+            
             $('#btnActualizar').prop('disabled', false).html('<i class="fa fa-refresh"></i> Actualizar');
             
-            if (response.success && response.data) {
+            // Verificar si hay error en la respuesta
+            if (response.success === false) {
+                console.error('Error del servidor:', response.mensaje);
+                Swal.fire('Error', response.mensaje || 'Error desconocido', 'error');
+                $('#tbodyAlertas').html('<tr><td colspan="12" class="text-center text-danger">Error: ' + (response.mensaje || 'Error desconocido') + '</td></tr>');
+                return;
+            }
+            
+            // Verificar si response.data es un array
+            if (!Array.isArray(response.data)) {
+                console.error('response.data no es un array:', response.data);
+                Swal.fire('Error', 'Formato de respuesta inválido', 'error');
+                return;
+            }
+            
+            // Si hay datos, renderizar
+            if (response.data.length > 0) {
+                console.log('Renderizando', response.data.length, 'alertas');
                 alertasData = response.data;
                 cargarConteo();
                 renderizarTabla(alertasData);
                 cargarCategoriasUnicas();
             } else {
+                console.warn('Array de datos está vacío');
                 Swal.fire('Sin Datos', 'No hay alertas de inventario en este momento', 'info');
                 $('#tbodyAlertas').html('<tr><td colspan="12" class="text-center text-muted">No hay alertas</td></tr>');
+                // Aún así llamar a cargar conteo para mostrar 0s
+                cargarConteo();
             }
         },
         error: function (xhr, status, error) {
+            console.error('Error en AJAX:', xhr, status, error);
+            console.error('Respuesta completa:', xhr.responseText);
             $('#btnActualizar').prop('disabled', false).html('<i class="fa fa-refresh"></i> Actualizar');
             Swal.fire('Error', 'Error al cargar alertas: ' + error, 'error');
         }
@@ -140,12 +170,38 @@ function renderizarTabla(data) {
     // Inicializar DataTable
     tablaDT = $('#tablaAlertas').DataTable({
         language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.6/i18n/es-MX.json'
+            "sProcessing": "Procesando...",
+            "sLengthMenu": "Mostrar _MENU_ registros",
+            "sZeroRecords": "No se encontraron resultados",
+            "sEmptyTable": "Ningún dato disponible en esta tabla",
+            "sInfo": "Mostrando registros del _START_ al _END_ de un total de _TOTAL_ registros",
+            "sInfoEmpty": "Mostrando registros del 0 al 0 de un total de 0 registros",
+            "sInfoFiltered": "(filtrado de un total de _MAX_ registros)",
+            "sInfoPostFix": "",
+            "sSearch": "Buscar:",
+            "sUrl": "",
+            "sInfoThousands": ",",
+            "sLoadingRecords": "Cargando...",
+            "oPaginate": {
+                "sFirst": "Primero",
+                "sLast": "Último",
+                "sNext": "Siguiente",
+                "sPrevious": "Anterior"
+            },
+            "oAria": {
+                "sSortAscending": ": Activar para ordenar la columna de manera ascendente",
+                "sSortDescending": ": Activar para ordenar la columna de manera descendente"
+            }
         },
         order: [[0, 'asc'], [7, 'desc']], // Ordenar por nivel y diferencia
         pageLength: 25,
-        responsive: true
+        responsive: true,
+        deferRender: true,
+        processing: false,
+        autoWidth: false
     });
+    
+    console.log('DataTable inicializada correctamente');
 }
 
 function aplicarFiltros() {
@@ -170,16 +226,41 @@ function aplicarFiltros() {
 }
 
 function cargarSucursales() {
+    console.log('Cargando sucursales...');
+    
+    var select = $('#filtroSucursal');
+    
     $.ajax({
         url: '/Sucursal/ObtenerTodos',
         type: 'GET',
         success: function (response) {
+            console.log('Respuesta de sucursales:', response);
+            console.log('Cantidad de sucursales:', response.data ? response.data.length : 0);
+            
             if (response.data && response.data.length > 0) {
-                var select = $('#filtroSucursal');
+                console.log('Select encontrado:', select.length > 0);
+                
+                // Limpiar completamente el select y reconstruir
+                select.empty();
+                select.append('<option value="0">Todas las sucursales</option>');
+                
                 response.data.forEach(function (sucursal) {
+                    console.log('Agregando sucursal:', sucursal.Nombre, '(ID:', sucursal.SucursalID + ')');
                     select.append('<option value="' + sucursal.SucursalID + '">' + sucursal.Nombre + '</option>');
                 });
+                
+                console.log('Opciones finales:', select.find('option').length);
+                console.log('Sucursales cargadas correctamente');
+            } else {
+                console.warn('No hay sucursales en la respuesta');
+                select.html('<option value="0">Todas las sucursales</option>');
             }
+        },
+        error: function(xhr, status, error) {
+            console.error('Error al cargar sucursales:', error);
+            console.error('Status:', status);
+            console.error('Response:', xhr.responseText);
+            select.html('<option value="0">Todas las sucursales</option>');
         }
     });
 }

@@ -265,28 +265,14 @@ namespace VentasWeb.Controllers
                     return Json(new { success = false, mensaje = "Debe especificar la forma de pago" });
                 }
 
-                // Generar y timbrar complemento de pago
-                var respuesta = await CD_ComplementoPago.Instancia.GenerarYTimbrarComplementoPago(request, usuario);
+                // FUNCIONALIDAD DE TIMBRADO ELIMINADA
+                return Json(new
+                {
+                    success = false,
+                    mensaje = "Funcionalidad de complemento de pago y timbrado eliminada del sistema"
+                });
 
-                if (respuesta.Exitoso)
-                {
-                    return Json(new
-                    {
-                        success = true,
-                        mensaje = "Complemento de pago generado y timbrado exitosamente",
-                        uuid = respuesta.UUID,
-                        fechaTimbrado = respuesta.FechaTimbrado.HasValue ? respuesta.FechaTimbrado.Value.ToString("dd/MM/yyyy HH:mm:ss") : ""
-                    });
-                }
-                else
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        mensaje = respuesta.Mensaje,
-                        codigoError = respuesta.CodigoError
-                    });
-                }
+                /* CÓDIGO ELIMINADO - Timbrado de complemento de pago */
             }
             catch (Exception ex)
             {

@@ -1,0 +1,121 @@
+@{
+    ViewBag.Title = "Historial de Devoluciones";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="content-header">
+    <div class="container-fluid">
+        <div class="row mb-2">
+            <div class="col-sm-6">
+                <h1 class="m-0"><i class="fas fa-undo-alt"></i> Historial de Devoluciones</h1>
+            </div>
+            <div class="col-sm-6">
+                <ol class="breadcrumb float-sm-right">
+                    <li class="breadcrumb-item"><a href="@Url.Action("Index", "Home")">Inicio</a></li>
+                    <li class="breadcrumb-item active">Devoluciones</li>
+                </ol>
+            </div>
+        </div>
+    </div>
+</div>
+
+<section class="content">
+    <div class="container-fluid">
+        <!-- Filtros -->
+        <div class="card">
+            <div class="card-header bg-primary">
+                <h3 class="card-title"><i class="fas fa-filter"></i> Filtros de Búsqueda</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Fecha Inicio</label>
+                            <input type="date" id="filtroFechaInicio" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>Fecha Fin</label>
+                            <input type="date" id="filtroFechaFin" class="form-control" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <button type="button" class="btn btn-primary btn-block" onclick="cargarDevoluciones()">
+                                <i class="fas fa-search"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <a href="@Url.Action("Registrar", "Devolucion")" class="btn btn-success btn-block">
+                                <i class="fas fa-plus"></i> Nueva Devolución
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla de Devoluciones -->
+        <div class="card">
+            <div class="card-header bg-info">
+                <h3 class="card-title"><i class="fas fa-list"></i> Listado de Devoluciones</h3>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table id="tablaDevoluciones" class="table table-striped table-hover">
+                        <thead class="thead-dark">
+                            <tr>
+                                <th>ID</th>
+                                <th>Fecha</th>
+                                <th>N° Venta</th>
+                                <th>Cliente</th>
+                                <th>Tipo</th>
+                                <th>Motivo</th>
+                                <th>Total Devuelto</th>
+                                <th>Forma Reintegro</th>
+                                <th>Productos</th>
+                                <th>Sucursal</th>
+                                <th>Usuario</th>
+                                <th>Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tbodyDevoluciones">
+                            <tr>
+                                <td colspan="12" class="text-center">
+                                    <i class="fas fa-spinner fa-spin"></i> Cargando...
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Modal Detalle -->
+<div class="modal fade" id="modalDetalle" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-info">
+                <h5 class="modal-title"><i class="fas fa-info-circle"></i> Detalle de Devolución</h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body" id="detalleDevolucion">
+                <!-- Se llenará dinámicamente -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/Devolucion/Index.js"></script>
+}

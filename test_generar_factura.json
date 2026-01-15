@@ -1,11 +1,11 @@
 {
   "VentaID": "46a2c22d-045f-417e-96fc-9b7fcfff3fff",
-  "ReceptorRFC": "LOGR432312ED1",
-  "ReceptorNombre": "Caracol sa de cv",
-  "ReceptorRegimenFiscal": "601",
-  "ReceptorUsoCFDI": "G03",
-  "ReceptorCP": "00000",
-  "ReceptorEmail": "correo@caracol.com",
+  "ReceptorRFC": "XAXX010101000",
+  "ReceptorNombre": "PUBLICO GENERAL",
+  "ReceptorRegimenFiscal": "616",
+  "ReceptorUsoCFDI": "S01",
+  "ReceptorCP": "81100",
+  "ReceptorEmail": "correo@ejemplo.com",
   "FormaPago": "01",
   "MetodoPago": "PUE"
 }

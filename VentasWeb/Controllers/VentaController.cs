@@ -131,7 +131,7 @@ namespace VentasWeb.Controllers
 
                     if (cred.Criterio == "Producto")
                     {
-                        int totalUnidades = venta.Detalle.Sum(d => d.Cantidad);
+                        decimal totalUnidades = venta.Detalle.Sum(d => d.Cantidad);
                         if (totalUnidades > cred.LimiteProducto)
                             return Json(new { resultado = false, mensaje = $"Límite de unidades excedido: {cred.LimiteProducto}" });
                     }

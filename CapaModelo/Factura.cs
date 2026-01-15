@@ -37,6 +37,8 @@ namespace CapaModelo
         public decimal TotalImpuestosRetenidos { get; set; }
         public decimal SaldoPendiente { get; set; }
         public int? NumeroParcialidades { get; set; }
+        public string Exportacion { get; set; } // 01=No aplica
+        public string LugarExpedicion { get; set; } // CP donde se expide la factura
         
         // Emisor
         public string EmisorRFC { get; set; }
@@ -45,6 +47,12 @@ namespace CapaModelo
         public string NombreEmisor { get; set; } // Alias para EmisorNombre
         public string EmisorRegimenFiscal { get; set; }
         public string RegimenFiscalEmisor { get; set; } // Alias para EmisorRegimenFiscal
+        public string CodigoPostalEmisor { get; set; }
+        
+        // Certificados del Emisor para FiscalAPI (Modo Por Valores) - Archivos desde CapaDatos/Certifies
+        public string EmisorNombreArchivoCertificado { get; set; }      // Nombre archivo .cer
+        public string EmisorNombreArchivoLlavePrivada { get; set; }     // Nombre archivo .key
+        public string EmisorNombreArchivoPassword { get; set; }         // Nombre archivo password
         
         // Receptor
         public string ReceptorRFC { get; set; }
@@ -67,6 +75,7 @@ namespace CapaModelo
         public string SelloSAT { get; set; }
         public string CadenaOriginalSAT { get; set; }
         public string ProveedorPAC { get; set; }
+        public string QRCode { get; set; } // Código QR para factura
         
         // Archivos
         public string XMLOriginal { get; set; }
@@ -168,6 +177,7 @@ namespace CapaModelo
         public string ReceptorRFC { get; set; }
         public string ReceptorNombre { get; set; }
         public string ReceptorUsoCFDI { get; set; }
+        public string UsoCFDI { get; set; } // Alias para compatibilidad
         public string ReceptorCP { get; set; }
         public string ReceptorRegimenFiscal { get; set; }
         public string ReceptorEmail { get; set; }
@@ -190,6 +200,8 @@ namespace CapaModelo
         public string NoCertificadoSAT { get; set; }
         public string CadenaOriginal { get; set; }
         public string CodigoError { get; set; }
+        public string ErrorTecnico { get; set; }
+        public string PdfBase64 { get; set; } // PDF generado por el PAC
     }
 
     /// <summary>
@@ -205,6 +217,7 @@ namespace CapaModelo
         public string UrlConsulta { get; set; }
         public string Usuario { get; set; }
         public string Password { get; set; }
+        public string ApiKey { get; set; } // Para FiscalAPI y otros PACs modernos
         public string RutaCertificado { get; set; }
         public string RutaLlavePrivada { get; set; }
         public string PasswordLlavePrivada { get; set; }
@@ -221,10 +234,15 @@ namespace CapaModelo
         public bool Exitoso { get; set; }
         public string Mensaje { get; set; }
         public string CodigoError { get; set; }
+        public string UUID { get; set; } // UUID del CFDI cancelado
         public string EstatusSAT { get; set; }
         public string EstatusUUID { get; set; }
+        public string EstatusCancelacion { get; set; } // Estado de la cancelación
+        public DateTime? FechaCancelacion { get; set; } // Fecha de cancelación
         public DateTime FechaRespuesta { get; set; }
         public string AcuseCancelacion { get; set; }
+        public string AcuseXML { get; set; } // XML del acuse
+        public string ErrorTecnico { get; set; }
     }
 }
 

@@ -114,9 +114,9 @@ namespace VentasWeb.Controllers
                         var cmdLow = new System.Data.SqlClient.SqlCommand(@"
                             SELECT COUNT(*)
                             FROM (
-                                SELECT p.ProductoID, SUM(ISNULL(ps.Stock,0)) AS StockTotal
+                                SELECT p.ProductoID, SUM(ISNULL(l.CantidadDisponible,0)) AS StockTotal
                                 FROM Productos p
-                                LEFT JOIN ProductosSucursal ps ON p.ProductoID = ps.ProductoID
+                                LEFT JOIN LotesProducto l ON p.ProductoID = l.ProductoID AND l.Estatus = 1
                                 WHERE p.Estatus = 1
                                 GROUP BY p.ProductoID
                             ) t

@@ -1,5 +1,4 @@
-C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\obj\Debug\VentasWeb.csproj.AssemblyReference.cache
-C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\obj\Debug\VentasWeb.csproj.CoreCompileInputs.cache
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\VentasWeb.dll.config
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\VentasWeb.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\VentasWeb.pdb
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\roslyn\csc.exe
@@ -62,8 +61,8 @@ C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\System.Web.Web
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\System.Web.WebPages.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\System.Web.WebPages.Razor.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\WebGrease.dll
-C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\CapaDatos.pdb
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\CapaModelo.pdb
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\CapaDatos.pdb
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\System.Web.Helpers.xml
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\System.Web.Mvc.xml
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\System.Web.Optimization.xml
@@ -81,7 +80,11 @@ C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\es\System.Web.
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\es\System.Web.WebPages.resources.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\es\System.Web.WebPages.Deployment.resources.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\es\System.Web.WebPages.Razor.resources.dll
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\obj\Debug\VentasWeb.csproj.AssemblyReference.cache
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\obj\Debug\VentasWeb.csproj.CoreCompileInputs.cache
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\obj\Debug\VentasWeb.csproj.Up2Date
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\obj\Debug\VentasWeb.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\obj\Debug\VentasWeb.pdb
-C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\VentasWeb.dll.config
-C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\obj\Debug\VentasWeb.csproj.Up2Date
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\itextsharp.dll
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\QRCoder.dll
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\itextsharp.xml

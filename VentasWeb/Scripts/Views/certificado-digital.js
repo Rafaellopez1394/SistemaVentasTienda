@@ -241,3 +241,209 @@ function validarVigencia() {
         }
     });
 }
+
+// ========================================================================
+// FUNCIONES PARA FISCALAPI
+// ========================================================================
+
+function mostrarModalSubirFiscalAPI() {
+    $('#formSubirFiscalAPI')[0].reset();
+    $('.custom-file-label').html('Seleccionar archivo');
+    $('#modalSubirFiscalAPI').modal('show');
+}
+
+function cargarCertificadosFiscalAPI() {
+    var tbody = $('#tablaCertificadosFiscalAPI tbody');
+    tbody.html('<tr><td colspan="6" class="text-center"><i class="fas fa-spinner fa-spin"></i> Cargando certificados...</td></tr>');
+
+    $.ajax({
+        url: '/CertificadoDigital/ListarFiscalAPI',
+        type: 'GET',
+        success: function (response) {
+            if (response.success) {
+                $('#ambienteFiscalAPI').text(response.ambiente || 'Desconocido');
+                mostrarCertificadosFiscalAPI(response.data);
+            } else {
+                tbody.html('<tr><td colspan="6" class="text-center text-danger"><i class="fas fa-exclamation-triangle"></i> ' + response.mensaje + '</td></tr>');
+            }
+        },
+        error: function () {
+            tbody.html('<tr><td colspan="6" class="text-center text-danger"><i class="fas fa-times"></i> Error al cargar certificados de FiscalAPI</td></tr>');
+        }
+    });
+}
+
+function mostrarCertificadosFiscalAPI(certificados) {
+    var tbody = $('#tablaCertificadosFiscalAPI tbody');
+    tbody.empty();
+
+    if (!certificados || certificados.length === 0) {
+        tbody.append(`
+            <tr>
+                <td colspan="6" class="text-center">
+                    <i class="fas fa-inbox"></i> No hay certificados en FiscalAPI<br>
+                    <button class="btn btn-sm btn-success mt-2" onclick="mostrarModalSubirFiscalAPI()">
+                        <i class="fas fa-cloud-upload-alt"></i> Subir Primer Certificado
+                    </button>
+                </td>
+            </tr>
+        `);
+        return;
+    }
+
+    certificados.forEach(function (cert) {
+        var validFrom = cert.validFrom ? new Date(cert.validFrom).toLocaleDateString('es-MX') : 'N/A';
+        var validTo = cert.validTo ? new Date(cert.validTo).toLocaleDateString('es-MX') : 'N/A';
+        
+        var estadoBadge = '<span class="badge badge-success">Activo</span>';
+        if (cert.status && cert.status !== 'Active') {
+            estadoBadge = '<span class="badge badge-secondary">' + cert.status + '</span>';
+        }
+
+        var row = `
+            <tr>
+                <td><strong>${cert.tin || cert.rfc || 'N/A'}</strong></td>
+                <td>${cert.legalName || cert.razonSocial || 'N/A'}</td>
+                <td>${validFrom}</td>
+                <td>${validTo}</td>
+                <td>${estadoBadge}</td>
+                <td>
+                    <button class="btn btn-sm btn-danger" onclick="eliminarCertificadoFiscalAPI('${cert.id}', '${cert.tin || cert.rfc}')">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+        tbody.append(row);
+    });
+}
+
+function subirCertificadoFiscalAPI() {
+    var form = $('#formSubirFiscalAPI')[0];
+    
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    var formData = new FormData(form);
+
+    // Mostrar loading
+    Swal.fire({
+        title: 'Subiendo certificado...',
+        html: 'Por favor espere. Esto puede tomar unos segundos.',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    $.ajax({
+        url: '/CertificadoDigital/SubirFiscalAPI',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function (response) {
+            Swal.close();
+            
+            if (response.success) {
+                Swal.fire({
+                    icon: 'success',
+                    title: '¡Éxito!',
+                    text: response.mensaje,
+                    showConfirmButton: true
+                }).then(() => {
+                    $('#modalSubirFiscalAPI').modal('hide');
+                    cargarCertificadosFiscalAPI();
+                });
+            } else {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error al subir certificado',
+                    html: '<p>' + response.mensaje + '</p>' +
+                          (response.detalle ? '<details><summary>Detalles técnicos</summary><pre>' + JSON.stringify(JSON.parse(response.detalle), null, 2) + '</pre></details>' : ''),
+                    width: '600px'
+                });
+            }
+        },
+        error: function (xhr) {
+            Swal.close();
+            var errorMsg = 'Error de conexión al subir certificado';
+            
+            try {
+                var errorResponse = JSON.parse(xhr.responseText);
+                errorMsg = errorResponse.mensaje || errorMsg;
+            } catch (e) { }
+            
+            Swal.fire({
+                icon: 'error',
+                title: 'Error',
+                text: errorMsg
+            });
+        }
+    });
+}
+
+function eliminarCertificadoFiscalAPI(id, rfc) {
+    Swal.fire({
+        title: '¿Eliminar certificado?',
+        html: 'Se eliminará el certificado <strong>' + rfc + '</strong> de FiscalAPI.<br>Esta acción no se puede deshacer.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#3085d6',
+        confirmButtonText: 'Sí, eliminar',
+        cancelButtonText: 'Cancelar'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.ajax({
+                url: '/CertificadoDigital/EliminarFiscalAPI',
+                type: 'POST',
+                data: { id: id },
+                success: function (response) {
+                    if (response.success) {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Eliminado',
+                            text: response.mensaje,
+                            timer: 2000
+                        });
+                        cargarCertificadosFiscalAPI();
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: response.mensaje
+                        });
+                    }
+                },
+                error: function () {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Error',
+                        text: 'Error al eliminar certificado'
+                    });
+                }
+            });
+        }
+    });
+}
+
+function mostrarInfoCertificadosPrueba() {
+    $('#modalInfoPrueba').modal('show');
+}
+
+// Exponer funciones al scope global para los handlers inline
+window.mostrarModalSubirFiscalAPI = mostrarModalSubirFiscalAPI;
+window.cargarCertificadosFiscalAPI = cargarCertificadosFiscalAPI;
+window.mostrarInfoCertificadosPrueba = mostrarInfoCertificadosPrueba;
+window.mostrarModalCargar = mostrarModalCargar;
+window.cargarCertificado = cargarCertificado;
+window.subirCertificadoFiscalAPI = subirCertificadoFiscalAPI;
+window.eliminarCertificadoFiscalAPI = eliminarCertificadoFiscalAPI;
+window.eliminarCertificado = eliminarCertificado;
+window.establecerPredeterminado = establecerPredeterminado;
+window.cargarCertificados = cargarCertificados;
+window.mostrarCertificados = mostrarCertificados;
+window.validarVigencia = validarVigencia;

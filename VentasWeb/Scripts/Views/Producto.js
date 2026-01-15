@@ -117,6 +117,7 @@ function abrirModal(id = 0) {
             $('#cboUnidadSAT').val(p.ClaveUnidadSAT);
             $('#cboTasaIVA').val(p.TasaIVAID);
             $('#cboTasaIEPS').val(p.TasaIEPSID || '');
+            $('#txtStockMinimo').val(p.StockMinimo || '');
             $('#modalTitulo').text('Editar Producto - ' + p.Nombre);
 
             $.get('/Producto/ObtenerLotes', { productoId: id })
@@ -253,7 +254,8 @@ function Guardar() {
         ClaveProdServSATID: $('#cboClaveSAT').val(),
         ClaveUnidadSAT: $('#cboUnidadSAT').val(),
         TasaIVAID: parseInt($('#cboTasaIVA').val()),
-        TasaIEPSID: $('#cboTasaIEPS').val() ? parseInt($('#cboTasaIEPS').val()) : null
+        TasaIEPSID: $('#cboTasaIEPS').val() ? parseInt($('#cboTasaIEPS').val()) : null,
+        StockMinimo: $('#txtStockMinimo').val() ? parseInt($('#txtStockMinimo').val()) : null
     };
 
     $.post('/Producto/Guardar', producto)

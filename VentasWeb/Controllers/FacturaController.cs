@@ -5,6 +5,7 @@ using System.Web.Mvc;
 using CapaDatos;
 using CapaModelo;
 using VentasWeb.Utilidades;
+using Newtonsoft.Json;
 
 namespace VentasWeb.Controllers
 {
@@ -178,15 +179,188 @@ namespace VentasWeb.Controllers
 
         // POST: Factura/GenerarFactura
         [HttpPost]
-        public async Task<JsonResult> GenerarFactura(GenerarFacturaRequest request)
+        public async Task<JsonResult> GenerarFactura()
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("========================================");
+                System.Diagnostics.Debug.WriteLine("=== GenerarFactura Controller INICIO ===");
+                System.Diagnostics.Debug.WriteLine("========================================");
+                
+                // Leer el body del request
+                string requestBody = null;
+                Request.InputStream.Position = 0;
+                using (var reader = new System.IO.StreamReader(Request.InputStream, System.Text.Encoding.UTF8))
+                {
+                    requestBody = reader.ReadToEnd();
+                    System.Diagnostics.Debug.WriteLine($"Request Body recibido ({requestBody?.Length ?? 0} caracteres)");
+                    System.Diagnostics.Debug.WriteLine($"Contenido: {requestBody}");
+                }
+                
+                if (string.IsNullOrWhiteSpace(requestBody))
+                {
+                    System.Diagnostics.Debug.WriteLine("❌ ERROR: Request body está vacío");
+                    Response.StatusCode = 400;
+                    return Json(new
+                    {
+                        estado = false,
+                        valor = "Error: No se recibió información en el request. El body está vacío."
+                    });
+                }
+                
+                // Deserializar el JSON
+                CapaModelo.GenerarFacturaRequest request = null;
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine($"Deserializando JSON...");
+                    
+                    var settings = new JsonSerializerSettings
+                    {
+                        MissingMemberHandling = MissingMemberHandling.Ignore,
+                        NullValueHandling = NullValueHandling.Ignore
+                    };
+                    
+                    request = JsonConvert.DeserializeObject<CapaModelo.GenerarFacturaRequest>(requestBody, settings);
+                    
+                    if (request == null)
+                    {
+                        System.Diagnostics.Debug.WriteLine("❌ ERROR: DeserializeObject devolvió null");
+                        Response.StatusCode = 400;
+                        return Json(new
+                        {
+                            estado = false,
+                            valor = "Error: No se pudo deserializar el JSON recibido."
+                        });
+                    }
+                    
+                    System.Diagnostics.Debug.WriteLine("✅ Deserialización exitosa");
+                    System.Diagnostics.Debug.WriteLine($"   VentaID: {request.VentaID}");
+                    System.Diagnostics.Debug.WriteLine($"   ReceptorRFC: {request.ReceptorRFC}");
+                    System.Diagnostics.Debug.WriteLine($"   ReceptorNombre: {request.ReceptorNombre}");
+                }
+                catch (JsonException jsonEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ ERROR JSON al deserializar: {jsonEx.Message}");
+                    System.Diagnostics.Debug.WriteLine($"   InnerException: {jsonEx.InnerException?.Message}");
+                    Response.StatusCode = 400;
+                    return Json(new
+                    {
+                        estado = false,
+                        valor = $"Error al parsear JSON: {jsonEx.Message}"
+                    });
+                }
+                catch (Exception deserEx)
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ ERROR al deserializar: {deserEx.Message}");
+                    System.Diagnostics.Debug.WriteLine($"   StackTrace: {deserEx.StackTrace}");
+                    Response.StatusCode = 400;
+                    return Json(new
+                    {
+                        estado = false,
+                        valor = $"Error al deserializar: {deserEx.Message}"
+                    });
+                }
+                
+                // Validar VentaID
+                if (request.VentaID == Guid.Empty)
+                {
+                    System.Diagnostics.Debug.WriteLine("❌ ERROR: VentaID es Guid.Empty");
+                    Response.StatusCode = 400;
+                    return Json(new
+                    {
+                        estado = false,
+                        valor = "VentaID es requerido y debe ser un GUID válido"
+                    });
+                }
+
+                // Validar ReceptorRFC
+                if (string.IsNullOrWhiteSpace(request.ReceptorRFC))
+                {
+                    System.Diagnostics.Debug.WriteLine("❌ ERROR: ReceptorRFC es vacío");
+                    Response.StatusCode = 400;
+                    return Json(new
+                    {
+                        estado = false,
+                        valor = "ReceptorRFC es requerido"
+                    });
+                }
+                
+                System.Diagnostics.Debug.WriteLine($"✅ Validación exitosa:");
+                
+                System.Diagnostics.Debug.WriteLine($"✅ Validación exitosa:");
+                System.Diagnostics.Debug.WriteLine($"  VentaID: {request.VentaID}");
+                System.Diagnostics.Debug.WriteLine($"  ReceptorRFC: {request.ReceptorRFC}");
+                System.Diagnostics.Debug.WriteLine($"  ReceptorNombre: {request.ReceptorNombre}");
+                
+                // ============================================================
+                // CORRECCIÓN AUTOMÁTICA: Régimen 616 + UsoCFDI
+                // ============================================================
+                // Régimen 616 (Sin obligaciones fiscales) - RFC genérico XAXX010101000
+                // Para PÚBLICO EN GENERAL, usar G01 o G03 (compras/gastos)
+                if (request.ReceptorRegimenFiscal == "616" && request.ReceptorRFC == "XAXX010101000")
+                {
+                    // Para público en general con régimen 616, G01 y G03 son válidos
+                    if (request.UsoCFDI != "G01" && request.UsoCFDI != "G03" && 
+                        request.UsoCFDI != "CP01" && request.UsoCFDI != "CN01")
+                    {
+                        System.Diagnostics.Debug.WriteLine($"⚠️ CORRECCIÓN: UsoCFDI '{request.UsoCFDI}' ajustado para régimen 616");
+                        System.Diagnostics.Debug.WriteLine($"   Cambiando automáticamente a: G03 (Gastos en general)");
+                        request.UsoCFDI = "G03";
+                    }
+                }
+                
                 // Obtener usuario de sesión
                 string usuario = Session["UsuarioNombre"]?.ToString() ?? "Sistema";
+                System.Diagnostics.Debug.WriteLine($"Usuario de sesión: {usuario}");
 
-                // Generar y timbrar factura
-                var respuesta = await CD_Factura.Instancia.GenerarYTimbrarFactura(request, usuario);
+                // Generar y timbrar factura con FiscalAPI
+                System.Diagnostics.Debug.WriteLine("Llamando a GenerarYTimbrarFactura con FiscalAPI...");
+                
+                var respuestaTimbrado = await CD_Factura.Instancia.GenerarYTimbrarFactura(
+                    request.VentaID,
+                    request.ReceptorRFC,
+                    request.ReceptorNombre,
+                    request.ReceptorCP,
+                    request.ReceptorRegimenFiscal,
+                    request.UsoCFDI,
+                    request.FormaPago,
+                    request.MetodoPago,
+                    "A", // Serie por defecto
+                    usuario
+                );
+
+                // Construir respuesta
+                var respuesta = new Respuesta<object>();
+                
+                if (respuestaTimbrado.Exitoso)
+                {
+                    respuesta.estado = true;
+                    respuesta.valor = respuestaTimbrado.Mensaje;
+                    respuesta.objeto = new
+                    {
+                        UUID = respuestaTimbrado.UUID,
+                        FechaTimbrado = respuestaTimbrado.FechaTimbrado,
+                        XMLBase64 = !string.IsNullOrEmpty(respuestaTimbrado.XMLTimbrado)
+                            ? Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(respuestaTimbrado.XMLTimbrado))
+                            : null
+                    };
+                }
+                else
+                {
+                    respuesta.estado = false;
+                    respuesta.valor = respuestaTimbrado.Mensaje;
+                    respuesta.objeto = new
+                    {
+                        CodigoError = respuestaTimbrado.CodigoError,
+                        Mensaje = respuestaTimbrado.Mensaje
+                    };
+                }
+
+                System.Diagnostics.Debug.WriteLine("========================================");
+                System.Diagnostics.Debug.WriteLine("=== GenerarFactura Controller FIN ===");
+                System.Diagnostics.Debug.WriteLine($"Estado: {respuesta.estado}");
+                System.Diagnostics.Debug.WriteLine($"Mensaje: {respuesta.valor}");
+                System.Diagnostics.Debug.WriteLine("========================================");
 
                 // Si se generó correctamente y viene de una venta, actualizar el estatus
                 if (respuesta.estado && request.VentaID != Guid.Empty)
@@ -206,19 +380,34 @@ namespace VentasWeb.Controllers
                     }
                 }
 
+                // Establecer código HTTP según el resultado
+                Response.StatusCode = respuesta.estado ? 200 : 400;
+                Response.ContentType = "application/json; charset=utf-8";
+
                 return Json(new
                 {
-                    success = respuesta.estado,
+                    estado = respuesta.estado,
                     mensaje = respuesta.valor,
-                    data = respuesta.objeto
+                    objeto = respuesta.objeto
                 });
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"❌ ERROR GENERAL en GenerarFactura Controller:");
+                System.Diagnostics.Debug.WriteLine($"   Message: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"   StackTrace: {ex.StackTrace}");
+                if (ex.InnerException != null)
+                {
+                    System.Diagnostics.Debug.WriteLine($"   InnerException: {ex.InnerException.Message}");
+                }
+                
+                Response.StatusCode = 500;
+                Response.ContentType = "application/json; charset=utf-8";
+                
                 return Json(new
                 {
-                    success = false,
-                    mensaje = "Error: " + ex.Message
+                    estado = false,
+                    valor = $"Error inesperado: {ex.Message}"
                 });
             }
         }
@@ -302,9 +491,13 @@ namespace VentasWeb.Controllers
                     return Content("No se encontró la factura");
                 }
 
-                // Generar PDF simple (TODO: implementar generador completo)
-                byte[] pdfBytes = System.Text.Encoding.UTF8.GetBytes($"Factura {factura.Serie}{factura.Folio} - UUID: {factura.UUID}");
-                string nombreArchivo = $"Factura_{factura.Serie}{factura.Folio}_{factura.UUID.Substring(0, 8)}.pdf";
+                // Generar PDF profesional usando PDFFacturaGenerator
+                var generador = new CapaDatos.Generadores.PDFFacturaGenerator();
+                byte[] pdfBytes = generador.GenerarPDF(factura);
+                
+                string nombreArchivo = string.IsNullOrEmpty(factura.UUID)
+                    ? $"Factura_{factura.Serie}{factura.Folio}.pdf"
+                    : $"Factura_{factura.Serie}{factura.Folio}_{factura.UUID.Substring(0, 8)}.pdf";
 
                 return File(pdfBytes, "application/pdf", nombreArchivo);
             }
@@ -405,10 +598,20 @@ namespace VentasWeb.Controllers
                     return Json(new { success = false, mensaje = "El motivo 01 requiere UUID de sustitución" });
                 }
 
-                // Llamar a la capa de datos para cancelar
-                // Use Task.Run to offload the async operation to a thread pool thread
-                // This helps avoid deadlocks in ASP.NET MVC 5 which has a synchronization context
-                var respuesta = await Task.Run(() => CD_Factura.Instancia.CancelarCFDI(facturaId, motivo, uuidSustitucion, usuario));
+                // Obtener factura para obtener UUID
+                var factura = CD_Factura.Instancia.ObtenerPorId(facturaId);
+                if (factura == null)
+                {
+                    return Json(new { success = false, mensaje = "Factura no encontrada" });
+                }
+
+                // Cancelar CFDI con FiscalAPI
+                var respuesta = await CD_Factura.Instancia.CancelarCFDI(
+                    factura.UUID,
+                    motivo,
+                    uuidSustitucion,
+                    usuario
+                );
 
                 if (respuesta.Exitoso)
                 {
@@ -416,8 +619,8 @@ namespace VentasWeb.Controllers
                     {
                         success = true,
                         mensaje = respuesta.Mensaje,
-                        estatusSAT = respuesta.EstatusSAT,
-                        fechaCancelacion = respuesta.FechaRespuesta.ToString("dd/MM/yyyy HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture)
+                        estatusCancelacion = respuesta.EstatusCancelacion,
+                        fechaCancelacion = respuesta.FechaCancelacion?.ToString("dd/MM/yyyy HH:mm:ss")
                     });
                 }
                 else
@@ -499,11 +702,12 @@ namespace VentasWeb.Controllers
                     return Json(new { success = false, mensaje = "La factura no ha sido timbrada" });
                 }
 
-                // Generar PDF simple
+                // Generar PDF profesional
                 byte[] pdfBytes = null;
                 try
                 {
-                    pdfBytes = System.Text.Encoding.UTF8.GetBytes($"Factura {factura.Serie}{factura.Folio} - UUID: {factura.UUID}");
+                    var generador = new CapaDatos.Generadores.PDFFacturaGenerator();
+                    pdfBytes = generador.GenerarPDF(factura);
                 }
                 catch (Exception exPdf)
                 {

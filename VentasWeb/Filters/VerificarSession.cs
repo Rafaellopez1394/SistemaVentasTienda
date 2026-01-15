@@ -12,6 +12,16 @@ namespace VentasWeb.Filters
     {
         public override void OnActionExecuting(ActionExecutingContext filterContext)
         {
+            // Verificar si la acción tiene el atributo AllowAnonymous
+            var allowAnonymous = filterContext.ActionDescriptor.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Any() ||
+                                 filterContext.ActionDescriptor.ControllerDescriptor.GetCustomAttributes(typeof(AllowAnonymousAttribute), true).Any();
+
+            if (allowAnonymous)
+            {
+                // Si tiene AllowAnonymous, permitir acceso sin validar sesión
+                base.OnActionExecuting(filterContext);
+                return;
+            }
 
             Usuario oUsuario = (Usuario)HttpContext.Current.Session["Usuario"];
 

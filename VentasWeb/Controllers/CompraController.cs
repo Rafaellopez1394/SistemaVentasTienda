@@ -140,6 +140,13 @@ namespace VentasWeb.Controllers
 
                 System.Diagnostics.Debug.WriteLine($"Archivo recibido: {archivo.FileName}, ContentLength: {archivo.ContentLength}");
 
+                // FUNCIONALIDAD DE IMPORTACIÓN DE CFDI ELIMINADA
+                return Json(new { 
+                    success = false, 
+                    mensaje = "Funcionalidad de importación de CFDI de compras eliminada del sistema" 
+                });
+
+                /* CÓDIGO ELIMINADO - Parseador de CFDI de compras
                 if (archivo.ContentLength == 0)
                 {
                     return Json(new { success = false, mensaje = $"El archivo '{archivo.FileName}' está vacío (0 bytes)" });
@@ -243,18 +250,11 @@ namespace VentasWeb.Controllers
                 };
 
                 return Json(resultado);
+                */
             }
             catch (System.Xml.XmlException xmlEx)
             {
-                return Json(new { success = false, mensaje = "Error al leer el archivo XML: " + xmlEx.Message + ". Verifique que el archivo sea un XML válido." });
-            }
-            catch (UnauthorizedAccessException uaEx)
-            {
-                return Json(new { success = false, mensaje = "Error de permisos: " + uaEx.Message + ". Verifique los permisos de la carpeta App_Data/TempXML." });
-            }
-            catch (System.IO.IOException ioEx)
-            {
-                return Json(new { success = false, mensaje = "Error al guardar el archivo: " + ioEx.Message });
+                return Json(new { success = false, mensaje = "Error al leer el archivo XML: " + xmlEx.Message });
             }
             catch (Exception ex)
             {
