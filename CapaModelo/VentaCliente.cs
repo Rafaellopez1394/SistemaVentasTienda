@@ -12,6 +12,7 @@ namespace CapaModelo
         }
 
         public Guid VentaID { get; set; }
+        public string NumeroVenta { get; set; }
         public Guid ClienteID { get; set; }
         public string RazonSocial { get; set; }
         public DateTime FechaVenta { get; set; }
@@ -21,14 +22,18 @@ namespace CapaModelo
         public decimal TotalPagado { get; set; }
         public decimal SaldoPendiente { get; set; }
         public string Usuario { get; set; }
+        public int SucursalID { get; set; }
+        public string NombreSucursal { get; set; }
         public List<VentaDetalleCliente> Detalle { get; set; }
     }
 
     public class VentaDetalleCliente
     {
         public int ProductoID { get; set; }
+        public string CodigoInterno { get; set; }
         public string Producto { get; set; }
         public int LoteID { get; set; }
+        public string NumeroLote { get; set; }
         public int Cantidad { get; set; }
         public decimal PrecioVenta { get; set; }
         public decimal PrecioCompra { get; set; }
