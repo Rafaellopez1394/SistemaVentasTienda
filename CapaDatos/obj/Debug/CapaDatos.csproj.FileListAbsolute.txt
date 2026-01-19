@@ -12,3 +12,4 @@ C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaDatos\obj\Debug\CapaDato
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaDatos\bin\Debug\itextsharp.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaDatos\bin\Debug\QRCoder.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaDatos\bin\Debug\itextsharp.xml
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\CapaDatos\bin\Debug\BouncyCastle.Crypto.dll

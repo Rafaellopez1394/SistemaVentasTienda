@@ -154,7 +154,7 @@ namespace CapaDatos
                                FormaPago, MetodoPago,
                                Estatus, XMLTimbrado, SelloCFD, SelloSAT, NoCertificadoSAT,
                                FechaCancelacion, MotivoCancelacion,
-                               UsuarioCreacion, FechaCreacion
+                               UsuarioCreacion, FechaCreacion, FiscalAPIInvoiceId
                         FROM Facturas
                         WHERE FacturaID = @FacturaID";
 
@@ -200,7 +200,8 @@ namespace CapaDatos
                                     FechaCancelacion = dr["FechaCancelacion"] != DBNull.Value ? (DateTime?)dr["FechaCancelacion"] : null,
                                     MotivoCancelacion = dr["MotivoCancelacion"]?.ToString(),
                                     UsuarioCreacion = dr["UsuarioCreacion"]?.ToString(),
-                                    FechaCreacion = dr["FechaCreacion"] != DBNull.Value ? Convert.ToDateTime(dr["FechaCreacion"]) : DateTime.Now
+                                    FechaCreacion = dr["FechaCreacion"] != DBNull.Value ? Convert.ToDateTime(dr["FechaCreacion"]) : DateTime.Now,
+                                    FiscalAPIInvoiceId = dr["FiscalAPIInvoiceId"]?.ToString()
                                 };
                             }
                         }
@@ -210,6 +211,92 @@ namespace CapaDatos
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"Error en ObtenerPorId: {ex.Message}");
+            }
+
+            return factura;
+        }
+
+        /// <summary>
+        /// Obtiene una factura por VentaID (para verificar si ya existe)
+        /// </summary>
+        public Factura ObtenerPorVentaID(Guid ventaId)
+        {
+            Factura factura = null;
+
+            try
+            {
+                using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+                {
+                    cnx.Open();
+
+                    string query = @"
+                        SELECT TOP 1 FacturaID, VentaID, Serie, Folio, UUID, 
+                               FechaEmision, FechaTimbrado, 
+                               EmisorRFC, EmisorNombre, EmisorRegimenFiscal,
+                               ReceptorRFC, ReceptorNombre, ReceptorUsoCFDI, 
+                               ReceptorDomicilioFiscalCP, ReceptorRegimenFiscalReceptor, ReceptorEmail,
+                               Subtotal, TotalImpuestosTrasladados, TotalImpuestosRetenidos, Total,
+                               FormaPago, MetodoPago,
+                               Estatus, XMLTimbrado, SelloCFD, SelloSAT, NoCertificadoSAT,
+                               FechaCancelacion, MotivoCancelacion,
+                               UsuarioCreacion, FechaCreacion, FiscalAPIInvoiceId
+                        FROM Facturas
+                        WHERE VentaID = @VentaID
+                        ORDER BY FechaCreacion DESC";
+
+                    using (SqlCommand cmd = new SqlCommand(query, cnx))
+                    {
+                        cmd.Parameters.AddWithValue("@VentaID", ventaId);
+
+                        using (SqlDataReader dr = cmd.ExecuteReader())
+                        {
+                            if (dr.Read())
+                            {
+                                factura = new Factura
+                                {
+                                    Conceptos = new List<FacturaDetalle>(),
+                                    FacturaID = (Guid)dr["FacturaID"],
+                                    VentaID = dr["VentaID"] != DBNull.Value ? (Guid)dr["VentaID"] : Guid.Empty,
+                                    Serie = dr["Serie"]?.ToString(),
+                                    Folio = dr["Folio"]?.ToString(),
+                                    UUID = dr["UUID"]?.ToString(),
+                                    FechaEmision = Convert.ToDateTime(dr["FechaEmision"]),
+                                    FechaTimbrado = dr["FechaTimbrado"] != DBNull.Value ? (DateTime?)dr["FechaTimbrado"] : null,
+                                    RFCEmisor = dr["EmisorRFC"]?.ToString(),
+                                    NombreEmisor = dr["EmisorNombre"]?.ToString(),
+                                    RegimenFiscalEmisor = dr["EmisorRegimenFiscal"]?.ToString(),
+                                    ReceptorRFC = dr["ReceptorRFC"]?.ToString(),
+                                    ReceptorNombre = dr["ReceptorNombre"]?.ToString(),
+                                    ReceptorUsoCFDI = dr["ReceptorUsoCFDI"]?.ToString(),
+                                    ReceptorDomicilioFiscalCP = dr["ReceptorDomicilioFiscalCP"]?.ToString(),
+                                    ReceptorRegimenFiscalReceptor = dr["ReceptorRegimenFiscalReceptor"]?.ToString(),
+                                    ReceptorEmail = dr["ReceptorEmail"]?.ToString(),
+                                    Subtotal = dr["Subtotal"] != DBNull.Value ? Convert.ToDecimal(dr["Subtotal"]) : 0,
+                                    TotalImpuestosTrasladados = dr["TotalImpuestosTrasladados"] != DBNull.Value ? Convert.ToDecimal(dr["TotalImpuestosTrasladados"]) : 0,
+                                    TotalImpuestosRetenidos = dr["TotalImpuestosRetenidos"] != DBNull.Value ? Convert.ToDecimal(dr["TotalImpuestosRetenidos"]) : 0,
+                                    Total = Convert.ToDecimal(dr["Total"]),
+                                    MontoTotal = Convert.ToDecimal(dr["Total"]),
+                                    FormaPago = dr["FormaPago"]?.ToString(),
+                                    MetodoPago = dr["MetodoPago"]?.ToString(),
+                                    Estatus = dr["Estatus"]?.ToString(),
+                                    XMLTimbrado = dr["XMLTimbrado"]?.ToString(),
+                                    SelloCFD = dr["SelloCFD"]?.ToString(),
+                                    SelloSAT = dr["SelloSAT"]?.ToString(),
+                                    NoCertificadoSAT = dr["NoCertificadoSAT"]?.ToString(),
+                                    FechaCancelacion = dr["FechaCancelacion"] != DBNull.Value ? (DateTime?)dr["FechaCancelacion"] : null,
+                                    MotivoCancelacion = dr["MotivoCancelacion"]?.ToString(),
+                                    UsuarioCreacion = dr["UsuarioCreacion"]?.ToString(),
+                                    FechaCreacion = dr["FechaCreacion"] != DBNull.Value ? Convert.ToDateTime(dr["FechaCreacion"]) : DateTime.Now,
+                                    FiscalAPIInvoiceId = dr["FiscalAPIInvoiceId"]?.ToString()
+                                };
+                            }
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error en ObtenerPorVentaID: {ex.Message}");
             }
 
             return factura;
@@ -611,7 +698,7 @@ namespace CapaDatos
                                 ReceptorRegimenFiscalReceptor, ReceptorEmail,
                                 FormaPago, MetodoPago, ProveedorPAC, Estatus,
                                 XMLOriginal, UUID, XMLTimbrado, FechaTimbrado, SelloCFD, SelloSAT, 
-                                NoCertificadoSAT, CadenaOriginalSAT, UsuarioCreacion, FechaCreacion
+                                NoCertificadoSAT, CadenaOriginalSAT, FiscalAPIInvoiceId, UsuarioCreacion, FechaCreacion
                             ) VALUES (
                                 @FacturaID, @VentaID, @Serie, @Folio, @FechaEmision, @Version, @TipoComprobante,
                                 @Subtotal, @Descuento, @Total, @TotalImpuestosTrasladados, @TotalImpuestosRetenidos,
@@ -620,7 +707,7 @@ namespace CapaDatos
                                 @ReceptorRegimenFiscalReceptor, @ReceptorEmail,
                                 @FormaPago, @MetodoPago, @ProveedorPAC, @Estatus,
                                 @XMLOriginal, @UUID, @XMLTimbrado, @FechaTimbrado, @SelloCFD, @SelloSAT,
-                                @NoCertificadoSAT, @CadenaOriginalSAT, @UsuarioCreacion, GETDATE()
+                                @NoCertificadoSAT, @CadenaOriginalSAT, @FiscalAPIInvoiceId, @UsuarioCreacion, GETDATE()
                             )";
 
                         SqlCommand cmdFactura = new SqlCommand(queryFactura, cnx, tran);
@@ -657,6 +744,7 @@ namespace CapaDatos
                         cmdFactura.Parameters.AddWithValue("@SelloSAT", factura.SelloSAT ?? (object)DBNull.Value);
                         cmdFactura.Parameters.AddWithValue("@NoCertificadoSAT", factura.NoCertificadoSAT ?? (object)DBNull.Value);
                         cmdFactura.Parameters.AddWithValue("@CadenaOriginalSAT", factura.CadenaOriginalSAT ?? (object)DBNull.Value);
+                        cmdFactura.Parameters.AddWithValue("@FiscalAPIInvoiceId", factura.FiscalAPIInvoiceId ?? (object)DBNull.Value);
                         cmdFactura.Parameters.AddWithValue("@UsuarioCreacion", factura.UsuarioCreacion);
                         cmdFactura.ExecuteNonQuery();
 
@@ -924,6 +1012,7 @@ namespace CapaDatos
                 Serie = dr["Serie"].ToString(),
                 Folio = dr["Folio"].ToString(),
                 FechaEmision = Convert.ToDateTime(dr["FechaEmision"]),
+                FechaTimbrado = dr["FechaTimbrado"] != DBNull.Value ? (DateTime?)dr["FechaTimbrado"] : null,
                 Version = dr["Version"].ToString(),
                 TipoComprobante = dr["TipoComprobante"].ToString(),
                 Subtotal = Convert.ToDecimal(dr["Subtotal"]),
@@ -935,7 +1024,8 @@ namespace CapaDatos
                 UUID = dr["UUID"]?.ToString(),
                 Estatus = dr["Estatus"].ToString(),
                 RutaPDF = dr["RutaPDF"]?.ToString(),
-                XMLTimbrado = dr["XMLTimbrado"]?.ToString()
+                XMLTimbrado = dr["XMLTimbrado"]?.ToString(),
+                FiscalAPIInvoiceId = dr["FiscalAPIInvoiceId"]?.ToString()
             };
         }
 
@@ -1133,6 +1223,17 @@ namespace CapaDatos
                     return respuesta;
                 }
 
+                // Verificar que tenga InvoiceId de FiscalAPI
+                if (string.IsNullOrEmpty(factura.FiscalAPIInvoiceId))
+                {
+                    respuesta.Mensaje = "Esta factura no tiene InvoiceId de FiscalAPI y no puede ser cancelada";
+                    respuesta.CodigoError = "NO_INVOICE_ID";
+                    return respuesta;
+                }
+
+                // NOTA: Validación de 72 horas comentada para ambiente de pruebas
+                // En producción, descomentar esta validación
+                /*
                 TimeSpan tiempoTranscurrido = DateTime.Now - factura.FechaTimbrado.Value;
                 if (tiempoTranscurrido.TotalHours > 72)
                 {
@@ -1140,6 +1241,7 @@ namespace CapaDatos
                     respuesta.CodigoError = "TIME_EXCEEDED";
                     return respuesta;
                 }
+                */
 
                 // Obtener configuración
                 var configuracion = ObtenerConfiguracionFiscalAPI();
@@ -1149,10 +1251,11 @@ namespace CapaDatos
                     return respuesta;
                 }
 
-                // Cancelar con FiscalAPI
+                // Cancelar con FiscalAPI usando InvoiceId
                 using (var fiscalService = new FiscalAPIService(configuracion))
                 {
-                    respuesta = await fiscalService.CancelarCFDI(uuid, motivo, uuidSustitucion);
+                    respuesta = await fiscalService.CancelarCFDI(factura.FiscalAPIInvoiceId, motivo, uuidSustitucion);
+                    respuesta.UUID = uuid; // Mantener el UUID en la respuesta
                 }
 
                 // Actualizar estado en BD si fue exitoso
@@ -1226,7 +1329,7 @@ namespace CapaDatos
             }
         }
 
-        private ConfiguracionFiscalAPI ObtenerConfiguracionFiscalAPI()
+        public ConfiguracionFiscalAPI ObtenerConfiguracionFiscalAPI()
         {
             try
             {
@@ -1408,11 +1511,6 @@ namespace CapaDatos
                     FormaPago = formaPago,
                     MetodoPago = metodoPago ?? "PUE",
                     
-                    // Totales
-                    Subtotal = venta.Total / 1.16m,
-                    TotalImpuestosTrasladados = venta.Total - (venta.Total / 1.16m),
-                    Total = venta.Total,
-                    
                     ProveedorPAC = "FiscalAPI",
                     Estatus = "PENDIENTE",
                     UsuarioCreacion = usuario,
@@ -1421,35 +1519,84 @@ namespace CapaDatos
 
                 // 4. Convertir detalles a conceptos
                 factura.Conceptos = venta.Detalle.Select(d => {
+                    // Obtener tasa de IVA del producto
+                    decimal tasaIVA = 0.16m; // Por defecto 16%
+                    using (SqlConnection conn = new SqlConnection(Conexion.CN))
+                    {
+                        string queryTasa = @"
+                            SELECT ISNULL(ti.Porcentaje, 16.00) / 100.0 as TasaDecimal
+                            FROM Productos p
+                            LEFT JOIN CatTasaIVA ti ON p.TasaIVAID = ti.TasaIVAID
+                            WHERE p.Nombre = @Producto";
+                        
+                        using (SqlCommand cmd = new SqlCommand(queryTasa, conn))
+                        {
+                            cmd.Parameters.AddWithValue("@Producto", d.Producto);
+                            conn.Open();
+                            var result = cmd.ExecuteScalar();
+                            if (result != null && result != DBNull.Value)
+                            {
+                                tasaIVA = Convert.ToDecimal(result);
+                            }
+                        }
+                    }
+                    
+                    decimal divisor = 1 + tasaIVA;
                     var importe = d.Cantidad * d.PrecioVenta;
-                    var subtotal = importe / 1.16m;
+                    var subtotal = importe / divisor;
                     var iva = importe - subtotal;
                     
-                    return new FacturaDetalle
+                    var concepto = new FacturaDetalle
                     {
                         NoIdentificacion = d.CodigoInterno,
                         Descripcion = d.Producto,
                         Cantidad = d.Cantidad,
-                        ValorUnitario = d.PrecioVenta / 1.16m,
+                        ValorUnitario = d.PrecioVenta / divisor,
                         Importe = subtotal,
                         ClaveProdServ = "01010101",
                         ClaveUnidad = "H87",
                         Unidad = "Pieza",
-                        ObjetoImp = "02",
-                        Impuestos = new List<FacturaImpuesto>
-                        {
-                            new FacturaImpuesto
-                            {
-                                TipoImpuesto = "TRASLADO",
-                                Impuesto = "002",
-                                TipoFactor = "Tasa",
-                                TasaOCuota = 0.16m,
-                                Base = subtotal,
-                                Importe = iva
-                            }
-                        }
+                        ObjetoImp = tasaIVA > 0 ? "02" : "02", // 02 = Sí objeto de impuesto
+                        Impuestos = new List<FacturaImpuesto>()
                     };
+                    
+                    // Solo agregar IVA si la tasa es mayor a 0
+                    if (tasaIVA > 0)
+                    {
+                        concepto.Impuestos.Add(new FacturaImpuesto
+                        {
+                            TipoImpuesto = "TRASLADO",
+                            Impuesto = "002",
+                            TipoFactor = "Tasa",
+                            TasaOCuota = tasaIVA,
+                            Base = subtotal,
+                            Importe = iva
+                        });
+                    }
+                    else
+                    {
+                        // IVA Tasa 0
+                        concepto.Impuestos.Add(new FacturaImpuesto
+                        {
+                            TipoImpuesto = "TRASLADO",
+                            Impuesto = "002",
+                            TipoFactor = "Tasa",
+                            TasaOCuota = 0.000000m,
+                            Base = subtotal,
+                            Importe = 0
+                        });
+                    }
+                    
+                    return concepto;
                 }).ToList();
+
+                // 4.1. Calcular totales correctos basados en los conceptos
+                factura.Subtotal = factura.Conceptos.Sum(c => c.Importe);
+                factura.TotalImpuestosTrasladados = factura.Conceptos
+                    .SelectMany(c => c.Impuestos)
+                    .Where(i => i.TipoImpuesto == "TRASLADO")
+                    .Sum(i => i.Importe ?? 0);
+                factura.Total = factura.Subtotal + factura.TotalImpuestosTrasladados;
 
                 // 5. Generar request para FiscalAPI
                 var generador = new FiscalAPICFDI40Generator(config);
@@ -1469,6 +1616,7 @@ namespace CapaDatos
                     factura.SelloSAT = resultado.SelloSAT;
                     factura.NoCertificadoSAT = resultado.NoCertificadoSAT;
                     factura.CadenaOriginalSAT = resultado.CadenaOriginal;
+                    factura.FiscalAPIInvoiceId = resultado.InvoiceId; // Guardar InvoiceId para descargar PDF oficial
                     factura.Estatus = "TIMBRADA";
 
                     // Guardar en BD

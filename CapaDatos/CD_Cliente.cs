@@ -282,9 +282,12 @@ namespace CapaDatos
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
                 SqlCommand cmd = new SqlCommand(@"
-                    SELECT ClienteID, RFC, RazonSocial, RegimenFiscalID, CodigoPostal, UsoCFDIID, 
-                           CorreoElectronico, Telefono, Estatus, FechaAlta, Usuario, UltimaAct
-                    FROM Clientes WHERE ClienteID = @id", cnx);
+                    SELECT c.ClienteID, c.RFC, c.RazonSocial, c.RegimenFiscalID, c.CodigoPostal, c.UsoCFDIID, 
+                           c.CorreoElectronico, c.Telefono, c.Estatus, c.FechaAlta, c.Usuario, c.UltimaAct,
+                           rf.RegimenFiscalID as RegimenFiscalCodigo
+                    FROM Clientes c
+                    LEFT JOIN CatRegimenFiscal rf ON c.RegimenFiscalID = rf.RegimenFiscalID
+                    WHERE c.ClienteID = @id", cnx);
                 cmd.Parameters.AddWithValue("@id", clienteId);
                 cnx.Open();
                 using (SqlDataReader dr = cmd.ExecuteReader())
@@ -297,6 +300,7 @@ namespace CapaDatos
                             RFC = dr["RFC"].ToString(),
                             RazonSocial = dr["RazonSocial"].ToString(),
                             RegimenFiscalID = dr["RegimenFiscalID"] == DBNull.Value ? null : dr["RegimenFiscalID"].ToString(),
+                            RegimenFiscal = dr["RegimenFiscalCodigo"] == DBNull.Value ? null : dr["RegimenFiscalCodigo"].ToString(),
                             CodigoPostal = dr["CodigoPostal"] == DBNull.Value ? null : dr["CodigoPostal"].ToString(),
                             UsoCFDIID = dr["UsoCFDIID"] == DBNull.Value ? null : dr["UsoCFDIID"].ToString(),
                             CorreoElectronico = dr["CorreoElectronico"] == DBNull.Value ? null : dr["CorreoElectronico"].ToString(),

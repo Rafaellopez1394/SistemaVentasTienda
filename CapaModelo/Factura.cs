@@ -77,6 +77,9 @@ namespace CapaModelo
         public string ProveedorPAC { get; set; }
         public string QRCode { get; set; } // Código QR para factura
         
+        // FiscalAPI
+        public string FiscalAPIInvoiceId { get; set; } // ID de factura en FiscalAPI para descargar PDF
+        
         // Archivos
         public string XMLOriginal { get; set; }
         public string XMLTimbrado { get; set; }
@@ -202,6 +205,7 @@ namespace CapaModelo
         public string CodigoError { get; set; }
         public string ErrorTecnico { get; set; }
         public string PdfBase64 { get; set; } // PDF generado por el PAC
+        public string InvoiceId { get; set; } // ID de la factura en FiscalAPI (para descargar PDF oficial)
     }
 
     /// <summary>

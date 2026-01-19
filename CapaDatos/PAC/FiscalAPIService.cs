@@ -37,6 +37,7 @@ namespace CapaDatos.PAC
             _httpClient.DefaultRequestHeaders.Clear();
             _httpClient.DefaultRequestHeaders.Add("X-API-KEY", _configuracion.ApiKey);
             _httpClient.DefaultRequestHeaders.Add("X-TENANT-KEY", _configuracion.Tenant);
+            _httpClient.DefaultRequestHeaders.Add("X-TIME-ZONE", "America/Mexico_City");
             _httpClient.DefaultRequestHeaders.Accept.Add(
                 new MediaTypeWithQualityHeaderValue("application/json"));
         }
@@ -107,6 +108,7 @@ namespace CapaDatos.PAC
                         respuesta.SelloSAT = stampResponse.SatBase64Sello;
                         respuesta.NoCertificadoSAT = stampResponse.SatCertificateNumber;
                         respuesta.CadenaOriginal = stampResponse.SatBase64OriginalString;
+                        respuesta.InvoiceId = stampResponse.InvoiceId; // Guardar ID para descargar PDF de FiscalAPI
                         respuesta.Mensaje = "CFDI timbrado exitosamente";
                     }
                     else
@@ -192,43 +194,58 @@ namespace CapaDatos.PAC
         /// Cancelar CFDI timbrado
         /// Endpoint real: POST /api/v4/cfdi40/cancel
         /// </summary>
-        public async Task<RespuestaCancelacionCFDI> CancelarCFDI(string uuid, string motivo, string folioSustitucion = null)
+        /// <summary>
+        /// Cancelar un CFDI en FiscalAPI
+        /// Endpoint: DELETE /api/v4/invoices
+        /// </summary>
+        public async Task<RespuestaCancelacionCFDI> CancelarCFDI(string invoiceId, string motivoCancelacion, string uuidSustitucion = null)
         {
             var respuesta = new RespuestaCancelacionCFDI
             {
-                Exitoso = false,
-                UUID = uuid
+                Exitoso = false
             };
 
             try
             {
-                var request = new FiscalAPICancelarRequest
+                System.Diagnostics.Debug.WriteLine("=== CANCELAR CFDI FISCALAPI ===");
+                System.Diagnostics.Debug.WriteLine($"InvoiceId: {invoiceId}");
+                System.Diagnostics.Debug.WriteLine($"Motivo: {motivoCancelacion}");
+                System.Diagnostics.Debug.WriteLine($"UUID Sustitución: {uuidSustitucion ?? "N/A"}");
+
+                // Body según documentación de FiscalAPI
+                var requestBody = new
                 {
-                    Uuid = uuid,
-                    Motivo = motivo,
-                    FolioSustitucion = folioSustitucion
+                    id = invoiceId,
+                    cancellationReasonCode = motivoCancelacion,
+                    replacementUuid = uuidSustitucion ?? ""
                 };
 
-                string jsonRequest = JsonConvert.SerializeObject(request, new JsonSerializerSettings
-                {
-                    NullValueHandling = NullValueHandling.Ignore
-                });
+                string jsonRequest = JsonConvert.SerializeObject(requestBody);
+                System.Diagnostics.Debug.WriteLine($"Request Body: {jsonRequest}");
 
                 var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
-                string endpoint = "/api/v4/cfdi40/cancel";
+                
+                // Crear request DELETE con body
+                var request = new HttpRequestMessage
+                {
+                    Method = HttpMethod.Delete,
+                    RequestUri = new Uri(_configuracion.UrlApi + "/api/v4/invoices"),
+                    Content = content
+                };
 
-                HttpResponseMessage response = await _httpClient.PostAsync(endpoint, content);
+                HttpResponseMessage response = await _httpClient.SendAsync(request);
                 string responseBody = await response.Content.ReadAsStringAsync();
+
+                System.Diagnostics.Debug.WriteLine($"Response Status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"Response Body: {responseBody}");
 
                 if (response.IsSuccessStatusCode)
                 {
-                    var fiscalResponse = JsonConvert.DeserializeObject<FiscalAPICancelarResponse>(responseBody);
-
                     respuesta.Exitoso = true;
-                    respuesta.EstatusCancelacion = fiscalResponse.Data.EstatusCancelacion;
-                    respuesta.FechaCancelacion = fiscalResponse.Data.FechaCancelacion;
-                    respuesta.AcuseXML = null; // No disponible en v4
-                    respuesta.Mensaje = $"Cancelación procesada: {fiscalResponse.Data.EstatusCancelacion}";
+                    respuesta.EstatusCancelacion = "CANCELADA";
+                    respuesta.FechaCancelacion = DateTime.Now;
+                    respuesta.Mensaje = "CFDI cancelado exitosamente en FiscalAPI";
+                    System.Diagnostics.Debug.WriteLine("✅ Cancelación exitosa");
 
                     return respuesta;
                 }
@@ -240,16 +257,26 @@ namespace CapaDatos.PAC
                     {
                         case HttpStatusCode.Unauthorized:
                             respuesta.Mensaje = "Error de autenticación al cancelar";
+                            System.Diagnostics.Debug.WriteLine("❌ Error 401: No autorizado");
                             break;
 
                         case (HttpStatusCode)422:
-                            var errorResponse = JsonConvert.DeserializeObject<FiscalAPIErrorResponse>(responseBody);
-                            respuesta.Mensaje = $"Error de validación: {errorResponse.Message ?? "Error desconocido"}";
+                            try
+                            {
+                                var errorResponse = JsonConvert.DeserializeObject<FiscalAPIErrorResponse>(responseBody);
+                                respuesta.Mensaje = $"Error de validación: {errorResponse.Message ?? responseBody}";
+                            }
+                            catch
+                            {
+                                respuesta.Mensaje = $"Error de validación: {responseBody}";
+                            }
                             respuesta.CodigoError = "422_VALIDATION_ERROR";
+                            System.Diagnostics.Debug.WriteLine($"❌ Error 422: {responseBody}");
                             break;
 
                         default:
                             respuesta.Mensaje = $"Error al cancelar: {responseBody}";
+                            System.Diagnostics.Debug.WriteLine($"❌ Error {response.StatusCode}: {responseBody}");
                             break;
                     }
 
@@ -260,6 +287,8 @@ namespace CapaDatos.PAC
             {
                 respuesta.Mensaje = $"Error al cancelar CFDI: {ex.Message}";
                 respuesta.CodigoError = "CANCEL_ERROR";
+                System.Diagnostics.Debug.WriteLine($"❌ Excepción: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
                 return respuesta;
             }
         }
@@ -297,6 +326,73 @@ namespace CapaDatos.PAC
                     Exitoso = false,
                     Mensaje = $"Error: {ex.Message}"
                 };
+            }
+        }
+
+        /// <summary>
+        /// Descargar PDF de factura desde FiscalAPI
+        /// Endpoint: POST /api/v4/invoices/pdf
+        /// Headers: X-TENANT-KEY, X-TIME-ZONE
+        /// Body: { "invoiceId": "..." }
+        /// Response: JSON con PDF en base64
+        /// </summary>
+        public async Task<byte[]> DescargarPDF(string invoiceId)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("=== DESCARGA PDF FISCALAPI ===");
+                System.Diagnostics.Debug.WriteLine($"InvoiceId: {invoiceId}");
+                System.Diagnostics.Debug.WriteLine($"Endpoint: {_configuracion.UrlApi}/api/v4/invoices/pdf");
+                
+                // Body exacto según documentación de FiscalAPI
+                var requestBody = new
+                {
+                    invoiceId = invoiceId
+                };
+
+                var json = JsonConvert.SerializeObject(requestBody);
+                System.Diagnostics.Debug.WriteLine($"Request Body: {json}");
+
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                
+                var response = await _httpClient.PostAsync("/api/v4/invoices/pdf", content);
+                
+                System.Diagnostics.Debug.WriteLine($"Response Status: {response.StatusCode}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseBody = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"Response length: {responseBody.Length} chars");
+                    
+                    // FiscalAPI devuelve JSON: { "data": { "base64File": "..." } }
+                    var jsonResponse = JsonConvert.DeserializeObject<dynamic>(responseBody);
+                    
+                    if (jsonResponse?.data?.base64File != null)
+                    {
+                        string base64Pdf = jsonResponse.data.base64File.ToString();
+                        System.Diagnostics.Debug.WriteLine($"Base64 PDF length: {base64Pdf.Length} chars");
+                        
+                        byte[] pdfBytes = Convert.FromBase64String(base64Pdf);
+                        System.Diagnostics.Debug.WriteLine($"✅ PDF descargado: {pdfBytes.Length} bytes");
+                        return pdfBytes;
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine($"❌ Respuesta sin campo 'data.base64File': {responseBody.Substring(0, Math.Min(500, responseBody.Length))}");
+                        throw new Exception("La respuesta de FiscalAPI no contiene el campo 'data.base64File'");
+                    }
+                }
+                else
+                {
+                    var errorBody = await response.Content.ReadAsStringAsync();
+                    System.Diagnostics.Debug.WriteLine($"❌ Error FiscalAPI: {response.StatusCode} - {errorBody}");
+                    throw new Exception($"Error al descargar PDF de FiscalAPI: {response.StatusCode} - {errorBody}");
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"❌ Excepción en DescargarPDF: {ex.Message}");
+                throw new Exception($"Error al descargar PDF: {ex.Message}", ex);
             }
         }
 

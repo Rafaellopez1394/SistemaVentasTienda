@@ -88,3 +88,4 @@ C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\obj\Debug\VentasWe
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\itextsharp.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\QRCoder.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\itextsharp.xml
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\bin\BouncyCastle.Crypto.dll

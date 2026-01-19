@@ -73,7 +73,8 @@ function abrirModalFacturar(ventaId) {
                 $('#txtVentaID').val(data.ventaId);
                 $('#txtReceptorRFC').val(data.clienteRFC || 'XAXX010101000');
                 $('#txtReceptorNombre').val(data.clienteNombre);
-                $('#txtReceptorCP').val(data.clienteCP || '06000');
+                $('#txtReceptorCP').val(data.clienteCP || '00000');
+                $('#cboRegimenFiscal').val(data.clienteRegimenFiscal || '616');
                 $('#txtSubtotal').val(data.subtotal.toFixed(2));
                 $('#txtIVA').val(data.iva.toFixed(2));
                 $('#txtTotal').val(data.total.toFixed(2));
@@ -167,7 +168,7 @@ function generarYTimbrarFactura() {
         contentType: 'application/json',
         data: JSON.stringify(request),
         success: function(response) {
-            if (response.success) {
+            if (response.estado) {
                 toastr.success(response.mensaje || 'Factura generada y timbrada correctamente');
                 $('#modalGenerarFactura').modal('hide');
                 

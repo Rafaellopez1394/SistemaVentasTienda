@@ -69,6 +69,8 @@ namespace VentasWeb.Controllers
                         ventaId = venta.VentaID.ToString(),
                         clienteRFC = cliente?.RFC ?? "XAXX010101000",
                         clienteNombre = venta.RazonSocial,
+                        clienteCP = cliente?.CodigoPostal ?? "00000",
+                        clienteRegimenFiscal = cliente?.RegimenFiscal ?? "616",
                         total = venta.Total,
                         subtotal = subtotal,
                         iva = totalIVA,
@@ -270,6 +272,19 @@ namespace VentasWeb.Controllers
                     {
                         estado = false,
                         valor = "VentaID es requerido y debe ser un GUID válido"
+                    });
+                }
+
+                // Validar que la venta no tenga ya una factura timbrada
+                var facturaExistente = CD_Factura.Instancia.ObtenerPorVentaID(request.VentaID);
+                if (facturaExistente != null && facturaExistente.Estatus == "TIMBRADA")
+                {
+                    System.Diagnostics.Debug.WriteLine($"❌ ERROR: La venta {request.VentaID} ya tiene una factura timbrada: {facturaExistente.Serie}{facturaExistente.Folio}");
+                    Response.StatusCode = 400;
+                    return Json(new
+                    {
+                        estado = false,
+                        valor = $"Esta venta ya tiene una factura timbrada: {facturaExistente.Serie}{facturaExistente.Folio} (UUID: {facturaExistente.UUID})"
                     });
                 }
 
@@ -480,29 +495,81 @@ namespace VentasWeb.Controllers
         }
 
         // GET: Factura/DescargarPDF
-        public ActionResult DescargarPDF(Guid facturaId)
+        public async Task<ActionResult> DescargarPDF(Guid facturaId)
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("=== DescargarPDF INICIO ===");
+                System.Diagnostics.Debug.WriteLine($"FacturaID: {facturaId}");
+                
                 var factura = CD_Factura.Instancia.ObtenerPorId(facturaId);
 
                 if (factura == null)
                 {
+                    System.Diagnostics.Debug.WriteLine("❌ Factura no encontrada");
                     return Content("No se encontró la factura");
                 }
 
-                // Generar PDF profesional usando PDFFacturaGenerator
-                var generador = new CapaDatos.Generadores.PDFFacturaGenerator();
-                byte[] pdfBytes = generador.GenerarPDF(factura);
+                System.Diagnostics.Debug.WriteLine($"Factura cargada: {factura.Serie}-{factura.Folio}");
+                System.Diagnostics.Debug.WriteLine($"UUID: {factura.UUID}");
+                System.Diagnostics.Debug.WriteLine($"FiscalAPIInvoiceId: {factura.FiscalAPIInvoiceId ?? "NULL"}");
+
+                byte[] pdfBytes;
+                
+                // Si tiene InvoiceId de FiscalAPI, descargar PDF oficial
+                if (!string.IsNullOrEmpty(factura.FiscalAPIInvoiceId))
+                {
+                    System.Diagnostics.Debug.WriteLine("✅ Usando FiscalAPI PDF (oficial)");
+                    System.Diagnostics.Debug.WriteLine($"InvoiceId: {factura.FiscalAPIInvoiceId}");
+                    
+                    var config = CD_Factura.Instancia.ObtenerConfiguracionFiscalAPI();
+                    using (var fiscalService = new CapaDatos.PAC.FiscalAPIService(config))
+                    {
+                        pdfBytes = await fiscalService.DescargarPDF(factura.FiscalAPIInvoiceId);
+                        System.Diagnostics.Debug.WriteLine($"PDF descargado: {pdfBytes.Length} bytes");
+                        
+                        // Validar que los bytes son un PDF válido
+                        if (pdfBytes != null && pdfBytes.Length > 4)
+                        {
+                            string header = System.Text.Encoding.ASCII.GetString(pdfBytes, 0, 4);
+                            System.Diagnostics.Debug.WriteLine($"PDF Header: {header}");
+                            if (header != "%PDF")
+                            {
+                                System.Diagnostics.Debug.WriteLine($"⚠️ ADVERTENCIA: No es un PDF válido. Primeros bytes: {BitConverter.ToString(pdfBytes, 0, Math.Min(20, pdfBytes.Length))}");
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("⚠️ Usando generador local (iTextSharp)");
+                    // Fallback: usar generador local si no tiene InvoiceId
+                    var generador = new CapaDatos.Generadores.PDFFacturaGenerator();
+                    pdfBytes = generador.GenerarPDF(factura);
+                    System.Diagnostics.Debug.WriteLine($"PDF generado localmente: {pdfBytes.Length} bytes");
+                }
                 
                 string nombreArchivo = string.IsNullOrEmpty(factura.UUID)
                     ? $"Factura_{factura.Serie}{factura.Folio}.pdf"
                     : $"Factura_{factura.Serie}{factura.Folio}_{factura.UUID.Substring(0, 8)}.pdf";
 
-                return File(pdfBytes, "application/pdf", nombreArchivo);
+                System.Diagnostics.Debug.WriteLine($"Archivo: {nombreArchivo}");
+                System.Diagnostics.Debug.WriteLine($"Bytes totales a enviar: {pdfBytes.Length}");
+                System.Diagnostics.Debug.WriteLine("=== DescargarPDF FIN ===");
+
+                Response.Clear();
+                Response.ContentType = "application/pdf";
+                Response.AddHeader("Content-Disposition", $"attachment; filename=\"{nombreArchivo}\"");
+                Response.BinaryWrite(pdfBytes);
+                Response.Flush();
+                Response.End();
+                
+                return new EmptyResult();
             }
             catch (Exception ex)
             {
+                System.Diagnostics.Debug.WriteLine($"❌ ERROR en DescargarPDF: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
                 return Content("Error al generar PDF: " + ex.Message);
             }
         }
@@ -645,7 +712,7 @@ namespace VentasWeb.Controllers
 
         // POST: Factura/EnviarPorEmail
         [HttpPost]
-        public JsonResult EnviarPorEmail(string facturaId, string email)
+        public async Task<JsonResult> EnviarPorEmail(string facturaId, string email)
         {
             try
             {
@@ -706,8 +773,21 @@ namespace VentasWeb.Controllers
                 byte[] pdfBytes = null;
                 try
                 {
-                    var generador = new CapaDatos.Generadores.PDFFacturaGenerator();
-                    pdfBytes = generador.GenerarPDF(factura);
+                    // Si tiene InvoiceId de FiscalAPI, descargar PDF oficial
+                    if (!string.IsNullOrEmpty(factura.FiscalAPIInvoiceId))
+                    {
+                        var configFiscal = CD_Factura.Instancia.ObtenerConfiguracionFiscalAPI();
+                        using (var fiscalService = new CapaDatos.PAC.FiscalAPIService(configFiscal))
+                        {
+                            pdfBytes = await fiscalService.DescargarPDF(factura.FiscalAPIInvoiceId);
+                        }
+                    }
+                    else
+                    {
+                        // Fallback: usar generador local si no tiene InvoiceId
+                        var generador = new CapaDatos.Generadores.PDFFacturaGenerator();
+                        pdfBytes = generador.GenerarPDF(factura);
+                    }
                 }
                 catch (Exception exPdf)
                 {
