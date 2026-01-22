@@ -54,9 +54,23 @@ $(document).ready(function () {
                     // Botón Ver Detalle
                     botones += '<button class="btn btn-info" title="Ver Detalle" onclick="verDetalle(\'' + row.VentaID + '\')"><i class="fas fa-eye"></i></button>';
                     
-                    // Botón Facturar (solo si no está facturada)
+                    // Verificar si la venta está totalmente pagada
+                    var saldoPendiente = parseFloat(row.SaldoPendiente) || 0;
+                    var estaPagada = saldoPendiente <= 0;
+                    
+                    // Botón Abonar/Pagar (mostrar si tiene saldo pendiente)
+                    if (saldoPendiente > 0) {
+                        botones += '<button class="btn btn-warning" title="Abonar/Pagar" onclick="abonarPago(\'' + row.VentaID + '\')"><i class="fas fa-money-bill-wave"></i></button>';
+                    }
+                    
+                    // Botón Facturar (solo si está pagada y no está facturada)
                     if (row.EstadoFactura === 'Sin Facturar') {
-                        botones += '<button class="btn btn-success" title="Generar Factura" onclick="facturar(\'' + row.VentaID + '\')"><i class="fas fa-file-invoice"></i></button>';
+                        if (estaPagada) {
+                            botones += '<button class="btn btn-success" title="Generar Factura" onclick="facturar(\'' + row.VentaID + '\')"><i class="fas fa-file-invoice"></i></button>';
+                        } else {
+                            // Botón deshabilitado con tooltip explicativo
+                            botones += '<button class="btn btn-secondary" disabled title="Debe pagarse completamente antes de facturar (Saldo: $' + saldoPendiente.toFixed(2) + ')"><i class="fas fa-file-invoice"></i></button>';
+                        }
                     }
                     
                     // Botón Ver Factura (solo si está facturada)
@@ -178,6 +192,11 @@ function verDetalle(ventaId) {
 function facturar(ventaId) {
     // Redirigir al módulo de facturación con el ID de venta
     window.location.href = '/Factura/Index?ventaId=' + ventaId;
+}
+
+function abonarPago(ventaId) {
+    // Redirigir al módulo de pagos/abonos
+    window.location.href = '/Pagos/GestionarPagosVentas?ventaId=' + ventaId;
 }
 
 function verFactura(ventaId) {

@@ -804,6 +804,7 @@ namespace CapaDatos
                         }
 
                         tran.Commit();
+                        
                         mensaje = "Factura guardada correctamente";
                         return true;
                     }
@@ -818,6 +819,30 @@ namespace CapaDatos
             {
                 mensaje = "ERROR al guardar factura: " + ex.Message;
                 return false;
+            }
+        }
+
+        /// <summary>
+        /// Marca una venta como facturada
+        /// </summary>
+        private void MarcarVentaComoFacturada(Guid ventaID, SqlConnection cnx)
+        {
+            try
+            {
+                string query = "UPDATE VentasClientes SET EstaFacturada = 1 WHERE VentaID = @VentaID";
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@VentaID", ventaID);
+                
+                if (cnx.State != System.Data.ConnectionState.Open)
+                    cnx.Open();
+                    
+                cmd.ExecuteNonQuery();
+                System.Diagnostics.Debug.WriteLine($"Venta {ventaID} marcada como facturada");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al marcar venta como facturada: {ex.Message}");
+                // No lanzar excepción para no afectar el guardado de la factura
             }
         }
 
@@ -1025,7 +1050,9 @@ namespace CapaDatos
                 Estatus = dr["Estatus"].ToString(),
                 RutaPDF = dr["RutaPDF"]?.ToString(),
                 XMLTimbrado = dr["XMLTimbrado"]?.ToString(),
-                FiscalAPIInvoiceId = dr["FiscalAPIInvoiceId"]?.ToString()
+                FiscalAPIInvoiceId = dr["FiscalAPIInvoiceId"]?.ToString(),
+                SelloCFD = dr["SelloCFD"]?.ToString(),
+                SelloSAT = dr["SelloSAT"]?.ToString()
             };
         }
 
@@ -1179,7 +1206,19 @@ namespace CapaDatos
                     // Guardar factura en BD
                     bool guardado = GuardarFactura(factura, out string mensajeGuardado);
                     
-                    if (!guardado)
+                    if (guardado)
+                    {
+                        // Marcar la venta como facturada solo si se guardó correctamente
+                        if (factura.VentaID.HasValue)
+                        {
+                            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+                            {
+                                cnx.Open();
+                                MarcarVentaComoFacturada(factura.VentaID.Value, cnx);
+                            }
+                        }
+                    }
+                    else
                     {
                         respuesta.Mensaje += $" | ADVERTENCIA: XML timbrado correctamente pero no se pudo guardar en BD: {mensajeGuardado}";
                     }
@@ -1223,14 +1262,6 @@ namespace CapaDatos
                     return respuesta;
                 }
 
-                // Verificar que tenga InvoiceId de FiscalAPI
-                if (string.IsNullOrEmpty(factura.FiscalAPIInvoiceId))
-                {
-                    respuesta.Mensaje = "Esta factura no tiene InvoiceId de FiscalAPI y no puede ser cancelada";
-                    respuesta.CodigoError = "NO_INVOICE_ID";
-                    return respuesta;
-                }
-
                 // NOTA: Validación de 72 horas comentada para ambiente de pruebas
                 // En producción, descomentar esta validación
                 /*
@@ -1251,10 +1282,18 @@ namespace CapaDatos
                     return respuesta;
                 }
 
-                // Cancelar con FiscalAPI usando InvoiceId
+                // Verificar que exista RFC del emisor
+                if (string.IsNullOrEmpty(configuracion.RfcEmisor))
+                {
+                    respuesta.Mensaje = "RFC del emisor no encontrado en configuración";
+                    return respuesta;
+                }
+
+                // Cancelar con FiscalAPI usando UUID
                 using (var fiscalService = new FiscalAPIService(configuracion))
                 {
-                    respuesta = await fiscalService.CancelarCFDI(factura.FiscalAPIInvoiceId, motivo, uuidSustitucion);
+                    System.Diagnostics.Debug.WriteLine($"Cancelando CFDI - UUID: {uuid}, RFC Emisor: {configuracion.RfcEmisor}");
+                    respuesta = await fiscalService.CancelarCFDI(uuid, configuracion.RfcEmisor, motivo, uuidSustitucion);
                     respuesta.UUID = uuid; // Mantener el UUID en la respuesta
                 }
 
@@ -1272,6 +1311,166 @@ namespace CapaDatos
                 respuesta.Mensaje = $"Error al cancelar CFDI: {ex.Message}";
                 respuesta.ErrorTecnico = ex.ToString();
                 return respuesta;
+            }
+        }
+
+        /// <summary>
+        /// Consulta el estatus de un CFDI en el SAT
+        /// </summary>
+        public RespuestaConsulta ConsultarEstatusSAT(string uuid)
+        {
+            var respuesta = new RespuestaConsulta
+            {
+                Exitoso = false
+            };
+
+            try
+            {
+                // Obtener datos de la factura
+                string mensajeError;
+                var factura = ObtenerPorUUID(uuid, out mensajeError);
+                if (factura == null)
+                {
+                    respuesta.Mensaje = mensajeError ?? "Factura no encontrada";
+                    respuesta.CodigoError = "FACTURA_NO_ENCONTRADA";
+                    return respuesta;
+                }
+
+                // Extraer el sello del XML timbrado
+                string selloBase64 = ExtraerSelloDeXML(factura.XMLTimbrado);
+                
+                if (string.IsNullOrEmpty(selloBase64))
+                {
+                    respuesta.Mensaje = "No se pudo extraer el sello digital del XML. Verifica que la factura esté timbrada.";
+                    respuesta.CodigoError = "SIN_SELLO";
+                    return respuesta;
+                }
+
+                // Obtener últimos 8 dígitos del sello
+                string ultimos8Digitos = selloBase64.Length >= 8 
+                    ? selloBase64.Substring(selloBase64.Length - 8) 
+                    : selloBase64;
+
+                // Logs para debug
+                System.Diagnostics.Debug.WriteLine("=== CONSULTA ESTATUS SAT - DATOS ENVIADOS ===");
+                System.Diagnostics.Debug.WriteLine($"UUID: {factura.UUID}");
+                System.Diagnostics.Debug.WriteLine($"RFC Receptor: {factura.ReceptorRFC}");
+                System.Diagnostics.Debug.WriteLine($"Total: {factura.Total}");
+                System.Diagnostics.Debug.WriteLine($"Sello completo (primeros 50 chars): {selloBase64.Substring(0, Math.Min(50, selloBase64.Length))}...");
+                System.Diagnostics.Debug.WriteLine($"Sello completo (últimos 50 chars): ...{selloBase64.Substring(Math.Max(0, selloBase64.Length - 50))}");
+                System.Diagnostics.Debug.WriteLine($"Últimos 8 dígitos del sello: {ultimos8Digitos}");
+                System.Diagnostics.Debug.WriteLine($"Longitud total del sello: {selloBase64.Length}");
+
+                // Obtener configuración
+                var configuracion = ObtenerConfiguracionFiscalAPI();
+                if (configuracion == null)
+                {
+                    respuesta.Mensaje = "No hay configuración de FiscalAPI activa";
+                    respuesta.CodigoError = "SIN_CONFIGURACION";
+                    return respuesta;
+                }
+
+                System.Diagnostics.Debug.WriteLine($"RFC Emisor: {configuracion.RfcEmisor}");
+                System.Diagnostics.Debug.WriteLine("==========================================");
+
+                // Crear servicio y consultar
+                using (var fiscalService = new FiscalAPIService(configuracion))
+                {
+                    var task = Task.Run(async () => await fiscalService.ConsultarEstatusSAT(
+                        factura.UUID,
+                        configuracion.RfcEmisor,
+                        factura.ReceptorRFC,
+                        factura.Total,
+                        ultimos8Digitos
+                    ));
+
+                    respuesta = task.Result;
+                }
+
+                return respuesta;
+            }
+            catch (Exception ex)
+            {
+                respuesta.Mensaje = $"Error al consultar estatus: {ex.Message}";
+                respuesta.ErrorTecnico = ex.ToString();
+                return respuesta;
+            }
+        }
+
+        /// <summary>
+        /// Extrae el sello digital (atributo Sello) del XML CFDI timbrado
+        /// </summary>
+        private string ExtraerSelloDeXML(string xmlTimbrado)
+        {
+            try
+            {
+                if (string.IsNullOrEmpty(xmlTimbrado))
+                    return null;
+
+                var xmlDoc = new System.Xml.XmlDocument();
+                xmlDoc.LoadXml(xmlTimbrado);
+
+                // Obtener el namespace manager
+                var nsmgr = new System.Xml.XmlNamespaceManager(xmlDoc.NameTable);
+                nsmgr.AddNamespace("cfdi", "http://www.sat.gob.mx/cfd/4");
+                nsmgr.AddNamespace("cfdi3", "http://www.sat.gob.mx/cfd/3"); // Por si es versión 3.3
+
+                // Intentar obtener el atributo Sello del nodo Comprobante (versión 4.0)
+                var nodoComprobante = xmlDoc.SelectSingleNode("//cfdi:Comprobante", nsmgr);
+                
+                // Si no existe en versión 4.0, intentar con 3.3
+                if (nodoComprobante == null)
+                {
+                    nodoComprobante = xmlDoc.SelectSingleNode("//cfdi3:Comprobante", nsmgr);
+                }
+
+                if (nodoComprobante != null && nodoComprobante.Attributes["Sello"] != null)
+                {
+                    return nodoComprobante.Attributes["Sello"].Value;
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al extraer sello del XML: {ex.Message}");
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Obtiene los últimos 8 caracteres del sello en Base64
+        /// El sello en la BD está en hexadecimal, hay que convertirlo
+        /// </summary>
+        private string ObtenerUltimos8DigitosSello(string selloHex)
+        {
+            try
+            {
+                // El sello está en hexadecimal, convertir a bytes y luego a Base64
+                byte[] bytes = new byte[selloHex.Length / 2];
+                for (int i = 0; i < bytes.Length; i++)
+                {
+                    bytes[i] = Convert.ToByte(selloHex.Substring(i * 2, 2), 16);
+                }
+                
+                string selloBase64 = Convert.ToBase64String(bytes);
+                
+                // Obtener últimos 8 caracteres
+                if (selloBase64.Length >= 8)
+                {
+                    return selloBase64.Substring(selloBase64.Length - 8);
+                }
+                
+                return selloBase64;
+            }
+            catch
+            {
+                // Si falla la conversión, intentar directo (por si ya está en Base64)
+                if (selloHex.Length >= 8)
+                {
+                    return selloHex.Substring(selloHex.Length - 8);
+                }
+                return selloHex;
             }
         }
 
@@ -1419,6 +1618,16 @@ namespace CapaDatos
                 {
                     cnx.Open();
 
+                    // Obtener VentaID de la factura antes de actualizar
+                    string queryVentaID = "SELECT VentaID FROM Facturas WHERE UUID = @UUID";
+                    SqlCommand cmdVentaID = new SqlCommand(queryVentaID, cnx);
+                    cmdVentaID.Parameters.AddWithValue("@UUID", uuid);
+                    object ventaIDObj = cmdVentaID.ExecuteScalar();
+                    Guid? ventaID = ventaIDObj != null && ventaIDObj != DBNull.Value 
+                        ? (Guid?)Guid.Parse(ventaIDObj.ToString()) 
+                        : null;
+
+                    // Actualizar estado de la factura
                     string query = @"
                         UPDATE Facturas
                         SET Estatus = @EstatusCancelacion,
@@ -1436,11 +1645,23 @@ namespace CapaDatos
                     cmd.Parameters.AddWithValue("@Usuario", usuario);
 
                     cmd.ExecuteNonQuery();
+
+                    // Si la factura tenía una venta asociada, desmarcarla como facturada
+                    if (ventaID.HasValue)
+                    {
+                        string queryDesmarcar = "UPDATE VentasClientes SET EstaFacturada = 0 WHERE VentaID = @VentaID";
+                        SqlCommand cmdDesmarcar = new SqlCommand(queryDesmarcar, cnx);
+                        cmdDesmarcar.Parameters.AddWithValue("@VentaID", ventaID.Value);
+                        cmdDesmarcar.ExecuteNonQuery();
+                        
+                        System.Diagnostics.Debug.WriteLine($"Venta {ventaID} desmarcada como facturada (factura cancelada)");
+                    }
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // Log error silencioso
+                System.Diagnostics.Debug.WriteLine($"Error al actualizar cancelación: {ex.Message}");
+                // No lanzar excepción para no afectar el proceso de cancelación
             }
         }
 
@@ -1622,16 +1843,26 @@ namespace CapaDatos
                     // Guardar en BD
                     bool guardado = GuardarFactura(factura, out string mensajeGuardado);
                     
-                    if (!guardado)
+                    if (guardado)
                     {
-                        respuesta.Mensaje = $"XML timbrado correctamente pero no se pudo guardar en BD: {mensajeGuardado}";
-                    }
-                    else
-                    {
+                        // Marcar la venta como facturada solo si se guardó correctamente
+                        if (factura.VentaID.HasValue)
+                        {
+                            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+                            {
+                                cnx.Open();
+                                MarcarVentaComoFacturada(factura.VentaID.Value, cnx);
+                            }
+                        }
+                        
                         respuesta.Exitoso = true;
                         respuesta.UUID = resultado.UUID;
                         respuesta.XMLTimbrado = resultado.XMLTimbrado;
                         respuesta.Mensaje = "Factura timbrada exitosamente con FiscalAPI";
+                    }
+                    else
+                    {
+                        respuesta.Mensaje = $"XML timbrado correctamente pero no se pudo guardar en BD: {mensajeGuardado}";
                     }
                 }
                 else

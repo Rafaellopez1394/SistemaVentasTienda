@@ -1,6 +1,6 @@
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\Utilidad\bin\Debug\Utilidad.dll
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\Utilidad\bin\Debug\Utilidad.pdb
-C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\Utilidad\obj\Debug\Utilidad.dll
-C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\Utilidad\obj\Debug\Utilidad.pdb
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\Utilidad\obj\Debug\Utilidad.csproj.AssemblyReference.cache
 C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\Utilidad\obj\Debug\Utilidad.csproj.CoreCompileInputs.cache
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\Utilidad\obj\Debug\Utilidad.dll
+C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\Utilidad\obj\Debug\Utilidad.pdb

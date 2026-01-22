@@ -296,6 +296,36 @@ namespace CapaDatos
                 {
                     while (dr.Read())
                     {
+                        // Normalizar el estatus a texto descriptivo
+                        string estatusRaw = dr["Estatus"].ToString();
+                        string estatusNormalizado = estatusRaw;
+                        
+                        switch (estatusRaw.ToUpper())
+                        {
+                            case "1":
+                            case "PENDIENTE":
+                                estatusNormalizado = "Pendiente";
+                                break;
+                            case "2":
+                            case "PAGADA":
+                            case "PAGADO":
+                                estatusNormalizado = "Pagada";
+                                break;
+                            case "CREDITO":
+                            case "CRÉDITO":
+                                estatusNormalizado = "Crédito";
+                                break;
+                            case "CONTADO":
+                                estatusNormalizado = "Contado";
+                                break;
+                            case "ACTIVA":
+                                estatusNormalizado = "Activa";
+                                break;
+                            case "CANCELADA":
+                                estatusNormalizado = "Cancelada";
+                                break;
+                        }
+                        
                         lista.Add(new
                         {
                             VentaID = dr["VentaID"].ToString(),
@@ -305,7 +335,7 @@ namespace CapaDatos
                             DocumentoCliente = dr["DocumentoCliente"].ToString(),
                             NombreCliente = dr["NombreCliente"].ToString(),
                             TotalVenta = Convert.ToDecimal(dr["TotalVenta"]),
-                            Estatus = dr["Estatus"].ToString(),
+                            Estatus = estatusNormalizado,
                             TotalPagado = Convert.ToDecimal(dr["TotalPagado"]),
                             SaldoPendiente = Convert.ToDecimal(dr["SaldoPendiente"]),
                             EstadoFactura = dr["EstadoFactura"].ToString()

@@ -306,6 +306,49 @@ namespace CapaDatos.PAC
 
     #endregion
 
+    #region Consulta Estatus SAT Models
+
+    /// <summary>
+    /// Respuesta de consulta de estatus en SAT
+    /// </summary>
+    public class FiscalAPIEstatusResponse
+    {
+        [JsonProperty("succeeded")]
+        public bool Succeeded { get; set; }
+        
+        [JsonProperty("message")]
+        public string Message { get; set; }
+        
+        [JsonProperty("details")]
+        public string Details { get; set; }
+        
+        [JsonProperty("httpStatusCode")]
+        public int HttpStatusCode { get; set; }
+        
+        [JsonProperty("data")]
+        public FiscalAPIEstatusData Data { get; set; }
+    }
+
+    public class FiscalAPIEstatusData
+    {
+        [JsonProperty("statusCode")]
+        public string StatusCode { get; set; }
+        
+        [JsonProperty("status")]
+        public string Status { get; set; }
+        
+        [JsonProperty("cancelableStatus")]
+        public string CancelableStatus { get; set; }
+        
+        [JsonProperty("cancellationStatus")]
+        public string CancellationStatus { get; set; }
+        
+        [JsonProperty("efosValidation")]
+        public string EfosValidation { get; set; }
+    }
+
+    #endregion
+
     #region JsonConverters
 
     /// <summary>

@@ -256,6 +256,11 @@ function inicializarTabla() {
                         botones += '<button class="btn btn-sm btn-warning" onclick="cancelarFactura(\'' + data.FacturaID + '\')"><i class="fas fa-ban"></i></button>';
                     }
                     
+                    // Botón consultar estatus SAT (solo si está timbrada)
+                    if (data.UUID) {
+                        botones += ' <button class="btn btn-sm btn-secondary" onclick="consultarEstatusSAT(\'' + data.UUID + '\')" title="Consultar estatus en SAT"><i class="fas fa-search"></i></button>';
+                    }
+                    
                     return botones;
                 }
             }
@@ -377,6 +382,62 @@ function cancelarFactura(facturaId) {
             }
         });
     }
+}
+
+function consultarEstatusSAT(uuid) {
+    // Mostrar loading
+    toastr.info('Consultando estatus en SAT...', '', { timeOut: 0, extendedTimeOut: 0 });
+    
+    $.ajax({
+        url: '/Factura/ConsultarEstatusSAT',
+        type: 'POST',
+        data: { uuid: uuid },
+        success: function(response) {
+            toastr.clear();
+            
+            if (response.success) {
+                var iconClass = 'info';
+                var title = 'Estatus en SAT';
+                
+                if (response.estatus === 'Vigente') {
+                    iconClass = 'success';
+                } else if (response.estatus === 'Cancelado') {
+                    iconClass = 'warning';
+                } else if (response.estatus === 'No encontrado') {
+                    iconClass = 'error';
+                }
+                
+                var mensaje = '<strong>UUID:</strong> ' + uuid.substring(0, 8) + '...<br>';
+                mensaje += '<strong>Estatus:</strong> ' + response.estatus + '<br>';
+                if (response.mensaje) {
+                    mensaje += '<strong>Mensaje:</strong> ' + response.mensaje;
+                }
+                
+                if (iconClass === 'success') {
+                    toastr.success(mensaje, title, { timeOut: 5000 });
+                } else if (iconClass === 'warning') {
+                    toastr.warning(mensaje, title, { timeOut: 5000 });
+                } else if (iconClass === 'error') {
+                    toastr.error(mensaje, title, { timeOut: 5000 });
+                } else {
+                    toastr.info(mensaje, title, { timeOut: 5000 });
+                }
+            } else {
+                toastr.error(response.mensaje || 'No se pudo consultar el estatus', 'Error');
+            }
+        },
+        error: function(xhr) {
+            toastr.clear();
+            
+            var msg = 'Error de conexión al consultar SAT';
+            try {
+                var errorResponse = JSON.parse(xhr.responseText);
+                msg = errorResponse.mensaje || msg;
+            } catch(e) {}
+            
+            toastr.error(msg, 'Error');
+        }
+    });
 }
 
 // Funciones para cancelación con modal mejorado

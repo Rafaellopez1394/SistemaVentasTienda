@@ -12,7 +12,19 @@ let clienteSeleccionado = null;
 $(document).ready(function () {
     cargarFormasPago();
     cargarMetodosPago();
-    cargarVentasPendientes();
+    
+    // Verificar si viene un ventaId en la URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const ventaId = urlParams.get('ventaId');
+    
+    if (ventaId) {
+        console.log('VentaId detectado en URL:', ventaId);
+        // Cargar directamente la venta específica
+        cargarVentaEspecifica(ventaId);
+    } else {
+        // Cargar todas las ventas pendientes
+        cargarVentasPendientes();
+    }
 
     // Configurar fecha actual en el modal de pago
     const now = new Date();
@@ -85,6 +97,41 @@ function limpiarFiltroCliente() {
 // ============================================================================
 // CARGAR VENTAS PENDIENTES
 // ============================================================================
+function cargarVentaEspecifica(ventaId) {
+    console.log('Cargando venta específica:', ventaId);
+    
+    // Primero intentar obtener desde el endpoint de ventas pendientes
+    $.get('/Pagos/ObtenerVentasPendientes', { clienteID: null }, function (res) {
+        console.log('Respuesta de ventas pendientes:', res);
+        
+        if (res.success && res.data) {
+            // Buscar la venta específica en los resultados
+            const ventaEncontrada = res.data.find(v => v.VentaID === ventaId);
+            
+            if (ventaEncontrada) {
+                ventasPendientes = [ventaEncontrada];
+                console.log('Venta encontrada:', ventaEncontrada);
+                mostrarVentas(ventasPendientes);
+                actualizarResumen(ventasPendientes);
+                toastr.info('Mostrando venta específica. Use "Actualizar Lista" para ver todas las ventas pendientes.');
+            } else {
+                console.warn('Venta no encontrada en ventas pendientes, cargando todas...');
+                ventasPendientes = res.data;
+                mostrarVentas(ventasPendientes);
+                actualizarResumen(ventasPendientes);
+                toastr.warning('La venta solicitada no se encontró o ya está pagada. Mostrando todas las ventas pendientes.');
+            }
+        } else {
+            console.error('Error al cargar ventas:', res.mensaje || res);
+            toastr.error(res.mensaje || 'No se pudieron cargar las ventas');
+        }
+    }).fail(function (xhr, status, error) {
+        console.error('Error en petición AJAX:', status, error);
+        console.error('Respuesta del servidor:', xhr.responseText);
+        toastr.error('Error al cargar las ventas');
+    });
+}
+
 function cargarVentasPendientes(clienteID = null) {
     console.log('Cargando ventas pendientes. ClienteID:', clienteID);
     

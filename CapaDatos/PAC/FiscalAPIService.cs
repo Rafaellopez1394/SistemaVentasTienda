@@ -195,10 +195,11 @@ namespace CapaDatos.PAC
         /// Endpoint real: POST /api/v4/cfdi40/cancel
         /// </summary>
         /// <summary>
-        /// Cancelar un CFDI en FiscalAPI
+        /// Cancelar un CFDI en FiscalAPI usando UUID
         /// Endpoint: DELETE /api/v4/invoices
+        /// Documentación: https://documenter.getpostman.com/view/4346593/2sB2j4eqXr#155b7a7a-535d-421d-9915-c5b9921d29ae
         /// </summary>
-        public async Task<RespuestaCancelacionCFDI> CancelarCFDI(string invoiceId, string motivoCancelacion, string uuidSustitucion = null)
+        public async Task<RespuestaCancelacionCFDI> CancelarCFDI(string uuid, string rfcEmisor, string motivoCancelacion, string uuidSustitucion = null)
         {
             var respuesta = new RespuestaCancelacionCFDI
             {
@@ -208,20 +209,46 @@ namespace CapaDatos.PAC
             try
             {
                 System.Diagnostics.Debug.WriteLine("=== CANCELAR CFDI FISCALAPI ===");
-                System.Diagnostics.Debug.WriteLine($"InvoiceId: {invoiceId}");
+                System.Diagnostics.Debug.WriteLine($"UUID: {uuid}");
+                System.Diagnostics.Debug.WriteLine($"RFC Emisor: {rfcEmisor}");
                 System.Diagnostics.Debug.WriteLine($"Motivo: {motivoCancelacion}");
                 System.Diagnostics.Debug.WriteLine($"UUID Sustitución: {uuidSustitucion ?? "N/A"}");
 
-                // Body según documentación de FiscalAPI
+                // Validar que existan los certificados
+                if (string.IsNullOrEmpty(_configuracion.CertificadoBase64) || string.IsNullOrEmpty(_configuracion.LlavePrivadaBase64))
+                {
+                    respuesta.Mensaje = "Los certificados fiscales (CSD) son requeridos para cancelar";
+                    respuesta.CodigoError = "MISSING_CERTIFICATES";
+                    return respuesta;
+                }
+
+                // Según documentación de FiscalAPI - DELETE /api/v4/invoices
                 var requestBody = new
                 {
-                    id = invoiceId,
+                    invoiceUuid = uuid,
+                    tin = rfcEmisor,
                     cancellationReasonCode = motivoCancelacion,
-                    replacementUuid = uuidSustitucion ?? ""
+                    replacementUuid = string.IsNullOrEmpty(uuidSustitucion) ? "" : uuidSustitucion,
+                    taxCredentials = new[]
+                    {
+                        new
+                        {
+                            base64File = _configuracion.CertificadoBase64,
+                            fileType = 0, // CertificateCsd
+                            password = _configuracion.PasswordLlave
+                        },
+                        new
+                        {
+                            base64File = _configuracion.LlavePrivadaBase64,
+                            fileType = 1, // PrivateKeyCsd
+                            password = _configuracion.PasswordLlave
+                        }
+                    }
                 };
 
                 string jsonRequest = JsonConvert.SerializeObject(requestBody);
-                System.Diagnostics.Debug.WriteLine($"Request Body: {jsonRequest}");
+                System.Diagnostics.Debug.WriteLine($"Request Body (sin certificados completos por logs): invoiceUuid={uuid}, tin={rfcEmisor}");
+                System.Diagnostics.Debug.WriteLine($"Request URL: {_configuracion.UrlApi}/api/v4/invoices");
 
                 var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
                 
@@ -244,9 +271,8 @@ namespace CapaDatos.PAC
                     respuesta.Exitoso = true;
                     respuesta.EstatusCancelacion = "CANCELADA";
                     respuesta.FechaCancelacion = DateTime.Now;
-                    respuesta.Mensaje = "CFDI cancelado exitosamente en FiscalAPI";
+                    respuesta.Mensaje = "CFDI cancelado exitosamente";
                     System.Diagnostics.Debug.WriteLine("✅ Cancelación exitosa");
-
                     return respuesta;
                 }
                 else
@@ -257,7 +283,6 @@ namespace CapaDatos.PAC
                     {
                         case HttpStatusCode.Unauthorized:
                             respuesta.Mensaje = "Error de autenticación al cancelar";
-                            System.Diagnostics.Debug.WriteLine("❌ Error 401: No autorizado");
                             break;
 
                         case (HttpStatusCode)422:
@@ -271,15 +296,14 @@ namespace CapaDatos.PAC
                                 respuesta.Mensaje = $"Error de validación: {responseBody}";
                             }
                             respuesta.CodigoError = "422_VALIDATION_ERROR";
-                            System.Diagnostics.Debug.WriteLine($"❌ Error 422: {responseBody}");
                             break;
 
                         default:
                             respuesta.Mensaje = $"Error al cancelar: {responseBody}";
-                            System.Diagnostics.Debug.WriteLine($"❌ Error {response.StatusCode}: {responseBody}");
                             break;
                     }
 
+                    System.Diagnostics.Debug.WriteLine($"❌ Error: {respuesta.Mensaje}");
                     return respuesta;
                 }
             }
@@ -288,7 +312,6 @@ namespace CapaDatos.PAC
                 respuesta.Mensaje = $"Error al cancelar CFDI: {ex.Message}";
                 respuesta.CodigoError = "CANCEL_ERROR";
                 System.Diagnostics.Debug.WriteLine($"❌ Excepción: {ex.Message}");
-                System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
                 return respuesta;
             }
         }
@@ -395,6 +418,172 @@ namespace CapaDatos.PAC
                 throw new Exception($"Error al descargar PDF: {ex.Message}", ex);
             }
         }
+
+        /// <summary>
+        /// Enviar CFDI por correo usando FiscalAPI
+        /// Endpoint: POST /api/v4/invoices/send
+        /// </summary>
+        public async Task<bool> EnviarPorCorreo(string invoiceId, string toEmail)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine($"[FiscalAPIService] Enviando correo para InvoiceId: {invoiceId} a {toEmail}");
+
+                var request = new
+                {
+                    invoiceId = invoiceId,
+                    toEmail = toEmail
+                };
+
+                string jsonBody = JsonConvert.SerializeObject(request);
+                System.Diagnostics.Debug.WriteLine($"[FiscalAPIService] Request body: {jsonBody}");
+
+                var content = new StringContent(jsonBody, Encoding.UTF8, "application/json");
+                var response = await _httpClient.PostAsync("/api/v4/invoices/send", content);
+
+                string responseBody = await response.Content.ReadAsStringAsync();
+                System.Diagnostics.Debug.WriteLine($"[FiscalAPIService] Response status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"[FiscalAPIService] Response body: {responseBody}");
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[FiscalAPIService] Error al enviar correo: {response.StatusCode} - {responseBody}");
+                    throw new Exception($"Error al enviar correo: {response.StatusCode} - {responseBody}");
+                }
+
+                System.Diagnostics.Debug.WriteLine("[FiscalAPIService] Correo enviado exitosamente");
+                return true;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[FiscalAPIService] Excepción al enviar correo: {ex.Message}");
+                throw new Exception($"Error al enviar correo por FiscalAPI: {ex.Message}", ex);
+            }
+        }
+
+        #region Consulta de Estatus en SAT
+
+        /// <summary>
+        /// Consulta el estatus de un CFDI en el SAT
+        /// Endpoint: POST /api/v4/invoices/status
+        /// Documentación: https://documenter.getpostman.com/view/4346593/2sB2j4eqXr
+        /// </summary>
+        /// <param name="uuid">UUID de la factura</param>
+        /// <param name="rfcEmisor">RFC del emisor</param>
+        /// <param name="rfcReceptor">RFC del receptor</param>
+        /// <param name="total">Monto total de la factura</param>
+        /// <param name="ultimos8DigitosSello">Últimos 8 dígitos del sello digital (SelloCFDI)</param>
+        public async Task<RespuestaConsulta> ConsultarEstatusSAT(string uuid, string rfcEmisor, string rfcReceptor, decimal total, string ultimos8DigitosSello)
+        {
+            var respuesta = new RespuestaConsulta
+            {
+                Exitoso = false
+            };
+
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("=== CONSULTAR ESTATUS SAT FISCALAPI ===");
+                System.Diagnostics.Debug.WriteLine($"UUID: {uuid}");
+                System.Diagnostics.Debug.WriteLine($"RFC Emisor: {rfcEmisor}");
+                System.Diagnostics.Debug.WriteLine($"RFC Receptor: {rfcReceptor}");
+                System.Diagnostics.Debug.WriteLine($"Total: {total}");
+                System.Diagnostics.Debug.WriteLine($"Últimos 8 dígitos sello: {ultimos8DigitosSello}");
+
+                var requestBody = new
+                {
+                    issuerTin = rfcEmisor,
+                    recipientTin = rfcReceptor,
+                    invoiceTotal = total,
+                    invoiceUuid = uuid,
+                    last8DigitsIssuerSignature = ultimos8DigitosSello
+                };
+
+                string jsonRequest = JsonConvert.SerializeObject(requestBody);
+                System.Diagnostics.Debug.WriteLine($"Request Body: {jsonRequest}");
+
+                var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+                HttpResponseMessage response = await _httpClient.PostAsync("/api/v4/invoices/status", content);
+                string responseBody = await response.Content.ReadAsStringAsync();
+
+                System.Diagnostics.Debug.WriteLine($"Response Status: {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"Response Body: {responseBody}");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    // Parsear respuesta usando modelo específico
+                    try
+                    {
+                        var fiscalResponse = JsonConvert.DeserializeObject<FiscalAPIEstatusResponse>(responseBody);
+                        
+                        if (fiscalResponse.Succeeded && fiscalResponse.Data != null)
+                        {
+                            respuesta.Exitoso = true;
+                            respuesta.EstatusSAT = fiscalResponse.Data.Status;
+                            respuesta.Mensaje = string.IsNullOrEmpty(fiscalResponse.Message) 
+                                ? fiscalResponse.Data.StatusCode 
+                                : fiscalResponse.Message;
+
+                            System.Diagnostics.Debug.WriteLine($"Status Code: {fiscalResponse.Data.StatusCode}");
+                            System.Diagnostics.Debug.WriteLine($"Estatus SAT: {fiscalResponse.Data.Status}");
+                            System.Diagnostics.Debug.WriteLine($"Cancelable: {fiscalResponse.Data.CancelableStatus}");
+                            System.Diagnostics.Debug.WriteLine($"Estatus cancelación: {fiscalResponse.Data.CancellationStatus}");
+                            System.Diagnostics.Debug.WriteLine($"Validación EFOS: {fiscalResponse.Data.EfosValidation}");
+                        }
+                        else
+                        {
+                            // Respuesta exitosa pero sin datos válidos
+                            respuesta.Exitoso = false;
+                            respuesta.Mensaje = fiscalResponse?.Message ?? "No se pudo consultar el estatus";
+                            respuesta.CodigoError = "NO_DATA";
+                            respuesta.ErrorTecnico = responseBody;
+                        }
+                    }
+                    catch (JsonException jsonEx)
+                    {
+                        // Si falla el parseo, intentar parsear como respuesta simple
+                        System.Diagnostics.Debug.WriteLine($"Error al parsear respuesta estructurada, intentando parseo simple: {jsonEx.Message}");
+                        
+                        dynamic jsonResponse = JsonConvert.DeserializeObject(responseBody);
+                        
+                        // Intentar extraer campos directamente
+                        string status = jsonResponse?.data?.status?.ToString() ?? jsonResponse?.status?.ToString();
+                        string message = jsonResponse?.message?.ToString();
+                        
+                        if (!string.IsNullOrEmpty(status))
+                        {
+                            respuesta.Exitoso = true;
+                            respuesta.EstatusSAT = status;
+                            respuesta.Mensaje = message ?? "Consulta exitosa";
+                        }
+                        else
+                        {
+                            respuesta.Mensaje = "Respuesta de FiscalAPI sin estructura esperada";
+                            respuesta.ErrorTecnico = responseBody;
+                        }
+                    }
+                }
+                else
+                {
+                    // Error HTTP
+                    var errorResponse = JsonConvert.DeserializeObject<FiscalAPIEstatusResponse>(responseBody);
+                    respuesta.Mensaje = errorResponse?.Message ?? $"Error HTTP {response.StatusCode}";
+                    respuesta.CodigoError = response.StatusCode.ToString();
+                    respuesta.ErrorTecnico = responseBody;
+
+                    System.Diagnostics.Debug.WriteLine($"Error al consultar: {respuesta.Mensaje}");
+                }
+            }
+            catch (Exception ex)
+            {
+                respuesta.Mensaje = $"Error al consultar estatus: {ex.Message}";
+                respuesta.ErrorTecnico = ex.ToString();
+                System.Diagnostics.Debug.WriteLine($"Excepción: {ex}");
+            }
+
+            return respuesta;
+        }
+
+        #endregion
 
         /// <summary>
         /// Liberar recursos

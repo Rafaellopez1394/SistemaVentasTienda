@@ -143,6 +143,18 @@ namespace VentasWeb.Controllers
                 var detalles = CD_Factura.Instancia.ObtenerDetalleFactura(facturaGuid);
                 var impuestos = CD_Factura.Instancia.ObtenerImpuestosFactura(facturaGuid);
 
+                // Obtener email del cliente desde la venta
+                string emailCliente = "";
+                if (factura.VentaID.HasValue)
+                {
+                    var venta = CD_Venta.Instancia.ObtenerDetalle(factura.VentaID.Value);
+                    if (venta != null && venta.ClienteID != Guid.Empty)
+                    {
+                        var cliente = CD_Cliente.Instancia.ObtenerPorId(venta.ClienteID);
+                        emailCliente = cliente?.CorreoElectronico ?? "";
+                    }
+                }
+
                 return Json(new
                 {
                     success = true,
@@ -164,6 +176,7 @@ namespace VentasWeb.Controllers
                         factura.FormaPago,
                         factura.MetodoPago,
                         factura.Estatus,
+                        EmailCliente = emailCliente,
                         Conceptos = detalles,
                         Impuestos = impuestos
                     }
@@ -472,15 +485,48 @@ namespace VentasWeb.Controllers
         }
 
         // GET: Factura/DescargarXML
-        public ActionResult DescargarXML(Guid facturaId)
+        public ActionResult DescargarXML(Guid? facturaId = null, Guid? ventaId = null)
         {
             try
             {
-                var factura = CD_Factura.Instancia.ObtenerPorId(facturaId);
+                Factura factura = null;
 
-                if (factura == null || string.IsNullOrEmpty(factura.XMLTimbrado))
+                // Buscar por facturaId o ventaId
+                if (facturaId.HasValue)
                 {
-                    return Content("No se encontró el XML de la factura");
+                    factura = CD_Factura.Instancia.ObtenerPorId(facturaId.Value);
+                }
+                else if (ventaId.HasValue)
+                {
+                    factura = CD_Factura.Instancia.ObtenerPorVentaID(ventaId.Value);
+                    
+                    if (factura == null)
+                    {
+                        // Verificar si la venta existe y está marcada como facturada
+                        var venta = CD_Venta.Instancia.ObtenerDetalle(ventaId.Value);
+                        if (venta != null)
+                        {
+                            return Content($"La venta existe pero no tiene factura asociada. VentaID: {ventaId.Value}");
+                        }
+                        else
+                        {
+                            return Content($"No se encontró la venta con ID: {ventaId.Value}");
+                        }
+                    }
+                }
+                else
+                {
+                    return Content("Debe proporcionar facturaId o ventaId");
+                }
+
+                if (factura == null)
+                {
+                    return Content("No se encontró la factura");
+                }
+
+                if (string.IsNullOrEmpty(factura.XMLTimbrado))
+                {
+                    return Content($"La factura {factura.Serie}-{factura.Folio} no tiene XML timbrado. Estatus: {factura.Estatus}");
                 }
 
                 byte[] xmlBytes = System.Text.Encoding.UTF8.GetBytes(factura.XMLTimbrado);
@@ -495,14 +541,24 @@ namespace VentasWeb.Controllers
         }
 
         // GET: Factura/DescargarPDF
-        public async Task<ActionResult> DescargarPDF(Guid facturaId)
+        public async Task<ActionResult> DescargarPDF(Guid? facturaId = null, Guid? ventaId = null)
         {
             try
             {
                 System.Diagnostics.Debug.WriteLine("=== DescargarPDF INICIO ===");
-                System.Diagnostics.Debug.WriteLine($"FacturaID: {facturaId}");
+                System.Diagnostics.Debug.WriteLine($"FacturaID: {facturaId}, VentaID: {ventaId}");
                 
-                var factura = CD_Factura.Instancia.ObtenerPorId(facturaId);
+                Factura factura = null;
+
+                // Buscar por facturaId o ventaId
+                if (facturaId.HasValue)
+                {
+                    factura = CD_Factura.Instancia.ObtenerPorId(facturaId.Value);
+                }
+                else if (ventaId.HasValue)
+                {
+                    factura = CD_Factura.Instancia.ObtenerPorVentaID(ventaId.Value);
+                }
 
                 if (factura == null)
                 {
@@ -722,8 +778,6 @@ namespace VentasWeb.Controllers
                     return Json(new { success = false, mensaje = "Sesión expirada" });
                 }
 
-                string usuario = Session["Usuario"].ToString();
-
                 // Validaciones
                 if (string.IsNullOrEmpty(facturaId))
                 {
@@ -769,190 +823,25 @@ namespace VentasWeb.Controllers
                     return Json(new { success = false, mensaje = "La factura no ha sido timbrada" });
                 }
 
-                // Generar PDF profesional
-                byte[] pdfBytes = null;
-                try
+                // Verificar que tenga FiscalAPIInvoiceId
+                if (string.IsNullOrEmpty(factura.FiscalAPIInvoiceId))
                 {
-                    // Si tiene InvoiceId de FiscalAPI, descargar PDF oficial
-                    if (!string.IsNullOrEmpty(factura.FiscalAPIInvoiceId))
-                    {
-                        var configFiscal = CD_Factura.Instancia.ObtenerConfiguracionFiscalAPI();
-                        using (var fiscalService = new CapaDatos.PAC.FiscalAPIService(configFiscal))
-                        {
-                            pdfBytes = await fiscalService.DescargarPDF(factura.FiscalAPIInvoiceId);
-                        }
-                    }
-                    else
-                    {
-                        // Fallback: usar generador local si no tiene InvoiceId
-                        var generador = new CapaDatos.Generadores.PDFFacturaGenerator();
-                        pdfBytes = generador.GenerarPDF(factura);
-                    }
-                }
-                catch (Exception exPdf)
-                {
-                    return Json(new { success = false, mensaje = "Error al generar PDF: " + exPdf.Message });
+                    return Json(new { success = false, mensaje = "La factura no fue timbrada con FiscalAPI" });
                 }
 
-                // Obtener XML timbrado
-                string xmlTimbrado = factura.XMLTimbrado;
-                if (string.IsNullOrEmpty(xmlTimbrado))
+                // Enviar usando FiscalAPI
+                var configFiscal = CD_Factura.Instancia.ObtenerConfiguracionFiscalAPI();
+                using (var fiscalService = new CapaDatos.PAC.FiscalAPIService(configFiscal))
                 {
-                    return Json(new { success = false, mensaje = "No se encontró el XML timbrado de la factura" });
+                    await fiscalService.EnviarPorCorreo(factura.FiscalAPIInvoiceId, email);
                 }
 
-                // Enviar email (intenta configuración BD primero, luego Web.config)
-                try
+                return Json(new
                 {
-                    string smtpHost = null;
-                    int smtpPort = 587;
-                    bool usarSSL = true;
-                    string smtpUser = null;
-                    string smtpPass = null;
-                    string fromEmail = null;
-                    string fromName = "Sistema de Facturación";
-
-                    // 1. Intentar leer desde BD
-                    var configBD = CD_ConfiguracionSMTP.Instancia.ObtenerConfiguracion();
-                    if (configBD != null && configBD.Activo)
-                    {
-                        smtpHost = configBD.Host;
-                        smtpPort = configBD.Puerto;
-                        usarSSL = configBD.UsarSSL;
-                        smtpUser = configBD.Usuario;
-                        smtpPass = configBD.Contrasena;
-                        fromEmail = configBD.EmailRemitente;
-                        fromName = configBD.NombreRemitente;
-                    }
-                    else
-                    {
-                        // 2. Fallback a Web.config
-                        smtpHost = System.Configuration.ConfigurationManager.AppSettings["SMTP_Host"];
-                        string portStr = System.Configuration.ConfigurationManager.AppSettings["SMTP_Port"];
-                        string sslStr = System.Configuration.ConfigurationManager.AppSettings["SMTP_SSL"];
-                        smtpUser = System.Configuration.ConfigurationManager.AppSettings["SMTP_Username"];
-                        smtpPass = System.Configuration.ConfigurationManager.AppSettings["SMTP_Password"];
-                        fromEmail = System.Configuration.ConfigurationManager.AppSettings["SMTP_FromEmail"];
-                        fromName = System.Configuration.ConfigurationManager.AppSettings["SMTP_FromName"] ?? "Sistema de Facturación";
-
-                        if (!string.IsNullOrEmpty(portStr)) int.TryParse(portStr, out smtpPort);
-                        if (!string.IsNullOrEmpty(sslStr)) bool.TryParse(sslStr, out usarSSL);
-                    }
-
-                    // Validar que exista configuración
-                    if (string.IsNullOrEmpty(smtpUser) || string.IsNullOrEmpty(smtpPass))
-                    {
-                        return Json(new
-                        {
-                            success = false,
-                            mensaje = "Configuración SMTP no encontrada. Configure las credenciales en Administración > Configuración SMTP"
-                        });
-                    }
-
-                    using (var client = new System.Net.Mail.SmtpClient(smtpHost ?? "smtp.gmail.com", smtpPort))
-                    {
-                        client.EnableSsl = usarSSL;
-                        client.Credentials = new System.Net.NetworkCredential(smtpUser, smtpPass);
-
-                        using (var mensaje = new System.Net.Mail.MailMessage())
-                        {
-                            mensaje.From = new System.Net.Mail.MailAddress(fromEmail ?? smtpUser, fromName);
-                            mensaje.To.Add(email);
-                            mensaje.Subject = $"CFDI - Factura {factura.Serie}{factura.Folio}";
-                            mensaje.Body = GenerarCuerpoEmailFactura(factura);
-                            mensaje.IsBodyHtml = true;
-
-                            // Adjuntar XML
-                            var xmlBytes = System.Text.Encoding.UTF8.GetBytes(xmlTimbrado);
-                            var xmlStream = new System.IO.MemoryStream(xmlBytes);
-                            mensaje.Attachments.Add(new System.Net.Mail.Attachment(xmlStream, $"Factura_{factura.Serie}{factura.Folio}.xml", "application/xml"));
-
-                            // Adjuntar PDF
-                            var pdfStream = new System.IO.MemoryStream(pdfBytes);
-                            mensaje.Attachments.Add(new System.Net.Mail.Attachment(pdfStream, $"Factura_{factura.Serie}{factura.Folio}.pdf", "application/pdf"));
-
-                            client.Send(mensaje);
-                        }
-                    }
-
-                    return Json(new
-                    {
-                        success = true,
-                        mensaje = $"CFDI enviado exitosamente a {email}",
-                        fechaEnvio = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
-                    });
-                }
-                catch (Exception exEmail)
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        mensaje = $"Error al enviar email: {exEmail.Message}"
-                    });
-                }
-
-                /* 
-                // Código a implementar cuando exista EmailService:
-                var emailService = new EmailService();
-
-                // Validar configuración SMTP
-                string mensajeConfig;
-                if (!emailService.ValidarConfiguracion(out mensajeConfig))
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        mensaje = "Error de configuración SMTP: " + mensajeConfig
-                    });
-                }
-
-                // Obtener nombre de empresa (podría venir de configuración)
-                string nombreEmpresa = "Mi Empresa SA de CV"; // TODO: Obtener de ConfiguracionEmpresa
-
-                // Crear request de email
-                var request = new EnviarEmailRequest
-                {
-                    EmailDestinatario = email,
-                    NombreDestinatario = factura.ReceptorNombre,
-                    Asunto = $"CFDI - Factura {factura.Serie}{factura.Folio}",
-                    CuerpoHTML = emailService.GenerarCuerpoFactura(factura, nombreEmpresa),
-                    AdjuntoPDF = pdfBytes,
-                    NombreArchivoPDF = $"Factura_{factura.Serie}{factura.Folio}_{factura.UUID.Substring(0, 8)}.pdf",
-                    AdjuntoXML = xmlTimbrado,
-                    NombreArchivoXML = $"Factura_{factura.Serie}{factura.Folio}_{factura.UUID.Substring(0, 8)}.xml"
-                };
-
-                // Enviar email
-                var respuesta = emailService.EnviarEmail(request);
-
-                // Registrar en log
-                CD_EmailLog.Instancia.RegistrarEnvio(
-                    "FACTURA",
-                    (int)factura.FacturaID.GetHashCode(),
-                    factura.UUID,
-                    request,
-                    respuesta,
-                    usuario
-                );
-
-                if (respuesta.Exitoso)
-                {
-                    return Json(new
-                    {
-                        success = true,
-                        mensaje = "Email enviado exitosamente a " + email,
-                        fechaEnvio = respuesta.FechaEnvio.ToString("dd/MM/yyyy HH:mm:ss")
-                    });
-                }
-                else
-                {
-                    return Json(new
-                    {
-                        success = false,
-                        mensaje = respuesta.Mensaje
-                    });
-                }
-                */
+                    success = true,
+                    mensaje = $"CFDI enviado exitosamente a {email}",
+                    fechaEnvio = DateTime.Now.ToString("dd/MM/yyyy HH:mm")
+                });
             }
             catch (Exception ex)
             {
@@ -960,6 +849,54 @@ namespace VentasWeb.Controllers
                 {
                     success = false,
                     mensaje = "Error al enviar email: " + ex.Message
+                });
+            }
+        }
+
+        /// <summary>
+        /// Consulta el estatus de un CFDI en el SAT
+        /// </summary>
+        [HttpPost]
+        public JsonResult ConsultarEstatusSAT(string uuid)
+        {
+            try
+            {
+                var respuesta = CD_Factura.Instancia.ConsultarEstatusSAT(uuid);
+
+                // Mapear estatus a texto amigable en español
+                string estatusTexto = respuesta.EstatusSAT;
+                if (!string.IsNullOrEmpty(estatusTexto))
+                {
+                    switch (estatusTexto.ToLower())
+                    {
+                        case "active":
+                            estatusTexto = "Vigente";
+                            break;
+                        case "cancelled":
+                            estatusTexto = "Cancelado";
+                            break;
+                        case "not_found":
+                            estatusTexto = "No encontrado";
+                            break;
+                    }
+                }
+
+                return Json(new
+                {
+                    success = respuesta.Exitoso,
+                    mensaje = respuesta.Mensaje,
+                    estatus = estatusTexto,
+                    estatusOriginal = respuesta.EstatusSAT,
+                    codigoError = respuesta.CodigoError,
+                    errorTecnico = respuesta.ErrorTecnico
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new
+                {
+                    success = false,
+                    mensaje = "Error al consultar estatus: " + ex.Message
                 });
             }
         }
