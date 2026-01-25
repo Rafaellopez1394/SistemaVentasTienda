@@ -1,0 +1,223 @@
+@{
+    ViewBag.Title = "Reportes Avanzados";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="page-header">
+                <h1><i class="fa fa-chart-bar"></i> Reportes Avanzados de Rentabilidad</h1>
+                <p class="lead">Análisis completo de utilidades, crédito, cobranza y viabilidad del negocio</p>
+            </div>
+
+            <!-- KPIs del Dashboard -->
+            <div class="row mb-4" id="divKPIs">
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body text-center">
+                            <h5><i class="fa fa-dollar-sign"></i> Ventas Hoy</h5>
+                            <h3 id="lblVentasHoy">$0.00</h3>
+                            <small id="lblCambioVentas">-</small>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-info text-white">
+                        <div class="card-body text-center">
+                            <h5><i class="fa fa-chart-line"></i> Utilidad del Mes</h5>
+                            <h3 id="lblUtilidadMes">$0.00</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body text-center">
+                            <h5><i class="fa fa-exclamation-triangle"></i> Productos Bajo Stock</h5>
+                            <h3 id="lblBajoStock">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body text-center">
+                            <h5><i class="fa fa-user-times"></i> Clientes Morosos</h5>
+                            <h3 id="lblMorosos">0</h3>
+                            <small id="lblCarteraVencida">$0.00</small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top 5 Productos del Día -->
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card">
+                        <div class="card-header bg-primary text-white">
+                            <h5><i class="fa fa-trophy"></i> Top 5 Productos del Día</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-striped" id="tbTopProductos">
+                                <thead>
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Producto</th>
+                                        <th>Cantidad</th>
+                                        <th>Importe</th>
+                                        <th>Utilidad</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Menú de Reportes -->
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header bg-primary text-white">
+                            <h4><i class="fa fa-chart-line"></i> Utilidad por Producto</h4>
+                        </div>
+                        <div class="card-body">
+                            <p>Analiza la rentabilidad de cada producto:</p>
+                            <ul>
+                                <li>¿Cuánto cuesta comprar el producto?</li>
+                                <li>¿Cuánto se vende?</li>
+                                <li>¿Cuál es la ganancia neta?</li>
+                                <li>¿Vale la pena seguir vendiéndolo?</li>
+                            </ul>
+                            <p class="text-muted"><strong>Ejemplo:</strong> Camarón 21-25 → costo, venta, utilidad, recomendación</p>
+                            <a href="@Url.Action("UtilidadProductos", "ReporteAvanzado")" class="btn btn-primary btn-block">
+                                <i class="fa fa-arrow-right"></i> Ver Reporte de Utilidad
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header bg-success text-white">
+                            <h4><i class="fa fa-file-invoice-dollar"></i> Estado de Resultados</h4>
+                        </div>
+                        <div class="card-body">
+                            <p>Responde la pregunta clave:</p>
+                            <ul>
+                                <li>¿Es rentable mi negocio?</li>
+                                <li>Ventas totales vs costos</li>
+                                <li>Gastos operativos</li>
+                                <li>Utilidad neta final</li>
+                            </ul>
+                            <p class="text-muted"><strong>Conclusión automática:</strong> "✅ NEGOCIO RENTABLE" o "⚠️ PÉRDIDAS"</p>
+                            <a href="@Url.Action("EstadoResultados", "ReporteAvanzado")" class="btn btn-success btn-block">
+                                <i class="fa fa-arrow-right"></i> Ver Estado de Resultados (P&L)
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header bg-info text-white">
+                            <h4><i class="fa fa-credit-card"></i> Recuperación de Crédito</h4>
+                        </div>
+                        <div class="card-body">
+                            <p>Seguimiento diario de crédito y cobranza:</p>
+                            <ul>
+                                <li>Créditos otorgados por día</li>
+                                <li>Cobros realizados</li>
+                                <li>Porcentaje de recuperación</li>
+                                <li>Cartera vigente vs vencida</li>
+                            </ul>
+                            <p class="text-muted"><strong>Pregunta:</strong> ¿Estoy recuperando el crédito que otorgo?</p>
+                            <a href="@Url.Action("RecuperacionCredito", "ReporteAvanzado")" class="btn btn-info btn-block">
+                                <i class="fa fa-arrow-right"></i> Ver Concentrado de Crédito
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow">
+                        <div class="card-header bg-warning text-dark">
+                            <h4><i class="fa fa-users"></i> Cartera de Clientes</h4>
+                        </div>
+                        <div class="card-body">
+                            <p>Estado de la cartera con antigüedad:</p>
+                            <ul>
+                                <li>Clientes con saldo pendiente</li>
+                                <li>Vigente, vencido 30, 60, 90+ días</li>
+                                <li>Identificación de morosos</li>
+                                <li>Total de cartera vencida</li>
+                            </ul>
+                            <p class="text-muted"><strong>Estados:</strong> <span class="badge badge-success">AL CORRIENTE</span> <span class="badge badge-warning">VENCIDO</span> <span class="badge badge-danger">MOROSO</span></p>
+                            <a href="@Url.Action("CarteraClientes", "ReporteAvanzado")" class="btn btn-warning btn-block">
+                                <i class="fa fa-arrow-right"></i> Ver Cartera y Antigüedad
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            cargarKPIs();
+        });
+
+        function cargarKPIs() {
+            $.ajax({
+                url: '@Url.Action("ObtenerKPIs", "ReporteAvanzado")',
+                type: 'GET',
+                success: function (response) {
+                    if (response.success) {
+                        var kpis = response.data;
+
+                        // Ventas hoy
+                        $('#lblVentasHoy').text('$' + kpis.VentasHoy.toLocaleString('es-MX', { minimumFractionDigits: 2 }));
+                        
+                        var cambio = kpis.PorcentajeCambio.toFixed(2);
+                        var icon = kpis.PorcentajeCambio >= 0 ? '▲' : '▼';
+                        var color = kpis.PorcentajeCambio >= 0 ? 'lightgreen' : 'lightcoral';
+                        $('#lblCambioVentas').html(icon + ' ' + Math.abs(cambio) + '% vs ayer').css('color', color);
+
+                        // Utilidad mes
+                        $('#lblUtilidadMes').text('$' + kpis.UtilidadMes.toLocaleString('es-MX', { minimumFractionDigits: 2 }));
+
+                        // Alertas
+                        $('#lblBajoStock').text(kpis.ProductosBajoStock);
+                        $('#lblMorosos').text(kpis.ClientesMorosos);
+                        $('#lblCarteraVencida').text('$' + kpis.CarteraVencida.toLocaleString('es-MX', { minimumFractionDigits: 2 }));
+
+                        // Top productos
+                        var tbody = $('#tbTopProductos tbody');
+                        tbody.empty();
+                        
+                        if (kpis.TopProductosDia && kpis.TopProductosDia.length > 0) {
+                            kpis.TopProductosDia.forEach(function (item, index) {
+                                var row = '<tr>' +
+                                    '<td>' + (index + 1) + '</td>' +
+                                    '<td>' + item.NombreProducto + '</td>' +
+                                    '<td>' + item.Cantidad.toFixed(2) + '</td>' +
+                                    '<td>$' + item.Importe.toLocaleString('es-MX', { minimumFractionDigits: 2 }) + '</td>' +
+                                    '<td style="color:green;font-weight:bold;">$' + item.Utilidad.toLocaleString('es-MX', { minimumFractionDigits: 2 }) + '</td>' +
+                                    '</tr>';
+                                tbody.append(row);
+                            });
+                        } else {
+                            tbody.append('<tr><td colspan="5" class="text-center text-muted">No hay datos para hoy</td></tr>');
+                        }
+                    }
+                },
+                error: function () {
+                    console.log('Error al cargar KPIs');
+                }
+            });
+        }
+    </script>
+}

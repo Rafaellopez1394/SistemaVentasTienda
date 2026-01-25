@@ -1,5 +1,5 @@
 Write-Host "=========================================" -ForegroundColor Cyan
-Write-Host "COMPILANDO PROYECTO CON PRODIGIA" -ForegroundColor Cyan
+Write-Host "COMPILANDO PROYECTO - FISCALAPI" -ForegroundColor Cyan
 Write-Host "=========================================" -ForegroundColor Cyan
 Write-Host ""
 
@@ -56,12 +56,13 @@ if ($LASTEXITCODE -eq 0) {
     Write-Host "=========================================" -ForegroundColor Green
     Write-Host ""
     Write-Host "Sistema actualizado con:" -ForegroundColor Cyan
-    Write-Host "- ProdigiaService con opciones correctas" -ForegroundColor White
-    Write-Host "- CALCULAR_SELLO, ESTABLECER_NO_CERTIFICADO" -ForegroundColor White
-    Write-Host "- CERT_DEFAULT para usar certificados del portal" -ForegroundColor White
-    Write-Host "- Metodo CancelarCFDI implementado" -ForegroundColor White
+    Write-Host "- FiscalAPI como unico PAC" -ForegroundColor White
+    Write-Host "- Reportes Avanzados de Rentabilidad" -ForegroundColor White
+    Write-Host "- Analisis de utilidad por producto" -ForegroundColor White
+    Write-Host "- Estado de Resultados (P&L)" -ForegroundColor White
+    Write-Host "- Recuperacion de credito y cartera" -ForegroundColor White
     Write-Host ""
-    Write-Host "Listo para probar timbrado!" -ForegroundColor Green
+    Write-Host "Listo para facturar y analizar rentabilidad!" -ForegroundColor Green
 } else {
     Write-Host ""
     Write-Host "ERROR EN COMPILACION" -ForegroundColor Red

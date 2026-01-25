@@ -86,7 +86,7 @@ namespace VentasWeb.Controllers
                         LEFT JOIN CatCategoriasProducto c ON p.CategoriaID = c.CategoriaID
                         WHERE v.FechaVenta >= @FechaInicio 
                         AND v.FechaVenta <= @FechaFin"
-                        + (sucursalFiltro > 0 ? " AND v.SucursalID = @SucursalID" : "")
+                        + (sucursalFiltro > 0 ? " AND v.VentaID IN (SELECT DISTINCT vd2.VentaID FROM VentasDetalleClientes vd2 INNER JOIN LotesProducto lp ON vd2.LoteID = lp.LoteID WHERE lp.SucursalID = @SucursalID)" : "")
                         + (productoId.HasValue ? " AND p.ProductoID = @ProductoID" : "") +
                         (!string.IsNullOrEmpty(categoria) ? " AND c.Nombre = @Categoria" : "") + @"
                         ORDER BY v.FechaVenta DESC, v.VentaID DESC
@@ -173,7 +173,7 @@ namespace VentasWeb.Controllers
                         AND v.FechaVenta <= @FechaFin";
                     
                     if (sucursalFiltro > 0)
-                        query += " AND v.SucursalID = @SucursalID";
+                        query += " AND v.VentaID IN (SELECT DISTINCT vd2.VentaID FROM VentasDetalleClientes vd2 INNER JOIN LotesProducto lp ON vd2.LoteID = lp.LoteID WHERE lp.SucursalID = @SucursalID)";
                         
                     query += @"
                         GROUP BY p.ProductoID, p.CodigoInterno, p.Nombre, c.Nombre
@@ -248,7 +248,7 @@ namespace VentasWeb.Controllers
                         AND v.FechaVenta <= @FechaFin";
                     
                     if (sucursalFiltro > 0)
-                        query += " AND v.SucursalID = @SucursalID";
+                        query += " AND v.VentaID IN (SELECT DISTINCT vd2.VentaID FROM VentasDetalleClientes vd2 INNER JOIN LotesProducto lp ON vd2.LoteID = lp.LoteID WHERE lp.SucursalID = @SucursalID)";
                         
                     query += @"
                         GROUP BY c.Nombre
@@ -328,7 +328,7 @@ namespace VentasWeb.Controllers
                         AND v.FechaVenta <= @FechaFin";
                     
                     if (sucursalFiltro > 0)
-                        query += " AND v.SucursalID = @SucursalID";
+                        query += " AND v.VentaID IN (SELECT DISTINCT vd2.VentaID FROM VentasDetalleClientes vd2 INNER JOIN LotesProducto lp ON vd2.LoteID = lp.LoteID WHERE lp.SucursalID = @SucursalID)";
                     
                     var cmd = new System.Data.SqlClient.SqlCommand(query, cnx);
                     

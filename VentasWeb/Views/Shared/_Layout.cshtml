@@ -468,6 +468,39 @@
             </li>
 
             <li class="sidebar-nav-item">
+                <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#reportesDropdown">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>Reportes Avanzados</span>
+                </a>
+                <ul class="sidebar-dropdown collapse" id="reportesDropdown">
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("UtilidadProductos","ReporteAvanzado")" class="sidebar-nav-link">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Utilidad por Producto</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("EstadoResultados","ReporteAvanzado")" class="sidebar-nav-link">
+                            <i class="fas fa-file-invoice-dollar"></i>
+                            <span>Estado de Resultados (P&L)</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("RecuperacionCredito","ReporteAvanzado")" class="sidebar-nav-link">
+                            <i class="fas fa-credit-card"></i>
+                            <span>Recuperación de Crédito</span>
+                        </a>
+                    </li>
+                    <li class="sidebar-nav-item sidebar-dropdown-item">
+                        <a href="@Url.Action("CarteraClientes","ReporteAvanzado")" class="sidebar-nav-link">
+                            <i class="fas fa-users"></i>
+                            <span>Cartera de Clientes</span>
+                        </a>
+                    </li>
+                </ul>
+            </li>
+
+            <li class="sidebar-nav-item">
                 <a href="#" class="sidebar-nav-link dropdown-toggle" data-toggle="collapse" data-target="#productosDropdown">
                     <i class="fas fa-box"></i>
                     <span>Productos</span>
@@ -812,6 +845,9 @@
 
     <!-- Toastr JS -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/toastr.js/2.1.4/toastr.min.js"></script>
+
+    <!-- LoadingOverlay JS (versión correcta) -->
+    <script src="https://cdn.jsdelivr.net/npm/gasparesganga-jquery-loading-overlay@2.1.7/dist/loadingoverlay.min.js"></script>
 
     <script>
         // Configuración global de toastr

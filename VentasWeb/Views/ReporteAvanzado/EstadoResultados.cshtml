@@ -1,0 +1,187 @@
+@{
+    ViewBag.Title = "Estado de Resultados (P&L)";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header bg-success text-white">
+                    <h4><i class="fa fa-file-invoice-dollar"></i> Estado de Resultados</h4>
+                    <p class="mb-0">Análisis de viabilidad del negocio: ¿Es rentable mi establecimiento?</p>
+                </div>
+                <div class="card-body">
+                    <!-- Filtros -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <label>Fecha Inicio:</label>
+                            <input type="date" id="txtFechaInicio" class="form-control" value="@DateTime.Now.AddMonths(-1).ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-md-3">
+                            <label>Fecha Fin:</label>
+                            <input type="date" id="txtFechaFin" class="form-control" value="@DateTime.Now.ToString("yyyy-MM-dd")" />
+                        </div>
+                        <div class="col-md-4">
+                            <label>&nbsp;</label><br />
+                            <button type="button" class="btn btn-success" onclick="generarEstadoResultados()">
+                                <i class="fa fa-calculator"></i> Generar Estado de Resultados
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Estado de Resultados -->
+                    <div id="divEstadoResultados" style="display:none;">
+                        <div class="row">
+                            <div class="col-md-8 offset-md-2">
+                                <div class="card">
+                                    <div class="card-header bg-dark text-white text-center">
+                                        <h5>ESTADO DE RESULTADOS</h5>
+                                        <p class="mb-0" id="lblPeriodo"></p>
+                                    </div>
+                                    <div class="card-body">
+                                        <table class="table table-bordered">
+                                            <tbody>
+                                                <tr class="table-light">
+                                                    <td><strong>Ventas Totales</strong></td>
+                                                    <td class="text-right" id="tdVentasTotales"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>&nbsp;&nbsp;&nbsp;(-) Devoluciones</td>
+                                                    <td class="text-right" id="tdDevoluciones"></td>
+                                                </tr>
+                                                <tr class="table-info">
+                                                    <td><strong>= Ingresos Netos</strong></td>
+                                                    <td class="text-right" id="tdIngresosNetos"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>&nbsp;&nbsp;&nbsp;(-) Costo de Ventas</td>
+                                                    <td class="text-right" id="tdCostoVentas"></td>
+                                                </tr>
+                                                <tr class="table-warning">
+                                                    <td><strong>= Utilidad Bruta</strong></td>
+                                                    <td class="text-right" id="tdUtilidadBruta"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Margen Bruto %</td>
+                                                    <td class="text-right" id="tdMargenBruto"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>&nbsp;&nbsp;&nbsp;(-) Gastos de Nómina</td>
+                                                    <td class="text-right" id="tdGastosNomina"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td>&nbsp;&nbsp;&nbsp;(-) Gastos Operativos</td>
+                                                    <td class="text-right" id="tdGastosOperativos"></td>
+                                                </tr>
+                                                <tr class="table-secondary">
+                                                    <td><strong>= Gastos Totales</strong></td>
+                                                    <td class="text-right" id="tdGastosTotales"></td>
+                                                </tr>
+                                                <tr class="table-primary">
+                                                    <td><strong>= Utilidad Operativa</strong></td>
+                                                    <td class="text-right" id="tdUtilidadOperativa"></td>
+                                                </tr>
+                                                <tr class="table-success">
+                                                    <td><strong style="font-size:1.2em;">= UTILIDAD NETA</strong></td>
+                                                    <td class="text-right" id="tdUtilidadNeta" style="font-size:1.2em;font-weight:bold;"></td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Margen Neto %</strong></td>
+                                                    <td class="text-right" id="tdMargenNeto" style="font-weight:bold;"></td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+
+                                        <!-- Conclusión -->
+                                        <div class="alert" id="divConclusion" style="display:none;">
+                                            <h5 id="lblConclusion"></h5>
+                                            <hr />
+                                            <p id="lblRecomendaciones" style="white-space: pre-line;"></p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function generarEstadoResultados() {
+            var fechaInicio = $('#txtFechaInicio').val();
+            var fechaFin = $('#txtFechaFin').val();
+
+            if (!fechaInicio || !fechaFin) {
+                alert('Por favor seleccione ambas fechas');
+                return;
+            }
+
+            $.ajax({
+                url: '@Url.Action("GenerarEstadoResultados", "ReporteAvanzado")',
+                type: 'POST',
+                data: { fechaInicio: fechaInicio, fechaFin: fechaFin },
+                beforeSend: function () {
+                    $.LoadingOverlay("show");
+                },
+                success: function (response) {
+                    $.LoadingOverlay("hide");
+                    if (response.success) {
+                        var er = response.data;
+
+                        // Actualizar período
+                        $('#lblPeriodo').text('Del ' + new Date(fechaInicio).toLocaleDateString('es-MX') + ' al ' + new Date(fechaFin).toLocaleDateString('es-MX'));
+
+                        // Actualizar valores
+                        $('#tdVentasTotales').text(formatMoney(er.VentasTotales));
+                        $('#tdDevoluciones').text(formatMoney(er.Devoluciones));
+                        $('#tdIngresosNetos').text(formatMoney(er.IngresosNetos));
+                        $('#tdCostoVentas').text(formatMoney(er.CostoVentas));
+                        $('#tdUtilidadBruta').text(formatMoney(er.UtilidadBruta));
+                        $('#tdMargenBruto').text(er.MargenBrutoPorcentaje.toFixed(2) + '%');
+                        $('#tdGastosNomina').text(formatMoney(er.GastosNomina));
+                        $('#tdGastosOperativos').text(formatMoney(er.GastosOperativos));
+                        $('#tdGastosTotales').text(formatMoney(er.GastosTotales));
+                        $('#tdUtilidadOperativa').text(formatMoney(er.UtilidadOperativa));
+                        $('#tdUtilidadNeta').text(formatMoney(er.UtilidadNeta));
+                        $('#tdMargenNeto').text(er.MargenNetoPorcentaje.toFixed(2) + '%');
+
+                        // Colorear utilidad neta
+                        if (er.UtilidadNeta >= 0) {
+                            $('#tdUtilidadNeta').css('color', 'green');
+                        } else {
+                            $('#tdUtilidadNeta').css('color', 'red');
+                        }
+
+                        // Mostrar conclusión
+                        $('#lblConclusion').html(er.Conclusion);
+                        $('#lblRecomendaciones').text(er.Recomendaciones);
+
+                        if (er.UtilidadNeta >= 0) {
+                            $('#divConclusion').removeClass('alert-danger').addClass('alert-success');
+                        } else {
+                            $('#divConclusion').removeClass('alert-success').addClass('alert-danger');
+                        }
+
+                        $('#divConclusion').show();
+                        $('#divEstadoResultados').show();
+                    } else {
+                        alert('Error: ' + response.mensaje);
+                    }
+                },
+                error: function (xhr) {
+                    $.LoadingOverlay("hide");
+                    alert('Error al generar el estado de resultados');
+                }
+            });
+        }
+
+        function formatMoney(value) {
+            return '$' + parseFloat(value).toLocaleString('es-MX', { minimumFractionDigits: 2 });
+        }
+    </script>
+}

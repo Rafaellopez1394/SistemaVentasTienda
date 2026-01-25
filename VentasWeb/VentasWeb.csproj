@@ -149,6 +149,7 @@
     <Compile Include="Controllers\ProductoController.cs" />
     <Compile Include="Controllers\ProveedorController.cs" />
     <Compile Include="Controllers\ReporteController.cs" />
+    <Compile Include="Controllers\ReporteAvanzadoController.cs" />
     <Compile Include="Controllers\RolController.cs" />
     <Compile Include="Controllers\SucursalController.cs" />
     <Compile Include="Controllers\TraspasoController.cs" />
@@ -2105,6 +2106,11 @@
     <Content Include="Views\Producto\Asignar.cshtml" />
     <Content Include="Views\Reporte\Producto.cshtml" />
     <Content Include="Views\Reporte\Ventas.cshtml" />
+    <Content Include="Views\ReporteAvanzado\Index.cshtml" />
+    <Content Include="Views\ReporteAvanzado\UtilidadProductos.cshtml" />
+    <Content Include="Views\ReporteAvanzado\EstadoResultados.cshtml" />
+    <Content Include="Views\ReporteAvanzado\RecuperacionCredito.cshtml" />
+    <Content Include="Views\ReporteAvanzado\CarteraClientes.cshtml" />
     <Content Include="Views\Rol\Crear.cshtml" />
     <Content Include="Views\Sucursal\Crear.cshtml" />
     <Content Include="Views\Usuario\Crear.cshtml" />

@@ -1082,149 +1082,20 @@ namespace CapaDatos
 
             try
             {
-                // 1. Detectar PAC activo (FiscalAPI o Prodigia)
+                // 1. Verificar configuración de FiscalAPI (ÚNICO PAC SOPORTADO)
                 var configFiscalAPI = ObtenerConfiguracionFiscalAPI();
-                if (configFiscalAPI != null && configFiscalAPI.Activo)
+                if (configFiscalAPI == null || !configFiscalAPI.Activo)
                 {
-                    // Usar FiscalAPI
-                    System.Diagnostics.Debug.WriteLine("✅ Usando FiscalAPI en ambiente: " + configFiscalAPI.Ambiente);
-                    return await TimbrarConFiscalAPI(
-                        ventaID, rfcReceptor, nombreReceptor, codigoPostalReceptor,
-                        regimenFiscalReceptor, usoCFDI, formaPago, metodoPago, serie, usuario);
-                }
-
-                // Fallback a Prodigia
-                var configuracion = ObtenerConfiguracionProdigia();
-                if (configuracion == null)
-                {
-                    respuesta.Mensaje = "No hay configuración activa de PAC (FiscalAPI o Prodigia)";
-                    respuesta.CodigoError = "CONFIG_NOT_FOUND";
+                    respuesta.Mensaje = "FiscalAPI no está configurado o no está activo. Configure FiscalAPI para timbrar facturas.";
+                    respuesta.CodigoError = "FISCALAPI_NOT_CONFIGURED";
                     return respuesta;
                 }
 
-                // 2. Obtener venta y detalles
-                var venta = CD_Venta.Instancia.ObtenerDetalle(ventaID);
-                if (venta == null)
-                {
-                    respuesta.Mensaje = $"Venta no encontrada: {ventaID}";
-                    respuesta.CodigoError = "VENTA_NOT_FOUND";
-                    return respuesta;
-                }
-
-                // 3. Construir factura
-                var factura = new Factura
-                {
-                    FacturaID = Guid.NewGuid(),
-                    VentaID = ventaID,
-                    Serie = serie,
-                    Folio = ObtenerSiguienteFolio(serie).ToString(),
-                    FechaEmision = DateTime.Now,
-                    Version = "4.0",
-                    TipoComprobante = "I",
-                    
-                    // Emisor
-                    RFCEmisor = configuracion.RfcEmisor,
-                    NombreEmisor = configuracion.NombreEmisor,
-                    RegimenFiscalEmisor = configuracion.RegimenFiscal,
-                    CodigoPostalEmisor = configuracion.CodigoPostal,
-                    
-                    // Receptor
-                    ReceptorRFC = rfcReceptor,
-                    ReceptorNombre = nombreReceptor,
-                    ReceptorDomicilioFiscalCP = codigoPostalReceptor,
-                    ReceptorRegimenFiscalReceptor = regimenFiscalReceptor,
-                    ReceptorUsoCFDI = usoCFDI,
-                    
-                    // Pago
-                    FormaPago = formaPago,
-                    MetodoPago = metodoPago ?? "PUE",
-                    
-                    // Totales - calcular desde detalles ya que VentaCliente solo tiene Total
-                    Subtotal = venta.Total / 1.16m, // Aproximación - idealmente calcular desde detalles
-                    TotalImpuestosTrasladados = venta.Total - (venta.Total / 1.16m),
-                    Total = venta.Total,
-                    
-                    Estatus = "PENDIENTE",
-                    UsuarioCreacion = usuario,
-                    FechaCreacion = DateTime.Now
-                };
-
-                // 4. Convertir detalles de venta a conceptos de factura
-                factura.Conceptos = venta.Detalle.Select(d => {
-                    var importe = d.Cantidad * d.PrecioVenta;
-                    var subtotal = importe / 1.16m; // Asumiendo IVA 16%
-                    var iva = importe - subtotal;
-                    
-                    return new FacturaDetalle
-                    {
-                        NoIdentificacion = d.CodigoInterno,
-                        Descripcion = d.Producto,
-                        Cantidad = d.Cantidad,
-                        ValorUnitario = d.PrecioVenta / 1.16m, // Precio sin IVA
-                        Importe = subtotal, // Importe sin IVA
-                        ClaveProdServ = "01010101", // Código genérico SAT
-                        ClaveUnidad = "H87", // Pieza
-                        Unidad = "Pieza",
-                        ObjetoImp = "02", // Sí objeto de impuesto
-                        Impuestos = new List<FacturaImpuesto>
-                        {
-                            new FacturaImpuesto
-                            {
-                                TipoImpuesto = "TRASLADO",
-                                Impuesto = "002", // IVA
-                                TipoFactor = "Tasa",
-                                TasaOCuota = 0.16m,
-                                Base = subtotal,
-                                Importe = iva
-                            }
-                        }
-                    };
-                }).ToList();
-
-                // 5. Generar XML CFDI 4.0 completo
-                var generadorXml = new CFDI40XMLGenerator(configuracion);
-                string xmlCfdi = generadorXml.GenerarXML(factura);
-
-                // 6. Timbrar con Prodigia
-                using (var prodigiaService = new ProdigiaService(configuracion))
-                {
-                    respuesta = prodigiaService.CrearYTimbrarCFDI(xmlCfdi);
-                }
-
-                // 8. Si el timbrado fue exitoso, guardar en BD
-                if (respuesta.Exitoso)
-                {
-                    factura.UUID = respuesta.UUID;
-                    factura.FechaTimbrado = respuesta.FechaTimbrado;
-                    factura.XMLTimbrado = respuesta.XMLTimbrado;
-                    factura.SelloCFD = respuesta.SelloCFD;
-                    factura.SelloSAT = respuesta.SelloSAT;
-                    factura.NoCertificadoSAT = respuesta.NoCertificadoSAT;
-                    factura.CadenaOriginalSAT = respuesta.CadenaOriginal;
-                    factura.Estatus = "TIMBRADA";
-
-                    // Guardar factura en BD
-                    bool guardado = GuardarFactura(factura, out string mensajeGuardado);
-                    
-                    if (guardado)
-                    {
-                        // Marcar la venta como facturada solo si se guardó correctamente
-                        if (factura.VentaID.HasValue)
-                        {
-                            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
-                            {
-                                cnx.Open();
-                                MarcarVentaComoFacturada(factura.VentaID.Value, cnx);
-                            }
-                        }
-                    }
-                    else
-                    {
-                        respuesta.Mensaje += $" | ADVERTENCIA: XML timbrado correctamente pero no se pudo guardar en BD: {mensajeGuardado}";
-                    }
-                }
-
-                return respuesta;
+                // 2. Timbrar con FiscalAPI (único servicio soportado)
+                System.Diagnostics.Debug.WriteLine("✅ Usando FiscalAPI en ambiente: " + configFiscalAPI.Ambiente);
+                return await TimbrarConFiscalAPI(
+                    ventaID, rfcReceptor, nombreReceptor, codigoPostalReceptor,
+                    regimenFiscalReceptor, usoCFDI, formaPago, metodoPago, serie, usuario);
             }
             catch (Exception ex)
             {
