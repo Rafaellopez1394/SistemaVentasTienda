@@ -141,7 +141,11 @@ namespace VentasWeb.Controllers
             
             foreach (var linea in lineas)
             {
-                string lineaLimpia = linea.Trim();
+                // NO hacer Trim para preservar espacios de centrado
+                string lineaLimpia = linea;
+                // Solo eliminar espacios al final, NO al inicio
+                lineaLimpia = System.Text.RegularExpressions.Regex.Replace(lineaLimpia, @"\s+$", "");
+                
                 // Mantener lineas vacias para separadores visuales
                 if (!string.IsNullOrWhiteSpace(lineaLimpia) || lineasLimpias.Count > 0)
                 {
