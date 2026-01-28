@@ -357,6 +357,27 @@ namespace VentasWeb.Controllers
             return success;
         }
 
+        private static Bitmap InvertBitmap(Bitmap src)
+        {
+            Bitmap bmp = new Bitmap(src.Width, src.Height);
+
+            for (int y = 0; y < src.Height; y++)
+            {
+                for (int x = 0; x < src.Width; x++)
+                {
+                    Color p = src.GetPixel(x, y);
+                    Color inv = Color.FromArgb(
+                        255 - p.R,
+                        255 - p.G,
+                        255 - p.B
+                    );
+                    bmp.SetPixel(x, y, inv);
+                }
+            }
+
+            return bmp;
+        }
+
         private byte[] ImageToEscPosBitmap(System.Drawing.Image imagen, int maxWidth)
         {
             try
@@ -372,43 +393,47 @@ namespace VentasWeb.Controllers
                         g.DrawImage(imagen, 0, 0, newWidth, newHeight);
                     }
 
-                    int width = bmp.Width;
-                    int height = bmp.Height;
-                    int widthBytes = (width + 7) / 8;
-                    byte[] imageBytes = new byte[widthBytes * height];
-
-                    int index = 0;
-                    for (int y = 0; y < height; y++)
+                    // Invertir colores del logo
+                    using (Bitmap bmpInvertido = InvertBitmap(bmp))
                     {
-                        for (int xByte = 0; xByte < widthBytes; xByte++)
+                        int width = bmpInvertido.Width;
+                        int height = bmpInvertido.Height;
+                        int widthBytes = (width + 7) / 8;
+                        byte[] imageBytes = new byte[widthBytes * height];
+
+                        int index = 0;
+                        for (int y = 0; y < height; y++)
                         {
-                            byte b = 0;
-                            for (int bit = 0; bit < 8; bit++)
+                            for (int xByte = 0; xByte < widthBytes; xByte++)
                             {
-                                int x = xByte * 8 + bit;
-                                if (x < width)
+                                byte b = 0;
+                                for (int bit = 0; bit < 8; bit++)
                                 {
-                                    Color pixel = bmp.GetPixel(x, y);
-                                    int luminance = (pixel.R + pixel.G + pixel.B) / 3;
-                                    if (luminance < 128) b |= (byte)(1 << (7 - bit));
+                                    int x = xByte * 8 + bit;
+                                    if (x < width)
+                                    {
+                                        Color pixel = bmpInvertido.GetPixel(x, y);
+                                        int luminance = (pixel.R + pixel.G + pixel.B) / 3;
+                                        if (luminance < 128) b |= (byte)(1 << (7 - bit));
+                                    }
                                 }
+                                imageBytes[index++] = b;
                             }
-                            imageBytes[index++] = b;
                         }
-                    }
 
-                    using (var ms = new System.IO.MemoryStream())
-                    {
-                        ms.Write(new byte[] { 0x1B, 0x61, 0x01 }, 0, 3); // Centrar
-                        ms.Write(new byte[] { 0x1D, 0x76, 0x30, 0x00 }, 0, 4); // GS v 0
-                        ms.WriteByte((byte)(widthBytes & 0xFF));
-                        ms.WriteByte((byte)((widthBytes >> 8) & 0xFF));
-                        ms.WriteByte((byte)(height & 0xFF));
-                        ms.WriteByte((byte)((height >> 8) & 0xFF));
-                        ms.Write(imageBytes, 0, imageBytes.Length);
-                        ms.Write(new byte[] { 0x1B, 0x61, 0x00 }, 0, 3); // Alinear izquierda
-                        ms.Write(new byte[] { 0x0A, 0x0A }, 0, 2); // Saltos de línea
-                        return ms.ToArray();
+                        using (var ms = new System.IO.MemoryStream())
+                        {
+                            ms.Write(new byte[] { 0x1B, 0x61, 0x01 }, 0, 3); // Centrar
+                            ms.Write(new byte[] { 0x1D, 0x76, 0x30, 0x00 }, 0, 4); // GS v 0
+                            ms.WriteByte((byte)(widthBytes & 0xFF));
+                            ms.WriteByte((byte)((widthBytes >> 8) & 0xFF));
+                            ms.WriteByte((byte)(height & 0xFF));
+                            ms.WriteByte((byte)((height >> 8) & 0xFF));
+                            ms.Write(imageBytes, 0, imageBytes.Length);
+                            ms.Write(new byte[] { 0x1B, 0x61, 0x00 }, 0, 3); // Alinear izquierda
+                            ms.Write(new byte[] { 0x0A, 0x0A }, 0, 2); // Saltos de línea
+                            return ms.ToArray();
+                        }
                     }
                 }
             }
