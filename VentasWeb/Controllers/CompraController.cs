@@ -69,6 +69,59 @@ namespace VentasWeb.Controllers
             return Json(new { resultado, mensaje }, JsonRequestBehavior.AllowGet);
         }
 
+        // Ingreso Rápido - Optimizado para productos congelados
+        [HttpGet]
+        public ActionResult IngresoRapido()
+        {
+            return View();
+        }
+
+        [HttpPost]
+        public JsonResult RegistrarIngresoRapido(Compra compra)
+        {
+            try
+            {
+                compra.Usuario = User.Identity.Name ?? "system";
+                
+                // Validaciones
+                if (compra.SucursalID <= 0)
+                    return Json(new { success = false, mensaje = "Sucursal no válida" });
+                
+                if (compra.ProveedorID == Guid.Empty)
+                    return Json(new { success = false, mensaje = "Proveedor no válido" });
+                
+                if (compra.Detalle == null || compra.Detalle.Count == 0)
+                    return Json(new { success = false, mensaje = "Debe agregar al menos un producto" });
+                
+                // Registrar compra con lotes
+                bool resultado = CD_Compra.Instancia.RegistrarCompraConLotes(compra, compra.Usuario);
+                
+                return Json(new { 
+                    success = resultado, 
+                    mensaje = resultado ? "Ingreso registrado correctamente" : "Error al registrar" 
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = ex.Message });
+            }
+        }
+
+        // Obtener compras de hoy para historial
+        [HttpGet]
+        public JsonResult ObtenerPorFecha(string fecha)
+        {
+            try
+            {
+                var compras = CD_Compra.Instancia.ObtenerPorFecha(DateTime.Parse(fecha));
+                return Json(new { success = true, data = compras }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, mensaje = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
         // Obtener productos para autocompletado
         [HttpGet]
         public JsonResult ObtenerProductos(string termino = "")

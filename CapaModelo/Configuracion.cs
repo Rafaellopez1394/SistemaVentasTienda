@@ -35,6 +35,8 @@ namespace CapaModelo
         public string RFC { get; set; }
         public string Direccion { get; set; }
         public string Telefono { get; set; }
+        public string LogoPath { get; set; }
+        public bool MostrarLogoEnTicket { get; set; }
         public string MensajeTicket { get; set; }
         public bool ImprimirTicketAutomatico { get; set; }
     }

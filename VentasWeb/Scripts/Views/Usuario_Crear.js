@@ -154,7 +154,7 @@ function abrirPopUpForm(json) {
     } else {
         $("#txtNombres").val("");
         $("#txtApellidos").val("");
-        $("#txtCorreo").val("");
+        $("#txtCorreo").val("lasaguilasmercadodelmar@gmail.com");
         $("#txtClave").val("");
         $("#txtClave").attr("placeholder", "");
         $("#cboSucursal").val($("#cboSucursal option:first").val());
@@ -209,14 +209,30 @@ function Guardar() {
                 if (data.resultado) {
                     tabladata.ajax.reload();
                     $('#FormModal').modal('hide');
-                    swal("Mensaje", "Los cambios se guardaron correctamente", "success");
+                    
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire("Éxito", "Usuario guardado correctamente", "success");
+                    } else {
+                        alert("Éxito: Usuario guardado correctamente");
+                    }
                 } else {
-
-                    swal("Mensaje", "No se pudo guardar los cambios", "warning")
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire("Error", "No se pudo guardar el usuario", "warning");
+                    } else {
+                        alert("Error: No se pudo guardar el usuario");
+                    }
                 }
             },
-            error: function (error) {
-                console.log(error)
+            error: function (xhr, status, error) {
+                console.log("Error completo:", xhr);
+                
+                // Mostrar error simple sin verificar sesión
+                const mensaje = xhr.responseJSON?.message || "Ocurrió un error al guardar";
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire("Error", mensaje, "error");
+                } else {
+                    alert("Error: " + mensaje);
+                }
             },
             beforeSend: function () {
 
@@ -255,12 +271,30 @@ function eliminar($id) {
 
                     if (data.resultado) {
                         tabladata.ajax.reload();
+                        
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire("Éxito", "Usuario eliminado correctamente", "success");
+                        } else {
+                            alert("Éxito: Usuario eliminado correctamente");
+                        }
                     } else {
-                        swal("Mensaje", "No se pudo eliminar el usuario", "warning")
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire("Error", "No se pudo eliminar el usuario", "warning");
+                        } else {
+                            alert("Error: No se pudo eliminar el usuario");
+                        }
                     }
                 },
-                error: function (error) {
-                    console.log(error)
+                error: function (xhr, status, error) {
+                    console.log("Error completo:", xhr);
+                    
+                    // Mostrar error simple
+                    const mensaje = xhr.responseJSON?.message || "Ocurrió un error al eliminar";
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire("Error", mensaje, "error");
+                    } else {
+                        alert("Error: " + mensaje);
+                    }
                 },
                 beforeSend: function () {
 

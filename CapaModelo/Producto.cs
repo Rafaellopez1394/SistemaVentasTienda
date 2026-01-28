@@ -80,4 +80,37 @@ namespace CapaModelo
         public DateTime? UltimaCompra { get; set; }
         public int DiasDesdeUltimaCompra { get; set; }
     }
+
+    /// <summary>
+    /// Clase auxiliar para FIFO automático
+    /// Representa un lote seleccionado para venta con la cantidad específica a usar
+    /// </summary>
+    public class LoteParaVenta
+    {
+        public LoteProducto Lote { get; set; }
+        public decimal CantidadAUsar { get; set; }
+        public decimal SubTotal => CantidadAUsar * Lote.PrecioVenta;
+    }
+
+    /// <summary>
+    /// Alerta de productos próximos a caducar
+    /// </summary>
+    public class AlertaCaducidad
+    {
+        public int LoteID { get; set; }
+        public int ProductoID { get; set; }
+        public string NombreProducto { get; set; }
+        public string CodigoInterno { get; set; }
+        public string Categoria { get; set; }
+        public DateTime FechaCaducidad { get; set; }
+        public int DiasRestantes { get; set; }
+        public int CantidadDisponible { get; set; }
+        public decimal PrecioVenta { get; set; }
+        public decimal ValorInventario { get; set; }
+        public string NombreSucursal { get; set; }
+        public DateTime FechaEntrada { get; set; }
+        public string NivelAlerta { get; set; } // URGENTE, ALTO, MEDIO
+        public string ColorAlerta => NivelAlerta == "URGENTE" ? "danger" : 
+                                     NivelAlerta == "ALTO" ? "warning" : "info";
+    }
 }

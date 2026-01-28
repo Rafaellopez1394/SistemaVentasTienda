@@ -81,40 +81,39 @@ namespace CapaDatos
             return config;
         }
 
-        // Guardar configuracion de impresora
+        // Guardar configuracion de impresora (UPSERT por TipoImpresion)
         public bool GuardarImpresora(ConfiguracionImpresora config)
         {
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
-                string query;
-                
-                if (config.ConfigID > 0)
-                {
-                    query = @"UPDATE ConfiguracionImpresoras 
-                             SET NombreImpresora = @NombreImpresora, AnchoPapel = @AnchoPapel, 
-                                 Activo = @Activo, Usuario = @Usuario, FechaModificacion = GETDATE()
-                             WHERE ConfigID = @ConfigID";
-                }
-                else
-                {
-                    query = @"INSERT INTO ConfiguracionImpresoras (TipoImpresion, NombreImpresora, AnchoPapel, Activo, Usuario, FechaModificacion)
-                             VALUES (@TipoImpresion, @NombreImpresora, @AnchoPapel, @Activo, @Usuario, GETDATE())";
-                }
+                // UPSERT: Si existe un registro con el mismo TipoImpresion, actualizar; si no, insertar
+                string query = @"
+                    IF EXISTS (SELECT 1 FROM ConfiguracionImpresoras WHERE TipoImpresion = @TipoImpresion)
+                    BEGIN
+                        UPDATE ConfiguracionImpresoras 
+                        SET NombreImpresora = @NombreImpresora, 
+                            AnchoPapel = @AnchoPapel, 
+                            Activo = @Activo, 
+                            Usuario = @Usuario, 
+                            FechaModificacion = GETDATE()
+                        WHERE TipoImpresion = @TipoImpresion
+                    END
+                    ELSE
+                    BEGIN
+                        INSERT INTO ConfiguracionImpresoras (TipoImpresion, NombreImpresora, AnchoPapel, Activo, Usuario, FechaModificacion)
+                        VALUES (@TipoImpresion, @NombreImpresora, @AnchoPapel, @Activo, @Usuario, GETDATE())
+                    END";
                 
                 SqlCommand cmd = new SqlCommand(query, cnx);
-                
-                if (config.ConfigID > 0)
-                    cmd.Parameters.AddWithValue("@ConfigID", config.ConfigID);
-                else
-                    cmd.Parameters.AddWithValue("@TipoImpresion", config.TipoImpresion);
-                    
+                cmd.Parameters.AddWithValue("@TipoImpresion", config.TipoImpresion);
                 cmd.Parameters.AddWithValue("@NombreImpresora", config.NombreImpresora);
                 cmd.Parameters.AddWithValue("@AnchoPapel", config.AnchoPapel);
                 cmd.Parameters.AddWithValue("@Activo", config.Activo);
                 cmd.Parameters.AddWithValue("@Usuario", config.Usuario ?? "system");
                 
                 cnx.Open();
-                return cmd.ExecuteNonQuery() > 0;
+                cmd.ExecuteNonQuery();
+                return true;
             }
         }
 
@@ -209,7 +208,8 @@ namespace CapaDatos
             
             using (SqlConnection cnx = new SqlConnection(Conexion.CN))
             {
-                string query = @"SELECT TOP 1 NombreNegocio, RFC, Direccion, Telefono, MensajeTicket, ImprimirTicketAutomatico
+                string query = @"SELECT TOP 1 NombreNegocio, RFC, Direccion, Telefono, MensajeTicket, ImprimirTicketAutomatico,
+                                LogoPath, MostrarLogoEnTicket
                                 FROM ConfiguracionGeneral";
                 
                 SqlCommand cmd = new SqlCommand(query, cnx);
@@ -223,6 +223,8 @@ namespace CapaDatos
                         datos.RFC = dr["RFC"].ToString();
                         datos.Direccion = dr["Direccion"].ToString();
                         datos.Telefono = dr["Telefono"].ToString();
+                        datos.LogoPath = dr["LogoPath"] == DBNull.Value ? "" : dr["LogoPath"].ToString();
+                        datos.MostrarLogoEnTicket = dr["MostrarLogoEnTicket"] != DBNull.Value && Convert.ToBoolean(dr["MostrarLogoEnTicket"]);
                         datos.MensajeTicket = dr["MensajeTicket"] == DBNull.Value ? "Gracias por su compra" : dr["MensajeTicket"].ToString();
                         datos.ImprimirTicketAutomatico = dr["ImprimirTicketAutomatico"] != DBNull.Value && Convert.ToBoolean(dr["ImprimirTicketAutomatico"]);
                     }
@@ -233,6 +235,8 @@ namespace CapaDatos
                         datos.RFC = "XAXX010101000";
                         datos.Direccion = "Direccion del negocio";
                         datos.Telefono = "";
+                        datos.LogoPath = "";
+                        datos.MostrarLogoEnTicket = false;
                         datos.MensajeTicket = "Gracias por su compra";
                         datos.ImprimirTicketAutomatico = false;
                     }

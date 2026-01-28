@@ -366,6 +366,7 @@ namespace VentasWeb.Controllers
                     respuesta.valor = respuestaTimbrado.Mensaje;
                     respuesta.objeto = new
                     {
+                        FacturaID = respuestaTimbrado.FacturaID,
                         UUID = respuestaTimbrado.UUID,
                         FechaTimbrado = respuestaTimbrado.FechaTimbrado,
                         XMLBase64 = !string.IsNullOrEmpty(respuestaTimbrado.XMLTimbrado)

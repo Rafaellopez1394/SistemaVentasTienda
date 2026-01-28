@@ -54,6 +54,9 @@ $(document).ready(function () {
                     // Botón Ver Detalle
                     botones += '<button class="btn btn-info" title="Ver Detalle" onclick="verDetalle(\'' + row.VentaID + '\')"><i class="fas fa-eye"></i></button>';
                     
+                    // Botón Reimprimir Ticket
+                    botones += '<button class="btn btn-secondary" title="Reimprimir Ticket" onclick="reimprimirTicket(\'' + row.VentaID + '\')"><i class="fas fa-print"></i></button>';
+                    
                     // Verificar si la venta está totalmente pagada
                     var saldoPendiente = parseFloat(row.SaldoPendiente) || 0;
                     var estaPagada = saldoPendiente <= 0;
@@ -248,5 +251,71 @@ function mostrarModalDetalle(venta) {
     $('#modalDetalle').modal('show');
     $('#modalDetalle').on('hidden.bs.modal', function () {
         $(this).remove();
+    });
+}
+
+// Función para reimprimir ticket
+function reimprimirTicket(ventaId) {
+    $.ajax({
+        url: '/Venta/ObtenerTicket',
+        type: 'GET',
+        data: { id: ventaId },
+        success: function (response) {
+            if (response.resultado) {
+                // Crear ventana de impresión
+                var ventanaImpresion = window.open('', 'PRINT', 'height=600,width=400');
+                ventanaImpresion.document.write('<html><head><title>Ticket de Venta</title>');
+                ventanaImpresion.document.write('<style>');
+                ventanaImpresion.document.write('body { font-family: "Courier New", monospace; font-size: 12px; margin: 10px; }');
+                ventanaImpresion.document.write('.center { text-align: center; }');
+                ventanaImpresion.document.write('.right { text-align: right; }');
+                ventanaImpresion.document.write('.bold { font-weight: bold; }');
+                ventanaImpresion.document.write('hr { border: 1px dashed #000; }');
+                ventanaImpresion.document.write('table { width: 100%; border-collapse: collapse; }');
+                ventanaImpresion.document.write('</style>');
+                ventanaImpresion.document.write('</head><body>');
+                ventanaImpresion.document.write('<div class="center bold">' + (response.data.NombreNegocio || 'SUPERMERCADO') + '</div>');
+                ventanaImpresion.document.write('<div class="center">' + (response.data.DireccionNegocio || '') + '</div>');
+                ventanaImpresion.document.write('<div class="center">Tel: ' + (response.data.TelefonoNegocio || '') + '</div>');
+                ventanaImpresion.document.write('<hr>');
+                ventanaImpresion.document.write('<div><strong>TICKET:</strong> ' + response.data.CodigoDocumento.substring(0, 8) + '</div>');
+                ventanaImpresion.document.write('<div><strong>FECHA:</strong> ' + new Date(response.data.FechaCreacion).toLocaleString('es-MX') + '</div>');
+                ventanaImpresion.document.write('<div><strong>CLIENTE:</strong> ' + response.data.NombreCliente + '</div>');
+                ventanaImpresion.document.write('<hr>');
+                ventanaImpresion.document.write('<table>');
+                ventanaImpresion.document.write('<tr><td><strong>Producto</strong></td><td class="center"><strong>Cant</strong></td><td class="right"><strong>Precio</strong></td><td class="right"><strong>Total</strong></td></tr>');
+                
+                response.data.Detalle.forEach(function(item) {
+                    ventanaImpresion.document.write('<tr>');
+                    ventanaImpresion.document.write('<td>' + item.DescripcionProducto + '</td>');
+                    ventanaImpresion.document.write('<td class="center">' + item.Cantidad + '</td>');
+                    ventanaImpresion.document.write('<td class="right">$' + item.Precio.toFixed(2) + '</td>');
+                    ventanaImpresion.document.write('<td class="right">$' + item.Total.toFixed(2) + '</td>');
+                    ventanaImpresion.document.write('</tr>');
+                });
+                
+                ventanaImpresion.document.write('</table>');
+                ventanaImpresion.document.write('<hr>');
+                ventanaImpresion.document.write('<div class="right"><strong>SUBTOTAL:</strong> $' + response.data.SubTotal.toFixed(2) + '</div>');
+                ventanaImpresion.document.write('<div class="right"><strong>IVA:</strong> $' + response.data.IVA.toFixed(2) + '</div>');
+                ventanaImpresion.document.write('<div class="right bold"><strong>TOTAL:</strong> $' + response.data.Total.toFixed(2) + '</div>');
+                ventanaImpresion.document.write('<hr>');
+                ventanaImpresion.document.write('<div class="center">¡GRACIAS POR SU COMPRA!</div>');
+                ventanaImpresion.document.write('<div class="center">*** REIMPRESIÓN ***</div>');
+                ventanaImpresion.document.write('</body></html>');
+                ventanaImpresion.document.close();
+                ventanaImpresion.focus();
+                
+                setTimeout(function() {
+                    ventanaImpresion.print();
+                    ventanaImpresion.close();
+                }, 250);
+            } else {
+                Swal.fire('Error', 'No se pudo obtener el ticket', 'error');
+            }
+        },
+        error: function() {
+            Swal.fire('Error', 'Error al obtener el ticket', 'error');
+        }
     });
 }

@@ -52,7 +52,7 @@ namespace CapaDatos
                         WHERE 1=1";
 
                     if (!string.IsNullOrEmpty(rfc))
-                        query += " AND RFCReceptor LIKE @RFC";
+                        query += " AND ReceptorRFC LIKE @RFC";
 
                     if (fechaDesde.HasValue)
                         query += " AND FechaEmision >= @FechaDesde";
@@ -1609,51 +1609,47 @@ namespace CapaDatos
                     FechaCreacion = DateTime.Now
                 };
 
-                // 4. Convertir detalles a conceptos
+                // 4. Convertir detalles a conceptos (precio ya es neto)
                 factura.Conceptos = venta.Detalle.Select(d => {
-                    // Obtener tasa de IVA del producto
-                    decimal tasaIVA = 0.16m; // Por defecto 16%
-                    using (SqlConnection conn = new SqlConnection(Conexion.CN))
-                    {
-                        string queryTasa = @"
-                            SELECT ISNULL(ti.Porcentaje, 16.00) / 100.0 as TasaDecimal
-                            FROM Productos p
-                            LEFT JOIN CatTasaIVA ti ON p.TasaIVAID = ti.TasaIVAID
-                            WHERE p.Nombre = @Producto";
-                        
-                        using (SqlCommand cmd = new SqlCommand(queryTasa, conn))
-                        {
-                            cmd.Parameters.AddWithValue("@Producto", d.Producto);
-                            conn.Open();
-                            var result = cmd.ExecuteScalar();
-                            if (result != null && result != DBNull.Value)
-                            {
-                                tasaIVA = Convert.ToDecimal(result);
-                            }
-                        }
-                    }
-                    
-                    decimal divisor = 1 + tasaIVA;
-                    var importe = d.Cantidad * d.PrecioVenta;
-                    var subtotal = importe / divisor;
-                    var iva = importe - subtotal;
-                    
+                    var producto = CD_Producto.Instancia.ObtenerPorId(d.ProductoID) ?? new Producto();
+
+                    decimal tasaIVA = d.Exento ? 0m : d.TasaIVAPorcentaje / 100m;
+                    decimal importe = d.PrecioVenta * d.Cantidad; // precio neto * cantidad
+                    decimal iva = d.Exento ? 0m : importe * tasaIVA;
+
+                    string claveProdServ = !string.IsNullOrWhiteSpace(producto.ClaveProdServSATID) ? producto.ClaveProdServSATID : "01010101";
+                    string claveUnidad = !string.IsNullOrWhiteSpace(producto.ClaveUnidadSAT) ? producto.ClaveUnidadSAT : "H87";
+                    string unidad = !string.IsNullOrWhiteSpace(producto.UnidadSAT) ? producto.UnidadSAT : "Pieza";
+                    string descripcion = !string.IsNullOrWhiteSpace(producto.Nombre) ? producto.Nombre : d.Producto;
+                    string noIdent = !string.IsNullOrWhiteSpace(producto.CodigoInterno) ? producto.CodigoInterno : d.CodigoInterno;
+
                     var concepto = new FacturaDetalle
                     {
-                        NoIdentificacion = d.CodigoInterno,
-                        Descripcion = d.Producto,
+                        NoIdentificacion = noIdent,
+                        Descripcion = descripcion,
                         Cantidad = d.Cantidad,
-                        ValorUnitario = d.PrecioVenta / divisor,
-                        Importe = subtotal,
-                        ClaveProdServ = "01010101",
-                        ClaveUnidad = "H87",
-                        Unidad = "Pieza",
-                        ObjetoImp = tasaIVA > 0 ? "02" : "02", // 02 = Sí objeto de impuesto
+                        ValorUnitario = d.PrecioVenta,
+                        Importe = importe,
+                        ClaveProdServ = claveProdServ,
+                        ClaveUnidad = claveUnidad,
+                        Unidad = unidad,
+                        ObjetoImp = "02", // Sí objeto de impuesto (Exento o gravado)
                         Impuestos = new List<FacturaImpuesto>()
                     };
-                    
-                    // Solo agregar IVA si la tasa es mayor a 0
-                    if (tasaIVA > 0)
+
+                    if (d.Exento)
+                    {
+                        concepto.Impuestos.Add(new FacturaImpuesto
+                        {
+                            TipoImpuesto = "TRASLADO",
+                            Impuesto = "002",
+                            TipoFactor = "Exento",
+                            TasaOCuota = null,
+                            Base = importe,
+                            Importe = 0
+                        });
+                    }
+                    else if (tasaIVA > 0)
                     {
                         concepto.Impuestos.Add(new FacturaImpuesto
                         {
@@ -1661,24 +1657,24 @@ namespace CapaDatos
                             Impuesto = "002",
                             TipoFactor = "Tasa",
                             TasaOCuota = tasaIVA,
-                            Base = subtotal,
+                            Base = importe,
                             Importe = iva
                         });
                     }
                     else
                     {
-                        // IVA Tasa 0
+                        // Tasa 0% pero objeto de impuesto
                         concepto.Impuestos.Add(new FacturaImpuesto
                         {
                             TipoImpuesto = "TRASLADO",
                             Impuesto = "002",
                             TipoFactor = "Tasa",
                             TasaOCuota = 0.000000m,
-                            Base = subtotal,
+                            Base = importe,
                             Importe = 0
                         });
                     }
-                    
+
                     return concepto;
                 }).ToList();
 
@@ -1727,6 +1723,7 @@ namespace CapaDatos
                         }
                         
                         respuesta.Exitoso = true;
+                        respuesta.FacturaID = factura.FacturaID;
                         respuesta.UUID = resultado.UUID;
                         respuesta.XMLTimbrado = resultado.XMLTimbrado;
                         respuesta.Mensaje = "Factura timbrada exitosamente con FiscalAPI";

@@ -5,6 +5,8 @@ using CapaModelo;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Drawing.Printing;
+using System.Runtime.InteropServices;
+using System.IO;
 
 namespace VentasWeb.Controllers
 {
@@ -23,178 +25,80 @@ namespace VentasWeb.Controllers
         {
             try
             {
-                // Log para debug
                 System.Diagnostics.Debug.WriteLine("=== Iniciando ImprimirTicketDirecto ===");
                 
                 if (string.IsNullOrEmpty(contenidoTicket))
                 {
-                    System.Diagnostics.Debug.WriteLine("Contenido vacio");
                     return Json(new { success = false, mensaje = "No hay contenido para imprimir" });
                 }
 
-                System.Diagnostics.Debug.WriteLine("Obteniendo impresora configurada...");
-                ConfiguracionImpresora impresora = null;
+                ConfiguracionImpresora impresora = CD_Configuracion.Instancia.ObtenerImpresoraPorTipo("TICKET");
                 
-                try
+                if (impresora == null || string.IsNullOrEmpty(impresora.NombreImpresora))
                 {
-                    impresora = CD_Configuracion.Instancia.ObtenerImpresoraPorTipo("TICKET");
-                }
-                catch (Exception ex)
-                {
-                    System.Diagnostics.Debug.WriteLine("Error al obtener impresora: " + ex.Message);
-                    return Json(new { success = false, mensaje = "Error al obtener configuracion de impresora: " + ex.Message });
-                }
-                
-                if (impresora == null)
-                {
-                    System.Diagnostics.Debug.WriteLine("Impresora es null");
-                    return Json(new { success = false, mensaje = "No hay impresora configurada. Ve a Configuracion > Impresoras y selecciona una impresora." });
-                }
-                
-                if (string.IsNullOrEmpty(impresora.NombreImpresora))
-                {
-                    System.Diagnostics.Debug.WriteLine("Nombre de impresora vacio");
-                    return Json(new { success = false, mensaje = "El nombre de la impresora esta vacio" });
+                    return Json(new { success = false, mensaje = "No hay impresora configurada" });
                 }
 
-                System.Diagnostics.Debug.WriteLine("Impresora encontrada: " + impresora.NombreImpresora);
-
-                // Crear documento de impresion
-                PrintDocument printDoc = new PrintDocument();
-                printDoc.PrinterSettings.PrinterName = impresora.NombreImpresora;
-
-                if (!printDoc.PrinterSettings.IsValid)
+                // Obtener configuracion del logo
+                var config = CD_Configuracion.Instancia.ObtenerConfiguracionGeneral();
+                byte[] logoBytes = new byte[0];
+                
+                if (config != null && config.MostrarLogoEnTicket && !string.IsNullOrEmpty(config.LogoPath))
                 {
-                    System.Diagnostics.Debug.WriteLine("Impresora no valida: " + impresora.NombreImpresora);
-                    return Json(new { success = false, mensaje = "La impresora '" + impresora.NombreImpresora + "' no esta disponible. Verifica que este instalada y encendida." });
+                    try
+                    {
+                        string rutaCompleta = Server.MapPath(config.LogoPath);
+                        if (System.IO.File.Exists(rutaCompleta))
+                        {
+                            using (var imagen = System.Drawing.Image.FromFile(rutaCompleta))
+                            {
+                                int anchoLogo = impresora.AnchoPapel > 0 ? (int)(impresora.AnchoPapel * 6) : 300;
+                                logoBytes = ImageToEscPosBitmap(imagen, anchoLogo);
+                            }
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine("Error cargando logo: " + ex.Message);
+                    }
                 }
 
                 // Convertir HTML a texto plano
                 string textoPlano = ConvertirHtmlATextoTicket(contenidoTicket);
-                System.Diagnostics.Debug.WriteLine("Texto convertido, lineas: " + textoPlano.Split('\n').Length);
                 
-                // Variables para el evento PrintPage
-                string[] lineasTexto = textoPlano.Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries);
-                int anchoMM = impresora.AnchoPapel > 0 ? impresora.AnchoPapel : 58;
+                // Convertir texto a CP850 para ESC/POS
+                System.Text.Encoding cp850 = System.Text.Encoding.GetEncoding(850);
+                byte[] textoBytes = cp850.GetBytes(textoPlano);
                 
-                // Convertir mm a pixeles (aprox 3.78 px por mm a 96 DPI)
-                float anchoPapelPx = anchoMM * 3.78f;
-                
-                printDoc.PrintPage += (sender, e) =>
+                // Crear documento ESC/POS unificado
+                using (var ms = new System.IO.MemoryStream())
                 {
-                    try
+                    // Inicializar impresora
+                    ms.Write(new byte[] { 0x1B, 0x40 }, 0, 2); // ESC @ - inicializar
+                    
+                    // Agregar logo si existe
+                    if (logoBytes.Length > 0)
                     {
-                        // Configurar DPI para impresora termica
-                        e.Graphics.PageUnit = System.Drawing.GraphicsUnit.Millimeter;
-                        
-                        // Fuentes en puntos (optimizadas para 58mm)
-                        Font fuentePequena = new Font("Arial", 6f, FontStyle.Regular);
-                        Font fuenteNormal = new Font("Arial", 7f, FontStyle.Regular);
-                        Font fuenteNegrita = new Font("Arial", 8f, FontStyle.Bold);
-                        Font fuenteTitulo = new Font("Arial", 9f, FontStyle.Bold);
-                        Font fuenteGrande = new Font("Arial", 10f, FontStyle.Bold);
-                        
-                        float y = 2f; // Posicion Y en mm
-                        float margenIzq = 2f; // Margen izquierdo en mm
-                        float anchoUtil = anchoMM - (margenIzq * 2); // Ancho util en mm
-                        
-                        foreach (string linea in lineasTexto)
-                        {
-                            string lineaTrim = linea.Trim();
-                            
-                            if (string.IsNullOrWhiteSpace(lineaTrim))
-                            {
-                                y += 2f; // 2mm de espacio
-                                continue;
-                            }
-                            
-                            // Seleccionar fuente segun contenido
-                            Font fuenteActual = fuenteNormal;
-                            bool centrar = false;
-                            float espacioExtra = 0f;
-                            
-                            // SEPARADORES
-                            if (lineaTrim.Contains("---") || lineaTrim.Contains("==="))
-                            {
-                                fuenteActual = fuentePequena;
-                                centrar = true;
-                            }
-                            // NOMBRE DEL NEGOCIO (suele ser la linea mas larga al inicio)
-                            else if (!lineaTrim.Contains(":") && lineaTrim.Length > 15 && y < 15f)
-                            {
-                                fuenteActual = fuenteTitulo;
-                                centrar = true;
-                                espacioExtra = 0.5f;
-                            }
-                            // RFC, TEL, DIRECCION
-                            else if (lineaTrim.StartsWith("RFC:") || lineaTrim.StartsWith("Tel:"))
-                            {
-                                fuenteActual = fuentePequena;
-                                centrar = true;
-                            }
-                            // TICKET DE VENTA
-                            else if (lineaTrim.Contains("TICKET DE VENTA"))
-                            {
-                                fuenteActual = fuenteNegrita;
-                                centrar = true;
-                                y += 2f; // Espacio antes
-                                espacioExtra = 1f;
-                            }
-                            // TOTAL
-                            else if (lineaTrim.StartsWith("TOTAL:") || lineaTrim.Contains("TOTAL:"))
-                            {
-                                fuenteActual = fuenteGrande;
-                                y += 2f; // Espacio antes del total
-                                espacioExtra = 1f;
-                            }
-                            // SUBTOTAL, IVA
-                            else if (lineaTrim.Contains("Subtotal:") || lineaTrim.Contains("IVA"))
-                            {
-                                fuenteActual = fuenteNormal;
-                            }
-                            // MENSAJES FINALES
-                            else if (lineaTrim.Contains("Gracias") || lineaTrim.Contains("Conserve") || lineaTrim.Contains("***"))
-                            {
-                                fuenteActual = fuentePequena;
-                                centrar = true;
-                                espacioExtra = 1f;
-                            }
-                            
-                            // Calcular el rectangulo para el texto
-                            RectangleF rect = new RectangleF(margenIzq, y, anchoUtil, 20f);
-                            
-                            // Formato de alineacion
-                            StringFormat formato = new StringFormat();
-                            formato.Alignment = centrar ? StringAlignment.Center : StringAlignment.Near;
-                            formato.LineAlignment = StringAlignment.Near;
-                            formato.FormatFlags = StringFormatFlags.NoWrap;
-                            formato.Trimming = StringTrimming.Character;
-                            
-                            // Dibujar el texto
-                            e.Graphics.DrawString(lineaTrim, fuenteActual, Brushes.Black, rect, formato);
-                            
-                            // Medir el alto real del texto para calcular la siguiente posicion Y
-                            SizeF medida = e.Graphics.MeasureString(lineaTrim, fuenteActual, (int)anchoUtil);
-                            float altoMM = medida.Height / e.Graphics.DpiY * 25.4f; // Convertir a mm
-                            
-                            // Avanzar Y con el alto del texto + espaciado minimo
-                            y += Math.Max(altoMM, fuenteActual.Size * 0.35f) + 0.8f + espacioExtra;
-                        }
-                        
-                        // Espacio final para corte
-                        y += 10f;
-                        
-                        e.HasMorePages = false;
+                        ms.Write(logoBytes, 0, logoBytes.Length);
                     }
-                    catch (Exception ex)
+                    
+                    // Agregar texto
+                    ms.Write(textoBytes, 0, textoBytes.Length);
+                    
+                    // Avanzar y cortar
+                    ms.Write(new byte[] { 0x0A, 0x0A, 0x0A, 0x0A }, 0, 4); // Saltos de linea
+                    ms.Write(new byte[] { 0x1D, 0x56, 0x01 }, 0, 3); // GS V 1 - corte parcial
+                    
+                    // Enviar a impresora
+                    byte[] documento = ms.ToArray();
+                    bool exito = SendBytesToPrinter(impresora.NombreImpresora, documento);
+                    
+                    if (!exito)
                     {
-                        System.Diagnostics.Debug.WriteLine("Error en PrintPage: " + ex.Message);
+                        return Json(new { success = false, mensaje = "Error al enviar datos a la impresora" });
                     }
-                };
-
-                // Imprimir el documento
-                System.Diagnostics.Debug.WriteLine("Enviando a imprimir...");
-                printDoc.Print();
+                }
+                
                 System.Diagnostics.Debug.WriteLine("Impresion completada");
                 
                 return Json(new { success = true, mensaje = "Ticket enviado a impresora " + impresora.NombreImpresora });
@@ -391,6 +295,127 @@ namespace VentasWeb.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, mensaje = ex.Message });
+            }
+        }
+
+        // ===== MÉTODOS PARA IMPRESIÓN RAW ESC/POS =====
+        
+        [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi)]
+        public class DOCINFOA
+        {
+            [MarshalAs(UnmanagedType.LPStr)] public string pDocName;
+            [MarshalAs(UnmanagedType.LPStr)] public string pOutputFile;
+            [MarshalAs(UnmanagedType.LPStr)] public string pDataType;
+        }
+
+        [DllImport("winspool.Drv", EntryPoint = "OpenPrinterA", SetLastError = true, CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool OpenPrinter([MarshalAs(UnmanagedType.LPStr)] string szPrinter, out IntPtr hPrinter, IntPtr pd);
+
+        [DllImport("winspool.Drv", EntryPoint = "ClosePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool ClosePrinter(IntPtr hPrinter);
+
+        [DllImport("winspool.Drv", EntryPoint = "StartDocPrinterA", SetLastError = true, CharSet = CharSet.Ansi, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool StartDocPrinter(IntPtr hPrinter, Int32 level, [In, MarshalAs(UnmanagedType.LPStruct)] DOCINFOA di);
+
+        [DllImport("winspool.Drv", EntryPoint = "EndDocPrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool EndDocPrinter(IntPtr hPrinter);
+
+        [DllImport("winspool.Drv", EntryPoint = "StartPagePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool StartPagePrinter(IntPtr hPrinter);
+
+        [DllImport("winspool.Drv", EntryPoint = "EndPagePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool EndPagePrinter(IntPtr hPrinter);
+
+        [DllImport("winspool.Drv", EntryPoint = "WritePrinter", SetLastError = true, ExactSpelling = true, CallingConvention = CallingConvention.StdCall)]
+        public static extern bool WritePrinter(IntPtr hPrinter, IntPtr pBytes, Int32 dwCount, out Int32 dwWritten);
+
+        private static bool SendBytesToPrinter(string printerName, byte[] bytes)
+        {
+            IntPtr pUnmanagedBytes = Marshal.AllocCoTaskMem(bytes.Length);
+            Marshal.Copy(bytes, 0, pUnmanagedBytes, bytes.Length);
+            
+            Int32 dwWritten = 0;
+            IntPtr hPrinter = IntPtr.Zero;
+            DOCINFOA di = new DOCINFOA { pDocName = "Ticket", pDataType = "RAW" };
+            bool success = false;
+
+            if (OpenPrinter(printerName.Normalize(), out hPrinter, IntPtr.Zero))
+            {
+                if (StartDocPrinter(hPrinter, 1, di))
+                {
+                    if (StartPagePrinter(hPrinter))
+                    {
+                        success = WritePrinter(hPrinter, pUnmanagedBytes, bytes.Length, out dwWritten);
+                        EndPagePrinter(hPrinter);
+                    }
+                    EndDocPrinter(hPrinter);
+                }
+                ClosePrinter(hPrinter);
+            }
+            
+            Marshal.FreeCoTaskMem(pUnmanagedBytes);
+            return success;
+        }
+
+        private byte[] ImageToEscPosBitmap(System.Drawing.Image imagen, int maxWidth)
+        {
+            try
+            {
+                int newWidth = Math.Min(imagen.Width, maxWidth);
+                int newHeight = (int)(imagen.Height * ((float)newWidth / imagen.Width));
+
+                using (Bitmap bmp = new Bitmap(newWidth, newHeight))
+                {
+                    using (Graphics g = Graphics.FromImage(bmp))
+                    {
+                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        g.DrawImage(imagen, 0, 0, newWidth, newHeight);
+                    }
+
+                    int width = bmp.Width;
+                    int height = bmp.Height;
+                    int widthBytes = (width + 7) / 8;
+                    byte[] imageBytes = new byte[widthBytes * height];
+
+                    int index = 0;
+                    for (int y = 0; y < height; y++)
+                    {
+                        for (int xByte = 0; xByte < widthBytes; xByte++)
+                        {
+                            byte b = 0;
+                            for (int bit = 0; bit < 8; bit++)
+                            {
+                                int x = xByte * 8 + bit;
+                                if (x < width)
+                                {
+                                    Color pixel = bmp.GetPixel(x, y);
+                                    int luminance = (pixel.R + pixel.G + pixel.B) / 3;
+                                    if (luminance < 128) b |= (byte)(1 << (7 - bit));
+                                }
+                            }
+                            imageBytes[index++] = b;
+                        }
+                    }
+
+                    using (var ms = new System.IO.MemoryStream())
+                    {
+                        ms.Write(new byte[] { 0x1B, 0x61, 0x01 }, 0, 3); // Centrar
+                        ms.Write(new byte[] { 0x1D, 0x76, 0x30, 0x00 }, 0, 4); // GS v 0
+                        ms.WriteByte((byte)(widthBytes & 0xFF));
+                        ms.WriteByte((byte)((widthBytes >> 8) & 0xFF));
+                        ms.WriteByte((byte)(height & 0xFF));
+                        ms.WriteByte((byte)((height >> 8) & 0xFF));
+                        ms.Write(imageBytes, 0, imageBytes.Length);
+                        ms.Write(new byte[] { 0x1B, 0x61, 0x00 }, 0, 3); // Alinear izquierda
+                        ms.Write(new byte[] { 0x0A, 0x0A }, 0, 2); // Saltos de línea
+                        return ms.ToArray();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Error convirtiendo imagen: " + ex.Message);
+                return new byte[0];
             }
         }
     }

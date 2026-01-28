@@ -195,6 +195,7 @@ namespace CapaModelo
     {
         public bool Exitoso { get; set; }
         public string Mensaje { get; set; }
+        public Guid? FacturaID { get; set; }
         public string UUID { get; set; }
         public DateTime? FechaTimbrado { get; set; }
         public string XMLTimbrado { get; set; }

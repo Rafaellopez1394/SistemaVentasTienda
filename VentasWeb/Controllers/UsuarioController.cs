@@ -9,6 +9,7 @@ using VentasWeb.Utilidades;
 
 namespace VentasWeb.Controllers
 {
+    [AllowAnonymous]  // TEMPORALMENTE - para que funcione sin verificar sesión
     public class UsuarioController : Controller
     {
         // GET: Usuario

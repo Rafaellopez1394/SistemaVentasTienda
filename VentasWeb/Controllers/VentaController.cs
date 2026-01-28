@@ -60,6 +60,25 @@ namespace VentasWeb.Controllers
             return Json(new { success = true, data = venta }, JsonRequestBehavior.AllowGet);
         }
 
+        // Obtener datos para reimprimir ticket
+        [HttpGet]
+        public JsonResult ObtenerTicket(Guid id)
+        {
+            try
+            {
+                var venta = CD_Venta.Instancia.ObtenerDetalle(id);
+                if (venta != null)
+                {
+                    return Json(new { resultado = true, data = venta }, JsonRequestBehavior.AllowGet);
+                }
+                return Json(new { resultado = false, mensaje = "Venta no encontrada" }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { resultado = false, mensaje = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
         // Obtener historial de pagos de una venta
         [HttpGet]
         public JsonResult ObtenerHistorialPagos(Guid ventaId)

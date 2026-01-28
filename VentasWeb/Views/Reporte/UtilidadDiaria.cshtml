@@ -1,0 +1,282 @@
+@{
+    ViewBag.Title = "Reporte de Utilidad Diaria";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid" style="padding: 20px;">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Reporte de Utilidad Diaria</h2>
+            <hr />
+        </div>
+    </div>
+
+    <!-- Sección de filtros -->
+    <div class="row" style="margin-bottom: 20px;">
+        <div class="col-md-4">
+            <div class="form-group">
+                <label for="fechaReporte">Seleccionar Fecha:</label>
+                <input type="date" id="fechaReporte" class="form-control" />
+            </div>
+        </div>
+        <div class="col-md-8" style="padding-top: 24px;">
+            <button class="btn btn-primary" id="btnPreview" onclick="cargarPreview()">
+                <span class="glyphicon glyphicon-eye-open"></span> Ver Preview
+            </button>
+            <button class="btn btn-success" id="btnDescargar" onclick="descargarExcel()">
+                <span class="glyphicon glyphicon-download-alt"></span> Descargar Excel
+            </button>
+            <span id="loading" style="display:none; margin-left: 10px;">
+                <i class="fa fa-spinner fa-spin"></i> Procesando...
+            </span>
+        </div>
+    </div>
+
+    <!-- Alertas -->
+    <div id="alertaExito" class="alert alert-success" style="display:none; margin-bottom: 20px;">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <strong>Éxito!</strong> <span id="mensajeExito"></span>
+    </div>
+    <div id="alertaError" class="alert alert-danger" style="display:none; margin-bottom: 20px;">
+        <button type="button" class="close" data-dismiss="alert">&times;</button>
+        <strong>Error!</strong> <span id="mensajeError"></span>
+    </div>
+
+    <!-- Preview del reporte -->
+    <div id="previewContainer" style="display:none;">
+        <!-- Encabezado -->
+        <div style="background-color: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px;">
+            <h3 id="fechaTitle" style="margin: 0;"></h3>
+            <p id="fechaSubtitle" style="margin: 5px 0 0 0; color: #666;"></p>
+        </div>
+
+        <!-- Resumen de Ventas -->
+        <div style="margin-bottom: 30px;">
+            <h4 style="background-color: #003366; color: white; padding: 10px; margin: 0 0 10px 0;">RESUMEN DE VENTAS</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped" id="tablaResumenVentas">
+                    <thead>
+                        <tr>
+                            <th>Forma de Pago</th>
+                            <th class="text-right">Tickets</th>
+                            <th class="text-right">Unidades</th>
+                            <th class="text-right">Total Ventas</th>
+                            <th class="text-right">% del Total</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="row" style="margin: 10px 0;">
+                <div class="col-md-6">
+                    <strong>Total Ventas Contado:</strong> <span id="totalContado" class="pull-right">$0.00</span>
+                </div>
+                <div class="col-md-6">
+                    <strong>Total Ventas Crédito:</strong> <span id="totalCredito" class="pull-right">$0.00</span>
+                </div>
+            </div>
+            <div class="row" style="background-color: #e8f4f8; padding: 10px;">
+                <div class="col-md-6">
+                    <strong>TOTAL VENTAS DEL DÍA:</strong> <span id="totalVentas" class="pull-right" style="font-size: 18px; color: #003366;"><strong>$0.00</strong></span>
+                </div>
+                <div class="col-md-6">
+                    <strong>Total Tickets:</strong> <span id="totalTickets" class="pull-right">0</span>
+                    &nbsp;&nbsp;<strong>Total Unidades:</strong> <span id="totalUnidades" class="pull-right">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Costos y Utilidad -->
+        <div style="margin-bottom: 30px;">
+            <h4 style="background-color: #003366; color: white; padding: 10px; margin: 0 0 10px 0;">ANÁLISIS DE COSTOS Y UTILIDAD</h4>
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="panel panel-default">
+                        <div class="panel-heading"><strong>Costo de Mercancía Vendida</strong></div>
+                        <div class="panel-body text-center" style="font-size: 24px; color: #d9534f;">
+                            <span id="costos">$0.00</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="panel panel-default">
+                        <div class="panel-heading"><strong>UTILIDAD DIARIA</strong></div>
+                        <div class="panel-body text-center" style="font-size: 24px; color: #5cb85c;">
+                            <span id="utilidad">$0.00</span>
+                            <div style="font-size: 14px; margin-top: 10px;">
+                                <span id="porcentaje">0%</span> de margen
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recupero de Créditos -->
+        <div style="margin-bottom: 30px;">
+            <h4 style="background-color: #003366; color: white; padding: 10px; margin: 0 0 10px 0;">RECUPERO DE CRÉDITOS</h4>
+            <div class="alert alert-info">
+                <strong>Créditos Recuperados Hoy:</strong> <span id="recuperoCreditos" style="font-size: 18px; font-weight: bold;">$0.00</span>
+            </div>
+        </div>
+
+        <!-- Top Productos -->
+        <div style="margin-bottom: 30px;">
+            <h4 style="background-color: #003366; color: white; padding: 10px; margin: 0 0 10px 0;">TOP 20 PRODUCTOS MÁS VENDIDOS</h4>
+            <div class="table-responsive">
+                <table class="table table-bordered table-striped table-hover" id="tablaProductos">
+                    <thead>
+                        <tr>
+                            <th>Producto</th>
+                            <th class="text-right">Contado</th>
+                            <th class="text-right">Crédito</th>
+                            <th class="text-right">Total Ventas</th>
+                            <th class="text-right">Costo</th>
+                            <th class="text-right">Utilidad</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script type="text/javascript">
+        $(function () {
+            // Establecer fecha actual
+            var today = new Date();
+            var dd = String(today.getDate()).padStart(2, '0');
+            var mm = String(today.getMonth() + 1).padStart(2, '0');
+            var yyyy = today.getFullYear();
+            $('#fechaReporte').val(yyyy + '-' + mm + '-' + dd);
+        });
+
+        function formatCurrency(value) {
+            return '$' + parseFloat(value).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+        }
+
+        function formatPercentage(value) {
+            return (parseFloat(value) * 100).toFixed(2) + '%';
+        }
+
+        function cargarPreview() {
+            var fecha = $('#fechaReporte').val();
+            
+            $('#loading').show();
+            $('#alertaExito').hide();
+            $('#alertaError').hide();
+
+            $.ajax({
+                url: '@Url.Action("ObtenerPreviewUtilidadDiaria", "Reporte")',
+                type: 'GET',
+                data: { fecha: fecha },
+                dataType: 'json',
+                success: function (response) {
+                    if (response.success) {
+                        mostrarPreview(response.data);
+                        $('#alertaExito').show();
+                        $('#mensajeExito').text('Reporte cargado exitosamente');
+                    } else {
+                        $('#alertaError').show();
+                        $('#mensajeError').text(response.message);
+                    }
+                },
+                error: function () {
+                    $('#alertaError').show();
+                    $('#mensajeError').text('Error al cargar el reporte');
+                },
+                complete: function () {
+                    $('#loading').hide();
+                }
+            });
+        }
+
+        function mostrarPreview(data) {
+            // Encabezado
+            var fecha = new Date(data.Fecha + 'T00:00:00');
+            $('#fechaTitle').text('Utilidad Diaria - ' + fecha.toLocaleDateString('es-MX', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
+            $('#fechaSubtitle').text('Sucursal #' + data.SucursalID + ' | Generado: ' + new Date().toLocaleString());
+
+            // Resumen de Ventas
+            $('#tablaResumenVentas tbody').empty();
+            $.each(data.ResumenVentas, function (i, item) {
+                var row = '<tr>' +
+                    '<td>' + item.FormaPago + '</td>' +
+                    '<td class="text-right">' + item.NumeroTickets + '</td>' +
+                    '<td class="text-right">' + item.UnidadesVendidas + '</td>' +
+                    '<td class="text-right">' + formatCurrency(item.TotalVentas) + '</td>' +
+                    '<td class="text-right">' + formatPercentage(item.TotalVentas / data.TotalVentas) + '</td>' +
+                    '</tr>';
+                $('#tablaResumenVentas tbody').append(row);
+            });
+
+            $('#totalContado').text(formatCurrency(data.TotalVentasContado));
+            $('#totalCredito').text(formatCurrency(data.TotalVentasCredito));
+            $('#totalVentas').text(formatCurrency(data.TotalVentas));
+            $('#totalTickets').text(data.TotalTickets);
+            $('#totalUnidades').text(data.TotalUnidades);
+
+            // Costos y Utilidad
+            $('#costos').text(formatCurrency(data.CostosCompra));
+            $('#utilidad').text(formatCurrency(data.UtilidadDiaria));
+            $('#porcentaje').text(formatPercentage(data.PorcentajeUtilidad / 100));
+
+            // Recupero de Créditos
+            $('#recuperoCreditos').text(formatCurrency(data.RecuperoCreditosTotal));
+
+            // Productos
+            $('#tablaProductos tbody').empty();
+            $.each(data.DetallePorProducto, function (i, item) {
+                var row = '<tr>' +
+                    '<td>' + item.Producto + '</td>' +
+                    '<td class="text-right">' + item.UnidadesContado + '</td>' +
+                    '<td class="text-right">' + item.UnidadesCredito + '</td>' +
+                    '<td class="text-right">' + formatCurrency(item.TotalVentas) + '</td>' +
+                    '<td class="text-right">' + formatCurrency(item.CostoTotal) + '</td>' +
+                    '<td class="text-right">' + formatCurrency(item.Utilidad) + '</td>' +
+                    '</tr>';
+                $('#tablaProductos tbody').append(row);
+            });
+
+            $('#previewContainer').show();
+        }
+
+        function descargarExcel() {
+            var fecha = $('#fechaReporte').val();
+            
+            $('#loading').show();
+            $('#alertaExito').hide();
+            $('#alertaError').hide();
+
+            $.ajax({
+                url: '@Url.Action("ExportarUtilidadDiaria", "Reporte")',
+                type: 'POST',
+                data: { fecha: fecha },
+                xhrFields: {
+                    responseType: 'blob'
+                },
+                success: function (data, status, xhr) {
+                    var link = document.createElement('a');
+                    var url = URL.createObjectURL(data);
+                    link.href = url;
+                    link.download = 'UtilidadDiaria_' + fecha.replace(/-/g, '') + '.xlsx';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+
+                    $('#alertaExito').show();
+                    $('#mensajeExito').text('Excel descargado exitosamente');
+                },
+                error: function () {
+                    $('#alertaError').show();
+                    $('#mensajeError').text('Error al descargar el archivo');
+                },
+                complete: function () {
+                    $('#loading').hide();
+                }
+            });
+        }
+    </script>
+}

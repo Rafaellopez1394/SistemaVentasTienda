@@ -87,6 +87,7 @@ function guardarDatosNegocio() {
 // ============================================================================
 // IMPRESORAS
 // ============================================================================
+
 function cargarImpresoras() {
     $.get('/Configuracion/ListarImpresorasSistema', function (res) {
         if (res.success && res.data) {

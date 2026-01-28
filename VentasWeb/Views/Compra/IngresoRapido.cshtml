@@ -1,0 +1,178 @@
+@{
+    ViewBag.Title = "Ingreso Rápido - Productos Congelados";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="row">
+    <div class="col-lg-8 offset-lg-2">
+        <div class="card shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h4 class="mb-0">
+                    <i class="fas fa-fish"></i> Ingreso Rápido - Productos Congelados
+                </h4>
+            </div>
+            <div class="card-body">
+                <!-- Alert informativa -->
+                <div class="alert alert-info">
+                    <i class="fas fa-info-circle"></i> Este formulario está optimizado para el ingreso diario de productos congelados como camarón, pescado, mariscos, etc. El sistema creará automáticamente un lote con control de trazabilidad.
+                </div>
+
+                <form id="frmIngresoRapido">
+                    <div class="row">
+                        <!-- Sucursal -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><i class="fas fa-store"></i> Sucursal *</label>
+                                <select class="form-control" id="cboSucursal" required>
+                                    <option value="">-- Seleccione --</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Proveedor -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label><i class="fas fa-truck"></i> Proveedor *</label>
+                                <select class="form-control" id="cboProveedor" required>
+                                    <option value="">-- Seleccione --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Tabla de productos -->
+                    <div class="form-group">
+                        <label class="font-weight-bold">Productos a Ingresar</label>
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm" id="tablaProductos">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th width="30%">Producto *</th>
+                                        <th width="15%">Cantidad (kg) *</th>
+                                        <th width="15%">Precio/kg *</th>
+                                        <th width="15%">P. Venta/kg</th>
+                                        <th width="20%">Caducidad</th>
+                                        <th width="5%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr class="fila-producto">
+                                        <td>
+                                            <select class="form-control form-control-sm cboProducto" required>
+                                                <option value="">-- Seleccione producto --</option>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm txtCantidad" placeholder="0.00" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm txtPrecioCompra" placeholder="0.00" required>
+                                        </td>
+                                        <td>
+                                            <input type="number" step="0.01" min="0.01" class="form-control form-control-sm txtPrecioVenta" placeholder="0.00">
+                                        </td>
+                                        <td>
+                                            <input type="date" class="form-control form-control-sm txtFechaCaducidad">
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-danger btnEliminarFila" disabled>
+                                                <i class="fas fa-trash"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-sm btn-secondary" id="btnAgregarProducto">
+                            <i class="fas fa-plus"></i> Agregar otro producto
+                        </button>
+                    </div>
+
+                    <hr>
+
+                    <!-- Resumen -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Folio de Factura (Opcional)</label>
+                                <input type="text" class="form-control" id="txtFolioFactura" placeholder="Ej: FACT-001">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label>Observaciones</label>
+                                <input type="text" class="form-control" id="txtObservaciones" placeholder="Notas adicionales">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Total -->
+                    <div class="card bg-light">
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p class="mb-1"><strong>Total de productos:</strong> <span id="lblTotalProductos">0</span></p>
+                                    <p class="mb-0"><strong>Total kilogramos:</strong> <span id="lblTotalKg">0.00</span> kg</p>
+                                </div>
+                                <div class="col-md-6 text-right">
+                                    <h4 class="mb-0">
+                                        <strong>Total:</strong> 
+                                        <span class="text-success" id="lblTotal">$0.00</span>
+                                    </h4>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr>
+
+                    <!-- Botones -->
+                    <div class="text-right">
+                        <a href="@Url.Action("Index", "Compra")" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Cancelar
+                        </a>
+                        <button type="submit" class="btn btn-success btn-lg">
+                            <i class="fas fa-save"></i> Guardar Ingreso
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Historial reciente -->
+        <div class="card shadow-sm mt-3">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0"><i class="fas fa-history"></i> Ingresos de Hoy</h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover" id="tablaHistorial">
+                        <thead>
+                            <tr>
+                                <th>Hora</th>
+                                <th>Producto</th>
+                                <th>Cantidad</th>
+                                <th>Precio/kg</th>
+                                <th>Total</th>
+                                <th>Proveedor</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="6" class="text-center text-muted">
+                                    No hay ingresos registrados hoy
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section scripts {
+    <script src="~/Scripts/Views/IngresoRapido.js"></script>
+}

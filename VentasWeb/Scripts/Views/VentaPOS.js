@@ -1,3 +1,4 @@
+// Version: 20260126-134036
 // VentasWeb/Scripts/Views/VentaPOS.js
 // ============================================================================
 // VARIABLES GLOBALES
@@ -70,12 +71,23 @@ function cargarCatalogos() {
             res.formasPago.forEach(fp => {
                 $forma.append(`<option value="${fp.FormaPagoID}" data-cambio="${fp.RequiereCambio}">${fp.Descripcion}</option>`);
             });
+            // Seleccionar "Efectivo" por defecto (normalmente es el primer ID o buscar por descripción)
+            const efectivoOption = res.formasPago.find(fp => fp.Descripcion.toLowerCase().includes('efectivo'));
+            if (efectivoOption) {
+                $forma.val(efectivoOption.FormaPagoID);
+                cambiarFormaPago(); // Mostrar panel de efectivo
+            }
 
             // Métodos de pago
             const $metodo = $('#cboMetodoPago').empty().append('<option value="">Seleccionar...</option>');
             res.metodosPago.forEach(mp => {
                 $metodo.append(`<option value="${mp.MetodoPagoID}">${mp.Descripcion}</option>`);
             });
+            // Seleccionar "PUE - Pago en una sola exhibición" por defecto
+            const pueOption = res.metodosPago.find(mp => mp.Descripcion.includes('PUE') || mp.Descripcion.toLowerCase().includes('una') || mp.Descripcion.toLowerCase().includes('exhibici'));
+            if (pueOption) {
+                $metodo.val(pueOption.MetodoPagoID);
+            }
 
             // Usos CFDI
             const $uso = $('#cboUsoCFDI').empty().append('<option value="">Seleccionar...</option>');
@@ -690,6 +702,7 @@ function procesarVenta(tipoVenta, totales, clienteID) {
     const detalle = carrito.map(item => ({
         ProductoID: item.ProductoID,
         LoteID: item.LoteID,
+        Nombre: item.Nombre,
         Cantidad: item.Cantidad,
         PrecioVenta: item.PrecioVenta,
         PrecioCompra: item.PrecioCompra,
@@ -774,11 +787,26 @@ function limpiarFormulario() {
 
     seleccionarClienteGeneral();
 
-    $('#cboFormaPago').val('');
-    $('#cboMetodoPago').val('');
+    // Restaurar forma de pago a EFECTIVO por defecto
+    const efectivoOption = catalogos.formasPago.find(fp => fp.Descripcion.toLowerCase().includes('efectivo'));
+    if (efectivoOption) {
+        $('#cboFormaPago').val(efectivoOption.FormaPagoID);
+        cambiarFormaPago(); // Mostrar panel de efectivo
+    } else {
+        $('#cboFormaPago').val('');
+        $('#panelEfectivo').hide();
+        $('#panelCambio').hide();
+    }
+    
+    // Restaurar método de pago a PUE por defecto
+    const pueOption = catalogos.metodosPago.find(mp => mp.Descripcion.includes('PUE') || mp.Descripcion.toLowerCase().includes('una') || mp.Descripcion.toLowerCase().includes('exhibici'));
+    if (pueOption) {
+        $('#cboMetodoPago').val(pueOption.MetodoPagoID);
+    } else {
+        $('#cboMetodoPago').val('');
+    }
+    
     $('#txtEfectivoRecibido').val('');
-    $('#panelEfectivo').hide();
-    $('#panelCambio').hide();
 
     $('#chkRequiereFactura').prop('checked', false);
     $('#datosFacturacion').hide();
@@ -814,13 +842,19 @@ function mostrarToast(mensaje, tipo = 'info') {
 // GENERACION DE TICKET DE VENTA
 // ============================================================================
 function generarTicketVenta(ventaId, productos, totales, efectivo, cambio) {
-    // Obtener datos del negocio
-    $.get('/Configuracion/ObtenerDatosNegocio', function (res) {
+    // Obtener configuración de impresora para ancho de papel
+    $.get('/Configuracion/ObtenerImpresoraTickets', function (resImpresora) {
+        var anchoPapel = (resImpresora.success && resImpresora.data) ? resImpresora.data.AnchoPapel : 58;
+        
+        // Obtener datos del negocio
+        $.get('/Configuracion/ObtenerDatosNegocio', function (res) {
         var datosNegocio = res.success ? res.data : {
             NombreNegocio: 'MI TIENDA',
             RFC: '',
             Direccion: '',
             Telefono: '',
+            LogoPath: '',
+            MostrarLogoEnTicket: false,
             MensajeTicket: 'Gracias por su compra',
             ImprimirTicketAutomatico: false
         };
@@ -832,11 +866,14 @@ function generarTicketVenta(ventaId, productos, totales, efectivo, cambio) {
             rfc: datosNegocio.RFC,
             direccion: datosNegocio.Direccion,
             telefono: datosNegocio.Telefono,
+            logo: datosNegocio.LogoPath,
+            mostrarLogo: datosNegocio.MostrarLogoEnTicket,
+            anchoPapel: anchoPapel,
             folio: ventaId ? ventaId.substring(0, 8).toUpperCase() : 'N/A',
             fecha: new Date().toLocaleString(),
             cliente: clienteNombre,
             productos: productos.map(p => ({
-                nombre: p.Producto || p.nombre || 'Producto',
+                nombre: p.Nombre || p.nombre || 'Producto',
                 cantidad: p.Cantidad,
                 precio: p.PrecioVenta,
                 subtotal: p.Cantidad * p.PrecioVenta
@@ -849,22 +886,51 @@ function generarTicketVenta(ventaId, productos, totales, efectivo, cambio) {
             mensaje: datosNegocio.MensajeTicket
         };
         
-        var contenidoHTML = generarTicketHTML(datosTicket);
+        // Imprimir directamente al finalizar la venta (pasar datosTicket)
+        imprimirTicket(null, datosTicket);
         
-        // Imprimir directamente al finalizar la venta
-        imprimirTicket(contenidoHTML);
-        
+        }).fail(function() {
+            // Si falla obtener datos del negocio, usar valores por defecto
+            var clienteNombre = clienteActual ? clienteActual.RazonSocial : 'PUBLICO GENERAL';
+            
+            var datosTicket = {
+                negocio: 'MI TIENDA',
+                rfc: '',
+                direccion: '',
+                telefono: '',
+                anchoPapel: anchoPapel,
+                folio: ventaId ? ventaId.substring(0, 8).toUpperCase() : 'N/A',
+                fecha: new Date().toLocaleString(),
+                cliente: clienteNombre,
+                productos: productos.map(p => ({
+                    nombre: p.Nombre || p.nombre || 'Producto',
+                    cantidad: p.Cantidad,
+                    precio: p.PrecioVenta,
+                    subtotal: p.Cantidad * p.PrecioVenta
+                })),
+                subtotal: totales.subtotal,
+                iva: totales.iva,
+                total: totales.total,
+                efectivo: efectivo || 0,
+                cambio: cambio || 0,
+                mensaje: 'Gracias por su compra'
+            };
+            
+            imprimirTicket(null, datosTicket);
+        });
     }).fail(function() {
-        // Si falla obtener config, usar valores por defecto e imprimir igual
+        // Si falla obtener configuración de impresora, usar ancho por defecto
+        var anchoPapel = 58;
         var clienteNombre = clienteActual ? clienteActual.RazonSocial : 'PUBLICO GENERAL';
         
         var datosTicket = {
             negocio: 'MI TIENDA',
+            anchoPapel: anchoPapel,
             folio: ventaId ? ventaId.substring(0, 8).toUpperCase() : 'N/A',
             fecha: new Date().toLocaleString(),
             cliente: clienteNombre,
             productos: productos.map(p => ({
-                nombre: p.Producto || p.nombre || 'Producto',
+                nombre: p.Nombre || p.nombre || 'Producto',
                 cantidad: p.Cantidad,
                 precio: p.PrecioVenta,
                 subtotal: p.Cantidad * p.PrecioVenta
@@ -877,104 +943,297 @@ function generarTicketVenta(ventaId, productos, totales, efectivo, cambio) {
             mensaje: 'Gracias por su compra'
         };
         
-        // Imprimir directamente
-        imprimirTicket(generarTicketHTML(datosTicket));
+        // Imprimir directamente (pasar datosTicket)
+        imprimirTicket(null, datosTicket);
     });
 }
 
-function generarTicketHTML(datos) {
-    var linea = '--------------------------------';
+function generarTicketHTML(datos, esCopia) {
     var html = '';
     
-    // Usar el mismo formato que el ticket de prueba (con clases CSS simples)
-    html += '<div class="ticket-container">';
-    
-    // Encabezado del negocio
-    html += '<div class="ticket-header">';
-    html += '<div class="negocio-nombre">' + (datos.negocio || 'MI TIENDA') + '</div>';
-    if (datos.rfc) html += '<div>RFC: ' + datos.rfc + '</div>';
-    if (datos.direccion) html += '<div class="direccion">' + datos.direccion + '</div>';
-    if (datos.telefono) html += '<div>Tel: ' + datos.telefono + '</div>';
-    html += '</div>';
-    
-    html += '<div class="linea">' + linea + '</div>';
-    
-    // Datos de la venta
-    html += '<div class="ticket-info">';
-    html += '<div class="titulo-venta">TICKET DE VENTA</div>';
-    html += '<div>Folio: ' + datos.folio + '</div>';
-    html += '<div>Fecha: ' + datos.fecha + '</div>';
-    html += '<div>Cliente: ' + (datos.cliente || 'PUBLICO GENERAL') + '</div>';
-    html += '</div>';
-    
-    html += '<div class="linea">' + linea + '</div>';
-    
-    // Lista de productos (formato vertical para 58mm)
-    html += '<div class="productos-lista">';
-    if (datos.productos && datos.productos.length > 0) {
-        datos.productos.forEach(function (p) {
-            html += '<div class="producto-item">';
-            html += '<div class="producto-nombre">' + (p.nombre || 'Producto').substring(0, 22) + '</div>';
-            html += '<div class="producto-detalle">';
-            html += '<span>' + p.cantidad + ' x $' + p.precio.toFixed(2) + '</span>';
-            html += '<span class="producto-total">$' + p.subtotal.toFixed(2) + '</span>';
-            html += '</div>';
-            html += '</div>';
-        });
-    }
-    html += '</div>';
-    
-    html += '<div class="linea">' + linea + '</div>';
-    
-    // Totales
-    html += '<div class="totales">';
-    html += '<div class="total-row"><span>Subtotal:</span><span>$' + datos.subtotal.toFixed(2) + '</span></div>';
-    html += '<div class="total-row"><span>IVA 16%:</span><span>$' + datos.iva.toFixed(2) + '</span></div>';
-    html += '<div class="total-row total-final"><span>TOTAL:</span><span>$' + datos.total.toFixed(2) + '</span></div>';
-    
-    if (datos.efectivo && datos.efectivo > 0) {
-        html += '<div class="pago-info">';
-        html += '<div class="total-row"><span>Efectivo:</span><span>$' + datos.efectivo.toFixed(2) + '</span></div>';
-        html += '<div class="total-row"><span>Cambio:</span><span>$' + datos.cambio.toFixed(2) + '</span></div>';
+    // ===== LOGO (si existe y está configurado) =====
+    if (datos.mostrarLogo && datos.logo && datos.logo.trim()) {
+        // Agregar logo como imagen - el backend lo procesará
+        html += '<div style="text-align:center;">';
+        html += '<img src="' + datos.logo + '" style="max-width:150px;max-height:80px;" />';
         html += '</div>';
     }
-    html += '</div>';
     
-    html += '<div class="linea">' + linea + '</div>';
+    var texto = '';
+    // Ancho fijo de 32 caracteres para impresoras de 58mm
+    var ancho = 32;
     
-    // Mensaje de pie
-    html += '<div class="ticket-footer">';
-    html += '<div>' + (datos.mensaje || 'Gracias por su compra') + '</div>';
-    html += '<div class="conserve">*** Conserve su ticket ***</div>';
-    html += '</div>';
-    html += '</div>';
+    // Función auxiliar para centrar texto
+    function centrar(str) {
+        if (!str) return '';
+        str = String(str);
+        var espacios = Math.max(0, Math.floor((ancho - str.length) / 2));
+        return ' '.repeat(espacios) + str;
+    }
     
+    // Función para formatear moneda
+    function formatoMoneda(num) {
+        return '$' + parseFloat(num || 0).toFixed(2);
+    }
+    
+    // Función auxiliar para dos columnas (etiqueta a la izquierda, valor a la derecha)
+    function dosColumnas(etiqueta, valor) {
+        etiqueta = String(etiqueta || '');
+        valor = String(valor || '');
+        
+        // Limpiar espacios
+        etiqueta = etiqueta.trim();
+        valor = valor.trim();
+        
+        // DEBUG: Asegurar que el valor está completo
+        console.log('dosColumnas - Etiqueta: "' + etiqueta + '", Valor: "' + valor + '"');
+        
+        // Si la línea completa es más larga que el ancho
+        var longitudTotal = etiqueta.length + valor.length;
+        
+        if (longitudTotal >= ancho) {
+            // Truncar etiqueta para que el valor SIEMPRE se vea completo
+            var maxEtiqueta = ancho - valor.length - 1;
+            if (maxEtiqueta > 0 && etiqueta.length > maxEtiqueta) {
+                etiqueta = etiqueta.substring(0, maxEtiqueta);
+            }
+        }
+        
+        // Calcular espacios de relleno
+        var espacios = ancho - etiqueta.length - valor.length;
+        if (espacios < 1) espacios = 1;
+        
+        var resultado = etiqueta + ' '.repeat(espacios) + valor;
+        
+        // DEBUG: Verificar resultado
+        console.log('dosColumnas - Resultado longitud: ' + resultado.length + ', Contenido: "' + resultado + '"');
+        
+        return resultado;
+    }
+    
+    // Función para línea de producto con cantidad, precio unitario y total
+    function lineaProducto(cantidad, precioUnitario, totalProducto) {
+        var cantStr = parseFloat(cantidad).toFixed(3);
+        var precioStr = formatoMoneda(precioUnitario);
+        var totalStr = formatoMoneda(totalProducto);
+        
+        var parteIzq = cantStr + ' x ' + precioStr;
+        
+        // Calcular espacios para alinear el total a la derecha
+        var espacios = ancho - parteIzq.length - totalStr.length;
+        if (espacios < 1) {
+            // Si no cabe, acortar la parte izquierda
+            var maxIzq = ancho - totalStr.length - 1;
+            parteIzq = parteIzq.substring(0, maxIzq);
+            espacios = 1;
+        }
+        
+        return parteIzq + ' '.repeat(espacios) + totalStr;
+    }
+    
+    var separador = '='.repeat(ancho);
+    var linea = '-'.repeat(ancho);
+    
+    // ===== ENCABEZADO =====
+    texto += '\n';
+    texto += centrar((datos.negocio || 'MI TIENDA').toUpperCase()) + '\n';
+    
+    if (datos.rfc && datos.rfc.trim()) {
+        texto += centrar('RFC: ' + datos.rfc) + '\n';
+    }
+    
+    if (datos.direccion && datos.direccion.trim()) {
+        var dir = datos.direccion;
+        if (dir.length > ancho) {
+            // Dividir dirección en múltiples líneas
+            var palabras = dir.split(' ');
+            var lineaActual = '';
+            palabras.forEach(function(palabra) {
+                if ((lineaActual + ' ' + palabra).trim().length <= ancho) {
+                    lineaActual += (lineaActual ? ' ' : '') + palabra;
+                } else {
+                    if (lineaActual) texto += centrar(lineaActual) + '\n';
+                    lineaActual = palabra;
+                }
+            });
+            if (lineaActual) texto += centrar(lineaActual) + '\n';
+        } else {
+            texto += centrar(dir) + '\n';
+        }
+    }
+    
+    if (datos.telefono && datos.telefono.trim()) {
+        texto += centrar('Tel: ' + datos.telefono) + '\n';
+    }
+    
+    texto += separador + '\n';
+    texto += '\n';
+    
+    // ===== TITULO =====
+    texto += centrar('TICKET DE VENTA') + '\n';
+    if (esCopia) {
+        texto += centrar('*** COPIA - NEGOCIO ***') + '\n';
+    }
+    texto += '\n';
+    texto += separador + '\n';
+    
+    // ===== DATOS DE VENTA =====
+    texto += 'Folio: ' + (datos.folio || 'N/A') + '\n';
+    texto += 'Fecha: ' + (datos.fecha || new Date().toLocaleString('es-MX', {
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: true
+    })) + '\n';
+    
+    // Cliente con word wrap
+    var cliente = datos.cliente || 'PUBLICO GENERAL';
+    if (cliente.length > ancho) {
+        var palabrasCliente = cliente.split(' ');
+        var lineaCliente = 'Cliente: ';
+        palabrasCliente.forEach(function(palabra) {
+            if ((lineaCliente + palabra).length <= ancho) {
+                lineaCliente += palabra + ' ';
+            } else {
+                texto += lineaCliente.trim() + '\n';
+                lineaCliente = '  ' + palabra + ' ';
+            }
+        });
+        texto += lineaCliente.trim() + '\n';
+    } else {
+        texto += 'Cliente: ' + cliente + '\n';
+    }
+    
+    texto += linea + '\n';
+    
+    // ===== PRODUCTOS =====
+    if (datos.productos && datos.productos.length > 0) {
+        datos.productos.forEach(function (p) {
+            // Nombre del producto con word wrap
+            var nombreProducto = (p.nombre || 'Producto').toUpperCase();
+            if (nombreProducto.length > ancho) {
+                var palabrasNombre = nombreProducto.split(' ');
+                var lineaNombre = '';
+                palabrasNombre.forEach(function(palabra) {
+                    if ((lineaNombre + (lineaNombre ? ' ' : '') + palabra).length <= ancho) {
+                        lineaNombre += (lineaNombre ? ' ' : '') + palabra;
+                    } else {
+                        if (lineaNombre) texto += lineaNombre + '\n';
+                        lineaNombre = palabra;
+                    }
+                });
+                if (lineaNombre) texto += lineaNombre + '\n';
+            } else {
+                texto += nombreProducto + '\n';
+            }
+            
+            // Línea de detalle: cantidad x precio unitario       total
+            var cantidad = parseFloat(p.cantidad || 0);
+            var precio = parseFloat(p.precio || 0);
+            var subtotal = parseFloat(p.subtotal || 0);
+            
+            texto += lineaProducto(cantidad, precio, subtotal) + '\n';
+        });
+        
+        texto += separador + '\n';
+    }
+    
+    // ===== TOTALES =====
+    // Subtotal
+    texto += dosColumnas('Subtotal:', formatoMoneda(datos.subtotal)) + '\n';
+    
+    // IVA
+    var tasaIVA = 0;
+    if (datos.subtotal && datos.subtotal > 0 && datos.iva) {
+        tasaIVA = Math.round((datos.iva / datos.subtotal) * 100);
+    }
+    texto += dosColumnas('IVA (' + tasaIVA + '%):', formatoMoneda(datos.iva)) + '\n';
+    
+    // Separador antes del total
+    texto += separador + '\n';
+    texto += '\n';
+    
+    // TOTAL (destacado)
+    texto += dosColumnas('TOTAL:', formatoMoneda(datos.total)) + '\n';
+    
+    texto += '\n';
+    texto += separador + '\n';
+    
+    // ===== PAGO =====
+    if (datos.efectivo && parseFloat(datos.efectivo) > 0) {
+        texto += dosColumnas('Efectivo:', formatoMoneda(datos.efectivo)) + '\n';
+        texto += dosColumnas('Cambio:', formatoMoneda(datos.cambio || 0)) + '\n';
+        texto += separador + '\n';
+    }
+    
+    // ===== PIE DE TICKET =====
+    texto += '\n';
+    var mensaje = datos.mensaje || 'Gracias por su compra';
+    texto += centrar(mensaje) + '\n';
+    texto += '\n';
+    texto += centrar('¡Vuelva pronto!') + '\n';
+    if (!esCopia) {
+        texto += centrar('*** Conserve su ticket ***') + '\n';
+    }
+    texto += '\n';
+    texto += '\n';
+    texto += '\n';
+    
+    // Combinar logo HTML + texto envuelto en divs
+    html += '<div>' + texto.replace(/\n/g, '</div><div>') + '</div>';
     return html;
 }
 
-function imprimirTicket(contenidoHTML) {
-    // Enviar a imprimir directamente a la impresora configurada en el servidor
+function imprimirTicket(contenidoHTML, datosTicket) {
+    // Imprimir TICKET 1: Para el cliente (sin marca de copia)
+    var ticketCliente = datosTicket ? generarTicketHTML(datosTicket, false) : contenidoHTML;
+    
     $.ajax({
         url: '/Configuracion/ImprimirTicketDirecto',
         type: 'POST',
-        data: { contenidoTicket: contenidoHTML },
+        data: { contenidoTicket: ticketCliente },
         success: function (res) {
             if (res.success) {
-                console.log('Ticket enviado a imprimir correctamente');
+                console.log('Ticket 1/2 (CLIENTE) enviado a imprimir correctamente');
             } else {
-                toastr.warning(res.mensaje || 'No se pudo imprimir. Verifique la impresora.');
-                console.log('Error impresion:', res.mensaje);
+                toastr.warning(res.mensaje || 'No se pudo imprimir ticket cliente.');
+                console.log('Error impresion ticket cliente:', res.mensaje);
             }
         },
         error: function (xhr, status, error) {
-            var mensajeError = 'Error al imprimir: ' + error;
+            var mensajeError = 'Error al imprimir ticket cliente: ' + error;
             if (xhr.responseJSON && xhr.responseJSON.mensaje) {
                 mensajeError = xhr.responseJSON.mensaje;
-            } else if (xhr.responseText) {
-                console.log('Response Text:', xhr.responseText);
-                mensajeError += ' - Revisa la consola para mas detalles';
             }
             toastr.error(mensajeError);
         }
     });
+    
+    // Esperar 500ms y luego imprimir TICKET 2: Para el negocio (con marca COPIA)
+    setTimeout(function() {
+        var ticketNegocio = datosTicket ? generarTicketHTML(datosTicket, true) : contenidoHTML;
+        
+        $.ajax({
+            url: '/Configuracion/ImprimirTicketDirecto',
+            type: 'POST',
+            data: { contenidoTicket: ticketNegocio },
+            success: function (res) {
+                if (res.success) {
+                    console.log('Ticket 2/2 (COPIA NEGOCIO) enviado a imprimir correctamente');
+                    toastr.success('2 tickets impresos: 1 Cliente + 1 Copia Negocio');
+                } else {
+                    toastr.warning(res.mensaje || 'No se pudo imprimir copia negocio.');
+                    console.log('Error impresion copia negocio:', res.mensaje);
+                }
+            },
+            error: function (xhr, status, error) {
+                var mensajeError = 'Error al imprimir copia negocio: ' + error;
+                if (xhr.responseJSON && xhr.responseJSON.mensaje) {
+                    mensajeError = xhr.responseJSON.mensaje;
+                } else if (xhr.responseText) {
+                    console.log('Response Text:', xhr.responseText);
+                }
+                toastr.error(mensajeError);
+            }
+        });
+    }, 500);
 }
+

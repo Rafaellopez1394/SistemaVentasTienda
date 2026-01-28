@@ -765,6 +765,12 @@
                                 <span>Configuración SMTP</span>
                             </a>
                         </li>
+                        <li class="sidebar-nav-item sidebar-dropdown-item">
+                            <a href="@Url.Action("Index","ConfiguracionFiscal")" class="sidebar-nav-link">
+                                <i class="fas fa-certificate"></i>
+                                <span>Configuración Fiscal</span>
+                            </a>
+                        </li>
                     </ul>
                 </li>
             }
@@ -885,6 +891,8 @@
             _GuardarCompra: '@Url.Action("RegistrarCompra", "Compra")',
             _ObtenerRoles: '@Url.Action("Obtener", "Rol")',
             _ObtenerUsuarios: '@Url.Action("Obtener", "Usuario")',
+            _GuardarUsuario: '@Url.Action("Guardar", "Usuario")',
+            _EliminarUsuario: '@Url.Action("Eliminar", "Usuario")',
             _ObtenerCategorias: '@Url.Action("Obtener", "Categoria")',
             _ObtenerCompras: '@Url.Action("Obtener", "Compra")',
             Url_datatable_spanish: '@Url.Content("~/Content/Plugins/datatables/js/datatable_spanish.json")'

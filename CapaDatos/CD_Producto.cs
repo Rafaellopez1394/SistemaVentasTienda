@@ -126,6 +126,78 @@ namespace CapaDatos
             }
         }
 
+        /// <summary>
+        /// Obtener lotes próximos a vencer para alertas
+        /// </summary>
+        public List<AlertaCaducidad> ObtenerLotesProximosAVencer(int diasAnticipacion = 7, int sucursalId = 0)
+        {
+            var alertas = new List<AlertaCaducidad>();
+            
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                string query = @"
+                    SELECT 
+                        l.LoteID,
+                        l.ProductoID,
+                        p.Nombre AS NombreProducto,
+                        p.CodigoInterno,
+                        c.Nombre AS Categoria,
+                        l.FechaCaducidad,
+                        DATEDIFF(DAY, GETDATE(), l.FechaCaducidad) AS DiasRestantes,
+                        l.CantidadDisponible,
+                        l.PrecioVenta,
+                        (l.CantidadDisponible * l.PrecioVenta) AS ValorInventario,
+                        s.Nombre AS NombreSucursal,
+                        l.FechaEntrada
+                    FROM LotesProducto l
+                    INNER JOIN Producto p ON l.ProductoID = p.ProductoID
+                    INNER JOIN Categoria c ON p.CategoriaID = c.CategoriaID
+                    INNER JOIN Sucursal s ON l.SucursalID = s.SucursalID
+                    WHERE l.CantidadDisponible > 0
+                        AND l.FechaCaducidad IS NOT NULL
+                        AND l.FechaCaducidad <= DATEADD(DAY, @DiasAnticipacion, GETDATE())
+                        AND l.FechaCaducidad > GETDATE()
+                        AND l.Estatus = 1
+                        " + (sucursalId > 0 ? "AND l.SucursalID = @SucursalID" : "") + @"
+                    ORDER BY DiasRestantes ASC, l.CantidadDisponible DESC";
+                
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@DiasAnticipacion", diasAnticipacion);
+                if (sucursalId > 0)
+                    cmd.Parameters.AddWithValue("@SucursalID", sucursalId);
+                
+                cnx.Open();
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        int diasRestantes = Convert.ToInt32(dr["DiasRestantes"]);
+                        string nivelAlerta = diasRestantes <= 2 ? "URGENTE" : 
+                                           diasRestantes <= 5 ? "ALTO" : "MEDIO";
+                        
+                        alertas.Add(new AlertaCaducidad
+                        {
+                            LoteID = Convert.ToInt32(dr["LoteID"]),
+                            ProductoID = Convert.ToInt32(dr["ProductoID"]),
+                            NombreProducto = dr["NombreProducto"].ToString(),
+                            CodigoInterno = dr["CodigoInterno"]?.ToString(),
+                            Categoria = dr["Categoria"].ToString(),
+                            FechaCaducidad = Convert.ToDateTime(dr["FechaCaducidad"]),
+                            DiasRestantes = diasRestantes,
+                            CantidadDisponible = Convert.ToInt32(dr["CantidadDisponible"]),
+                            PrecioVenta = Convert.ToDecimal(dr["PrecioVenta"]),
+                            ValorInventario = Convert.ToDecimal(dr["ValorInventario"]),
+                            NombreSucursal = dr["NombreSucursal"].ToString(),
+                            FechaEntrada = Convert.ToDateTime(dr["FechaEntrada"]),
+                            NivelAlerta = nivelAlerta
+                        });
+                    }
+                }
+            }
+            
+            return alertas;
+        }
+
         public List<LoteProducto> ObtenerLotes(int productoId, int sucursalID = 0)
         {
             var lista = new List<LoteProducto>();
@@ -235,7 +307,7 @@ namespace CapaDatos
                             CodigoInterno = dr["Codigo"] as string,
                             NombreCategoria = dr["Categoria"].ToString(),
                             ClaveProdServSATID = dr["ClaveProdServSAT"].ToString()!,
-                            ClaveUnidadSAT = dr["ClaveUnidadSAT"].ToString()!
+                            ClaveUnidadSAT = dr["ClaveUnidadSAT"].ToString()
                         });
                     }
                 }
@@ -250,25 +322,23 @@ namespace CapaDatos
             using (var cnx = new SqlConnection(Conexion.CN))
             {
                 string query = @"
-            SELECT LoteID, ProductoID, SucursalID, FechaEntrada, FechaCaducidad,
-                   CantidadDisponible, PrecioCompra, PrecioVenta, Estatus
-            FROM LotesProducto
-            WHERE ProductoID = @ProductoID 
-              AND CantidadDisponible > 0
-              AND Estatus = 1";
-              
-                if (sucursalID > 0)
-                    query += " AND SucursalID = @SucursalID";
-                    
-                query += " ORDER BY ISNULL(FechaCaducidad, '2099-12-31') ASC, FechaEntrada ASC";
-
-                var cmd = new SqlCommand(query, cnx);
+                    SELECT LoteID, ProductoID, SucursalID, FechaEntrada, FechaCaducidad,
+                           CantidadTotal, CantidadDisponible, PrecioCompra, PrecioVenta,
+                           Usuario, UltimaAct, Estatus
+                    FROM LotesProducto 
+                    WHERE ProductoID = @ProductoID 
+                        AND CantidadDisponible > 0
+                        AND Estatus = 1
+                        " + (sucursalID > 0 ? "AND SucursalID = @SucursalID" : "") + @"
+                    ORDER BY FechaEntrada ASC";
+                
+                SqlCommand cmd = new SqlCommand(query, cnx);
                 cmd.Parameters.AddWithValue("@ProductoID", productoId);
                 if (sucursalID > 0)
                     cmd.Parameters.AddWithValue("@SucursalID", sucursalID);
-
+                
                 cnx.Open();
-                using (var dr = cmd.ExecuteReader())
+                using (SqlDataReader dr = cmd.ExecuteReader())
                 {
                     while (dr.Read())
                     {
@@ -278,10 +348,13 @@ namespace CapaDatos
                             ProductoID = (int)dr["ProductoID"],
                             SucursalID = (int)dr["SucursalID"],
                             FechaEntrada = (DateTime)dr["FechaEntrada"],
-                            FechaCaducidad = dr["FechaCaducidad"] as DateTime?,
+                            FechaCaducidad = dr["FechaCaducidad"] != DBNull.Value ? (DateTime?)dr["FechaCaducidad"] : null,
+                            CantidadTotal = (int)dr["CantidadTotal"],
                             CantidadDisponible = (int)dr["CantidadDisponible"],
                             PrecioCompra = (decimal)dr["PrecioCompra"],
                             PrecioVenta = (decimal)dr["PrecioVenta"],
+                            Usuario = dr["Usuario"].ToString(),
+                            UltimaAct = (DateTime)dr["UltimaAct"],
                             Estatus = (bool)dr["Estatus"]
                         });
                     }
@@ -289,6 +362,132 @@ namespace CapaDatos
             }
             return lista;
         }
+
+        /// <summary>
+        /// FIFO AUTOMÁTICO: Obtiene lotes suficientes para cubrir la cantidad requerida,
+        /// priorizando los más antiguos (First In, First Out)
+        /// </summary>
+        /// <param name="productoId">ID del producto</param>
+        /// <param name="sucursalId">ID de la sucursal</param>
+        /// <param name="cantidadRequerida">Cantidad necesaria</param>
+        /// <returns>Lista de lotes ordenados por fecha (más antiguo primero) con cantidad a usar de cada uno</returns>
+        public List<LoteParaVenta> ObtenerLotesFIFO(int productoId, int sucursalId, decimal cantidadRequerida)
+        {
+            var lotesSeleccionados = new List<LoteParaVenta>();
+            decimal cantidadRestante = cantidadRequerida;
+            
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                // Obtener lotes disponibles ordenados por fecha de entrada (FIFO)
+                string query = @"
+                    SELECT 
+                        LoteID, ProductoID, SucursalID, FechaEntrada, FechaCaducidad,
+                        CantidadTotal, CantidadDisponible, PrecioCompra, PrecioVenta,
+                        Usuario, UltimaAct, Estatus
+                    FROM LotesProducto
+                    WHERE ProductoID = @ProductoID 
+                        AND SucursalID = @SucursalID
+                        AND CantidadDisponible > 0
+                        AND Estatus = 1
+                        AND (FechaCaducidad IS NULL OR FechaCaducidad > GETDATE())
+                    ORDER BY FechaEntrada ASC"; // Más antiguo primero
+                
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@ProductoID", productoId);
+                cmd.Parameters.AddWithValue("@SucursalID", sucursalId);
+                
+                cnx.Open();
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read() && cantidadRestante > 0)
+                    {
+                        var lote = new LoteProducto
+                        {
+                            LoteID = (int)dr["LoteID"],
+                            ProductoID = (int)dr["ProductoID"],
+                            SucursalID = (int)dr["SucursalID"],
+                            FechaEntrada = (DateTime)dr["FechaEntrada"],
+                            FechaCaducidad = dr["FechaCaducidad"] != DBNull.Value ? (DateTime?)dr["FechaCaducidad"] : null,
+                            CantidadTotal = (int)dr["CantidadTotal"],
+                            CantidadDisponible = (int)dr["CantidadDisponible"],
+                            PrecioCompra = (decimal)dr["PrecioCompra"],
+                            PrecioVenta = (decimal)dr["PrecioVenta"],
+                            Usuario = dr["Usuario"].ToString(),
+                            UltimaAct = (DateTime)dr["UltimaAct"],
+                            Estatus = (bool)dr["Estatus"]
+                        };
+                        
+                        // Calcular cuánto se tomará de este lote
+                        decimal cantidadAUsar = Math.Min(cantidadRestante, lote.CantidadDisponible);
+                        
+                        lotesSeleccionados.Add(new LoteParaVenta
+                        {
+                            Lote = lote,
+                            CantidadAUsar = cantidadAUsar
+                        });
+                        
+                        cantidadRestante -= cantidadAUsar;
+                    }
+                }
+            }
+            
+            // Validar si se cubrió la cantidad requerida
+            if (cantidadRestante > 0)
+            {
+                throw new Exception($"Stock insuficiente. Faltan {cantidadRestante:N2} unidades.");
+            }
+            
+            return lotesSeleccionados;
+        }
+
+        /// <summary>
+        /// Descontar automáticamente de lotes usando FIFO
+        /// </summary>
+        public bool DescontarStockFIFO(int productoId, int sucursalId, decimal cantidad, string usuario)
+        {
+            try
+            {
+                var lotes = ObtenerLotesFIFO(productoId, sucursalId, cantidad);
+                
+                using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+                {
+                    cnx.Open();
+                    SqlTransaction tran = cnx.BeginTransaction();
+                    
+                    try
+                    {
+                        foreach (var loteVenta in lotes)
+                        {
+                            string update = @"
+                                UPDATE LotesProducto 
+                                SET CantidadDisponible = CantidadDisponible - @Cantidad,
+                                    UltimaAct = GETDATE(),
+                                    Usuario = @Usuario
+                                WHERE LoteID = @LoteID";
+                            
+                            SqlCommand cmd = new SqlCommand(update, cnx, tran);
+                            cmd.Parameters.AddWithValue("@Cantidad", loteVenta.CantidadAUsar);
+                            cmd.Parameters.AddWithValue("@Usuario", usuario);
+                            cmd.Parameters.AddWithValue("@LoteID", loteVenta.Lote.LoteID);
+                            cmd.ExecuteNonQuery();
+                        }
+                        
+                        tran.Commit();
+                        return true;
+                    }
+                    catch
+                    {
+                        tran.Rollback();
+                        throw;
+                    }
+                }
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
         public bool ActualizarLote(LoteProducto lote)
         {
             using (var cnx = new SqlConnection(Conexion.CN))

@@ -6,6 +6,7 @@ using System.Data;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using OfficeOpenXml;
 
 namespace VentasWeb.Controllers
 {
@@ -25,6 +26,12 @@ namespace VentasWeb.Controllers
 
         // GET: Reporte/Ventas
         public ActionResult Ventas()
+        {
+            return View();
+        }
+
+        // GET: Reporte/UtilidadDiaria
+        public ActionResult UtilidadDiaria()
         {
             return View();
         }
@@ -360,6 +367,268 @@ namespace VentasWeb.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // REPORTE DIARIO: Obtener preview del reporte de utilidad
+        [HttpGet]
+        public JsonResult ObtenerPreviewUtilidadDiaria(string fecha = null)
+        {
+            try
+            {
+                DateTime fechaReporte = string.IsNullOrEmpty(fecha) 
+                    ? DateTime.Now.Date 
+                    : DateTime.ParseExact(fecha, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                
+                int sucursalID = Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 1;
+
+                var reporte = CD_ReporteUtilidadDiaria.Instancia.ObtenerReporteDiario(fechaReporte, sucursalID);
+
+                var preview = new
+                {
+                    Fecha = reporte.Fecha.ToString("yyyy-MM-dd"),
+                    SucursalID = reporte.SucursalID,
+                    
+                    ResumenVentas = reporte.ResumenVentas.Select(r => new
+                    {
+                        FormaPago = r.FormaPago,
+                        NumeroTickets = r.Tickets,
+                        UnidadesVendidas = r.TotalUnidades,
+                        TotalVentas = Math.Round(r.TotalVentas, 2)
+                    }).ToList(),
+                    
+                    TotalVentasContado = Math.Round(reporte.TotalVentasContado, 2),
+                    TotalVentasCredito = Math.Round(reporte.TotalVentasCredito, 2),
+                    TotalVentas = Math.Round(reporte.TotalVentasContado + reporte.TotalVentasCredito, 2),
+                    TotalTickets = reporte.TotalTickets,
+                    TotalUnidades = reporte.TotalUnidades,
+                    
+                    CostosCompra = Math.Round(reporte.CostosCompra, 2),
+                    UtilidadDiaria = Math.Round(reporte.UtilidadDiaria, 2),
+                    PorcentajeUtilidad = reporte.CostosCompra > 0 
+                        ? Math.Round((reporte.UtilidadDiaria / reporte.CostosCompra) * 100, 2) 
+                        : 0,
+                    
+                    RecuperoCreditosTotal = Math.Round(reporte.RecuperoCreditosTotal, 2),
+                    
+                    DetallePorProducto = reporte.DetalleVentas.Take(20).Select(d => new
+                    {
+                        Producto = d.Producto,
+                        UnidadesContado = d.VentasContado,
+                        UnidadesCredito = d.VentasCredito,
+                        TotalVentas = d.TotalVentas,
+                        CostoTotal = Math.Round(d.CostoTotal, 2),
+                        Utilidad = Math.Round(d.Utilidad, 2)
+                    }).ToList()
+                };
+
+                return Json(new { success = true, data = preview }, JsonRequestBehavior.AllowGet);
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // REPORTE DIARIO: Exportar utilidad diaria a Excel
+        [HttpPost]
+        public ActionResult ExportarUtilidadDiaria(string fecha = null)
+        {
+            try
+            {
+                DateTime fechaReporte = string.IsNullOrEmpty(fecha) 
+                    ? DateTime.Now.Date 
+                    : DateTime.ParseExact(fecha, "yyyy-MM-dd", System.Globalization.CultureInfo.InvariantCulture);
+                
+                int sucursalID = Session["SucursalActiva"] != null 
+                    ? (int)Session["SucursalActiva"] 
+                    : 1;
+
+                var reporte = CD_ReporteUtilidadDiaria.Instancia.ObtenerReporteDiario(fechaReporte, sucursalID);
+
+                using (var package = new OfficeOpenXml.ExcelPackage())
+                {
+                    var ws = package.Workbook.Worksheets.Add("Utilidad Diaria");
+                    
+                    // Estilos
+                    var headerFont = ws.Cells["A1"].Style.Font;
+                    var currencyFormat = "$#,##0.00";
+                    var percentFormat = "0.00%";
+                    
+                    int row = 1;
+
+                    // Título principal
+                    ws.Cells[row, 1].Value = "REPORTE DE UTILIDAD DIARIA";
+                    ws.Cells[row, 1].Style.Font.Bold = true;
+                    ws.Cells[row, 1].Style.Font.Size = 14;
+                    ws.Cells[row, 1, row, 6].Merge = true;
+                    row += 2;
+
+                    ws.Cells[row, 1].Value = "Fecha: " + fechaReporte.ToString("dd/MM/yyyy");
+                    ws.Cells[row, 4].Value = "Sucursal ID: " + sucursalID;
+                    row += 2;
+
+                    // SECCIÓN 1: RESUMEN DE VENTAS
+                    ws.Cells[row, 1].Value = "RESUMEN DE VENTAS";
+                    ws.Cells[row, 1].Style.Font.Bold = true;
+                    ws.Cells[row, 1].Style.Font.Color.SetColor(System.Drawing.Color.White);
+                    ws.Cells[row, 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    ws.Cells[row, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(0, 51, 102));
+                    ws.Cells[row, 1, row, 5].Merge = true;
+                    row++;
+
+                    ws.Cells[row, 1].Value = "Forma de Pago";
+                    ws.Cells[row, 2].Value = "# Tickets";
+                    ws.Cells[row, 3].Value = "Unidades";
+                    ws.Cells[row, 4].Value = "Total Ventas";
+                    ws.Cells[row, 5].Value = "% del Total";
+                    
+                    for (int i = 1; i <= 5; i++)
+                    {
+                        ws.Cells[row, i].Style.Font.Bold = true;
+                        ws.Cells[row, i].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                        ws.Cells[row, i].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    }
+                    row++;
+
+                    decimal totalVentas = reporte.TotalVentasContado + reporte.TotalVentasCredito;
+
+                    foreach (var venta in reporte.ResumenVentas)
+                    {
+                        ws.Cells[row, 1].Value = venta.FormaPago;
+                        ws.Cells[row, 2].Value = venta.Tickets;
+                        ws.Cells[row, 3].Value = venta.TotalUnidades;
+                        ws.Cells[row, 4].Value = venta.TotalVentas;
+                        ws.Cells[row, 4].Style.Numberformat.Format = currencyFormat;
+                        ws.Cells[row, 5].Value = totalVentas > 0 ? (venta.TotalVentas / totalVentas) : 0;
+                        ws.Cells[row, 5].Style.Numberformat.Format = percentFormat;
+                        row++;
+                    }
+
+                    ws.Cells[row, 1].Value = "TOTAL";
+                    ws.Cells[row, 1].Style.Font.Bold = true;
+                    ws.Cells[row, 2].Value = reporte.TotalTickets;
+                    ws.Cells[row, 2].Style.Font.Bold = true;
+                    ws.Cells[row, 3].Value = reporte.TotalUnidades;
+                    ws.Cells[row, 3].Style.Font.Bold = true;
+                    ws.Cells[row, 4].Value = totalVentas;
+                    ws.Cells[row, 4].Style.Font.Bold = true;
+                    ws.Cells[row, 4].Style.Numberformat.Format = currencyFormat;
+                    ws.Cells[row, 5].Value = 1;
+                    ws.Cells[row, 5].Style.Font.Bold = true;
+                    ws.Cells[row, 5].Style.Numberformat.Format = percentFormat;
+                    row += 2;
+
+                    // SECCIÓN 2: COSTOS Y UTILIDAD
+                    ws.Cells[row, 1].Value = "ANÁLISIS DE COSTOS Y UTILIDAD";
+                    ws.Cells[row, 1].Style.Font.Bold = true;
+                    ws.Cells[row, 1].Style.Font.Color.SetColor(System.Drawing.Color.White);
+                    ws.Cells[row, 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    ws.Cells[row, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(0, 51, 102));
+                    ws.Cells[row, 1, row, 5].Merge = true;
+                    row++;
+
+                    ws.Cells[row, 1].Value = "Concepto";
+                    ws.Cells[row, 2].Value = "Monto";
+                    ws.Cells[row, 1].Style.Font.Bold = true;
+                    ws.Cells[row, 2].Style.Font.Bold = true;
+                    ws.Cells[row, 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    ws.Cells[row, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    ws.Cells[row, 2].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    ws.Cells[row, 2].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    row++;
+
+                    ws.Cells[row, 1].Value = "Total Ventas";
+                    ws.Cells[row, 2].Value = totalVentas;
+                    ws.Cells[row, 2].Style.Numberformat.Format = currencyFormat;
+                    row++;
+
+                    ws.Cells[row, 1].Value = "Costo de Mercancía Vendida";
+                    ws.Cells[row, 2].Value = reporte.CostosCompra;
+                    ws.Cells[row, 2].Style.Numberformat.Format = currencyFormat;
+                    row++;
+
+                    ws.Cells[row, 1].Value = "UTILIDAD DIARIA";
+                    ws.Cells[row, 1].Style.Font.Bold = true;
+                    ws.Cells[row, 2].Value = reporte.UtilidadDiaria;
+                    ws.Cells[row, 2].Style.Font.Bold = true;
+                    ws.Cells[row, 2].Style.Numberformat.Format = currencyFormat;
+                    row++;
+
+                    ws.Cells[row, 1].Value = "% Utilidad";
+                    ws.Cells[row, 2].Value = reporte.CostosCompra > 0 ? (reporte.UtilidadDiaria / reporte.CostosCompra) : 0;
+                    ws.Cells[row, 2].Style.Numberformat.Format = percentFormat;
+                    row += 2;
+
+                    // SECCIÓN 3: RECUPERO DE CRÉDITOS
+                    ws.Cells[row, 1].Value = "RECUPERO DE CRÉDITOS";
+                    ws.Cells[row, 1].Style.Font.Bold = true;
+                    ws.Cells[row, 1].Style.Font.Color.SetColor(System.Drawing.Color.White);
+                    ws.Cells[row, 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    ws.Cells[row, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(0, 51, 102));
+                    ws.Cells[row, 1, row, 3].Merge = true;
+                    row++;
+
+                    ws.Cells[row, 1].Value = "Créditos Recuperados";
+                    ws.Cells[row, 2].Value = reporte.RecuperoCreditosTotal;
+                    ws.Cells[row, 2].Style.Numberformat.Format = currencyFormat;
+                    row += 2;
+
+                    // SECCIÓN 4: TOP 20 PRODUCTOS
+                    ws.Cells[row, 1].Value = "TOP 20 PRODUCTOS MÁS VENDIDOS";
+                    ws.Cells[row, 1].Style.Font.Bold = true;
+                    ws.Cells[row, 1].Style.Font.Color.SetColor(System.Drawing.Color.White);
+                    ws.Cells[row, 1].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                    ws.Cells[row, 1].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.FromArgb(0, 51, 102));
+                    ws.Cells[row, 1, row, 6].Merge = true;
+                    row++;
+
+                    ws.Cells[row, 1].Value = "Producto";
+                    ws.Cells[row, 2].Value = "Contado";
+                    ws.Cells[row, 3].Value = "Crédito";
+                    ws.Cells[row, 4].Value = "Total Ventas";
+                    ws.Cells[row, 5].Value = "Costo Total";
+                    ws.Cells[row, 6].Value = "Utilidad";
+                    
+                    for (int i = 1; i <= 6; i++)
+                    {
+                        ws.Cells[row, i].Style.Font.Bold = true;
+                        ws.Cells[row, i].Style.Fill.PatternType = OfficeOpenXml.Style.ExcelFillStyle.Solid;
+                        ws.Cells[row, i].Style.Fill.BackgroundColor.SetColor(System.Drawing.Color.LightGray);
+                    }
+                    row++;
+
+                    foreach (var prod in reporte.DetalleVentas.Take(20))
+                    {
+                        ws.Cells[row, 1].Value = prod.Producto;
+                        ws.Cells[row, 2].Value = prod.VentasContado;
+                        ws.Cells[row, 3].Value = prod.VentasCredito;
+                        ws.Cells[row, 4].Value = prod.TotalVentas;
+                        ws.Cells[row, 4].Style.Numberformat.Format = currencyFormat;
+                        ws.Cells[row, 5].Value = prod.CostoTotal;
+                        ws.Cells[row, 5].Style.Numberformat.Format = currencyFormat;
+                        ws.Cells[row, 6].Value = prod.Utilidad;
+                        ws.Cells[row, 6].Style.Numberformat.Format = currencyFormat;
+                        row++;
+                    }
+
+                    // Ajustar anchos de columna
+                    ws.Column(1).Width = 30;
+                    ws.Column(2).Width = 15;
+                    ws.Column(3).Width = 15;
+                    ws.Column(4).Width = 18;
+                    ws.Column(5).Width = 18;
+                    ws.Column(6).Width = 18;
+
+                    string fileName = "UtilidadDiaria_" + fechaReporte.ToString("yyyyMMdd") + ".xlsx";
+                    return File(package.GetAsByteArray(), "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", fileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                return Json(new { success = false, message = "Error al generar reporte: " + ex.Message }, JsonRequestBehavior.AllowGet);
             }
         }
     }

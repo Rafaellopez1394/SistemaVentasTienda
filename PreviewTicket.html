@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vista Previa Ticket - Sistema Ventas</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+            max-width: 900px;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        
+        .config-panel {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #667eea;
+        }
+        
+        .config-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            font-size: 16px;
+        }
+        
+        .config-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+        }
+        
+        .config-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .config-item label {
+            flex: 1;
+            font-size: 13px;
+            color: #555;
+        }
+        
+        .config-item input {
+            width: 60px;
+            padding: 5px 8px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 13px;
+            text-align: center;
+            transition: border-color 0.3s;
+        }
+        
+        .config-item input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .ticket-wrapper {
+            display: flex;
+            justify-content: center;
+            padding: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+        }
+        
+        /* SIMULACIÓN DEL TICKET TÉRMICO */
+        .ticket {
+            width: 58mm; /* Ancho real de ticket térmico */
+            background: white;
+            padding: 3mm;
+            font-family: 'Courier New', monospace;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            border-radius: 3px;
+        }
+        
+        .ticket-logo {
+            text-align: center;
+            margin-bottom: 3mm;
+        }
+        
+        .ticket-logo img {
+            width: 90%;
+            max-height: 18mm;
+            object-fit: contain;
+        }
+        
+        /* FUENTES DEL TICKET - CONFIGURABLES */
+        .ticket-pequena {
+            font-size: 7pt;
+            line-height: 1.3;
+        }
+        
+        .ticket-normal {
+            font-size: 8pt;
+            line-height: 1.3;
+        }
+        
+        .ticket-negrita {
+            font-size: 9pt;
+            font-weight: bold;
+            line-height: 1.3;
+        }
+        
+        .ticket-grande {
+            font-size: 11pt;
+            font-weight: bold;
+            line-height: 1.3;
+        }
+        
+        .ticket-centrado {
+            text-align: center;
+        }
+        
+        .ticket-separador {
+            margin: 2mm 0;
+        }
+        
+        .ticket-seccion {
+            margin-bottom: 0.3mm;
+        }
+        
+        .ticket-seccion-importante {
+            margin-top: 3mm;
+            margin-bottom: 2mm;
+        }
+        
+        .ticket-total {
+            margin-top: 3mm;
+            margin-bottom: 1mm;
+        }
+        
+        .ticket-mensaje-final {
+            margin-top: 2mm;
+            margin-bottom: 0.5mm;
+        }
+        
+        .btn-refresh {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.3s;
+        }
+        
+        .btn-refresh:hover {
+            background: #5568d3;
+        }
+        
+        .code-ref {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            border-left: 4px solid #28a745;
+        }
+        
+        .code-ref h3 {
+            margin: 0 0 10px 0;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        .code-ref code {
+            display: block;
+            background: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            color: #e83e8c;
+            margin: 5px 0;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎟️ Vista Previa de Ticket</h1>
+        <p class="subtitle">Ajusta los tamaños de fuente y observa los cambios en tiempo real</p>
+        
+        <div class="config-panel">
+            <div class="config-title">⚙️ Configuración de Fuentes (puntos)</div>
+            <div class="config-grid">
+                <div class="config-item">
+                    <label>Pequeña:</label>
+                    <input type="number" id="fontPequena" value="7" min="5" max="12" step="0.5">
+                    <span>pt</span>
+                </div>
+                <div class="config-item">
+                    <label>Normal:</label>
+                    <input type="number" id="fontNormal" value="8" min="5" max="12" step="0.5">
+                    <span>pt</span>
+                </div>
+                <div class="config-item">
+                    <label>Negrita:</label>
+                    <input type="number" id="fontNegrita" value="9" min="6" max="14" step="0.5">
+                    <span>pt</span>
+                </div>
+                <div class="config-item">
+                    <label>Grande (TOTAL):</label>
+                    <input type="number" id="fontGrande" value="11" min="8" max="16" step="0.5">
+                    <span>pt</span>
+                </div>
+            </div>
+            <button class="btn-refresh" onclick="aplicarCambios()">🔄 Aplicar Cambios</button>
+        </div>
+        
+        <div class="ticket-wrapper">
+            <div class="ticket" id="ticket">
+                <!-- Logo -->
+                <div class="ticket-logo">
+                    <img src="/Imagenes/logo.png" alt="Logo" onerror="this.style.display='none'">
+                </div>
+                
+                <!-- Información de la empresa -->
+                <div class="ticket-centrado ticket-negrita">EMPRESA EJEMPLO S.A. DE C.V.</div>
+                <div class="ticket-centrado ticket-negrita">RFC: ABC123456XYZ</div>
+                <div class="ticket-centrado ticket-pequena">Direccion del negocio</div>
+                <div class="ticket-centrado ticket-pequena">Tel: 123-456-7890</div>
+                
+                <!-- Separador -->
+                <div class="ticket-centrado ticket-pequena ticket-separador">================================</div>
+                
+                <!-- Título -->
+                <div class="ticket-centrado ticket-negrita ticket-seccion-importante">TICKET DE VENTA</div>
+                
+                <!-- Separador -->
+                <div class="ticket-centrado ticket-pequena ticket-separador">================================</div>
+                
+                <!-- Info de venta -->
+                <div class="ticket-pequena ticket-seccion">Folio: 75A617F2</div>
+                <div class="ticket-pequena ticket-seccion">Fecha: 27/1/2026, 11:53:32 a. m.</div>
+                <div class="ticket-pequena ticket-seccion">Cliente: PUBLICO GENERAL</div>
+                
+                <!-- Separador -->
+                <div class="ticket-centrado ticket-pequena ticket-separador">--------------------------------</div>
+                
+                <!-- Productos -->
+                <div class="ticket-normal ticket-seccion">CAMARON 131-150</div>
+                <div class="ticket-normal ticket-seccion">1.000 x $125.00    $125.00</div>
+                
+                <!-- Separador -->
+                <div class="ticket-centrado ticket-pequena ticket-separador">--------------------------------</div>
+                
+                <!-- Totales -->
+                <div class="ticket-normal ticket-seccion">Subtotal:        $125.00</div>
+                <div class="ticket-normal ticket-seccion">IVA (0%):          $0.00</div>
+                
+                <!-- Separador -->
+                <div class="ticket-centrado ticket-pequena ticket-separador">================================</div>
+                
+                <!-- TOTAL -->
+                <div class="ticket-grande ticket-total">TOTAL:         $125.00</div>
+                
+                <!-- Separador -->
+                <div class="ticket-centrado ticket-pequena ticket-separador">================================</div>
+                
+                <!-- Pagos -->
+                <div class="ticket-normal ticket-seccion">Efectivo:        $125.00</div>
+                <div class="ticket-normal ticket-seccion">Cambio:            $0.00</div>
+                
+                <!-- Separador -->
+                <div class="ticket-centrado ticket-pequena ticket-separador">================================</div>
+                
+                <!-- Mensaje final -->
+                <div class="ticket-centrado ticket-pequena ticket-mensaje-final">Gracias por su compra</div>
+                <div class="ticket-centrado ticket-pequena ticket-mensaje-final">¡Vuelva pronto!</div>
+                <div class="ticket-centrado ticket-pequena ticket-mensaje-final">*** Conserve su ticket ***</div>
+            </div>
+        </div>
+        
+        <div class="code-ref">
+            <h3>📍 Ubicación en el código:</h3>
+            <code>VentasWeb\Controllers\ConfiguracionController.cs - Líneas 168-173</code>
+            <code>Font fuentePequena = new Font("Arial", <span id="codePequena">7f</span>, FontStyle.Regular);</code>
+            <code>Font fuenteNormal = new Font("Arial", <span id="codeNormal">8f</span>, FontStyle.Regular);</code>
+            <code>Font fuenteNegrita = new Font("Arial", <span id="codeNegrita">9f</span>, FontStyle.Bold);</code>
+            <code>Font fuenteGrande = new Font("Arial", <span id="codeGrande">11f</span>, FontStyle.Bold);</code>
+        </div>
+    </div>
+    
+    <script>
+        function aplicarCambios() {
+            const pequena = parseFloat(document.getElementById('fontPequena').value);
+            const normal = parseFloat(document.getElementById('fontNormal').value);
+            const negrita = parseFloat(document.getElementById('fontNegrita').value);
+            const grande = parseFloat(document.getElementById('fontGrande').value);
+            
+            // Aplicar estilos
+            document.querySelectorAll('.ticket-pequena').forEach(el => {
+                el.style.fontSize = pequena + 'pt';
+            });
+            
+            document.querySelectorAll('.ticket-normal').forEach(el => {
+                el.style.fontSize = normal + 'pt';
+            });
+            
+            document.querySelectorAll('.ticket-negrita').forEach(el => {
+                el.style.fontSize = negrita + 'pt';
+            });
+            
+            document.querySelectorAll('.ticket-grande').forEach(el => {
+                el.style.fontSize = grande + 'pt';
+            });
+            
+            // Actualizar código de referencia
+            document.getElementById('codePequena').textContent = pequena + 'f';
+            document.getElementById('codeNormal').textContent = normal + 'f';
+            document.getElementById('codeNegrita').textContent = negrita + 'f';
+            document.getElementById('codeGrande').textContent = grande + 'f';
+        }
+        
+        // Auto-aplicar cuando se cambia el valor
+        document.querySelectorAll('input[type="number"]').forEach(input => {
+            input.addEventListener('input', aplicarCambios);
+        });
+        
+        // Aplicar valores iniciales
+        aplicarCambios();
+    </script>
+</body>
+</html>

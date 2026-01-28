@@ -30,7 +30,22 @@ namespace VentasWeb.Filters
 
                 if (filterContext.Controller is LoginController == false)
                 {
-                    filterContext.HttpContext.Response.Redirect("~/Login/Index");
+                    // Verificar si es una petición AJAX
+                    if (filterContext.HttpContext.Request.IsAjaxRequest())
+                    {
+                        // Para peticiones AJAX, devolver respuesta JSON con error
+                        filterContext.Result = new JsonResult
+                        {
+                            Data = new { resultado = false, message = "Sesión expirada", sessionExpired = true },
+                            JsonRequestBehavior = JsonRequestBehavior.AllowGet
+                        };
+                        filterContext.HttpContext.Response.StatusCode = 401;
+                    }
+                    else
+                    {
+                        // Para peticiones normales, redirigir al login
+                        filterContext.HttpContext.Response.Redirect("~/Login/Index");
+                    }
                 }
             }
             else

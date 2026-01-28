@@ -421,6 +421,50 @@ namespace CapaDatos
                 // No fallar si no se puede guardar respaldo
             }
         }
+
+        // Obtener compras por fecha (para historial de ingreso rápido)
+        public List<dynamic> ObtenerPorFecha(DateTime fecha)
+        {
+            var resultado = new List<dynamic>();
+            
+            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+            {
+                string query = @"
+                    SELECT 
+                        c.FechaCreacion,
+                        p.Nombre AS NombreProducto,
+                        l.CantidadTotal AS Cantidad,
+                        l.PrecioCompra,
+                        prov.RazonSocial AS NombreProveedor
+                    FROM Compra c
+                    INNER JOIN LotesProducto l ON c.CompraID = l.LoteID
+                    INNER JOIN Producto p ON l.ProductoID = p.ProductoID
+                    LEFT JOIN Proveedor prov ON c.ProveedorID = prov.ProveedorID
+                    WHERE CAST(c.FechaCreacion AS DATE) = @Fecha
+                    ORDER BY c.FechaCreacion DESC";
+                
+                SqlCommand cmd = new SqlCommand(query, cnx);
+                cmd.Parameters.AddWithValue("@Fecha", fecha.Date);
+                
+                cnx.Open();
+                using (SqlDataReader dr = cmd.ExecuteReader())
+                {
+                    while (dr.Read())
+                    {
+                        resultado.Add(new
+                        {
+                            FechaCreacion = dr["FechaCreacion"],
+                            NombreProducto = dr["NombreProducto"].ToString(),
+                            Cantidad = Convert.ToDecimal(dr["Cantidad"]),
+                            PrecioCompra = Convert.ToDecimal(dr["PrecioCompra"]),
+                            NombreProveedor = dr["NombreProveedor"] != DBNull.Value ? dr["NombreProveedor"].ToString() : "N/A"
+                        });
+                    }
+                }
+            }
+            
+            return resultado;
+        }
     }
 
     /// <summary>

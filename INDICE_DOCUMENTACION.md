@@ -1,8 +1,8 @@
-# 📚 ÍNDICE COMPLETO DE DOCUMENTACIÓN
+# 📚 ÍNDICE COMPLETO DE DOCUMENTACIÓN - SISTEMA DE VENTAS TIENDA
 
-**Última actualización:** Hoy  
-**Total documentos:** 6  
-**Cobertura:** 100% del sistema
+**Última actualización:** 2025-01-24  
+**Total documentos:** 12+  
+**Cobertura:** 100% - Facturación + Reportes
 
 ---
 

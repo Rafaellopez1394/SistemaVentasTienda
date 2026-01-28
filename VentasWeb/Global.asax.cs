@@ -3,6 +3,7 @@ using System.Web;
 using System.Web.Mvc;
 using System.Web.Optimization;
 using System.Web.Routing;
+using OfficeOpenXml;
 
 namespace VentasWeb
 {
@@ -14,6 +15,9 @@ namespace VentasWeb
             FilterConfig.RegisterGlobalFilters(GlobalFilters.Filters);
             RouteConfig.RegisterRoutes(RouteTable.Routes);
             BundleConfig.RegisterBundles(BundleTable.Bundles);
+
+            // Configurar licencia de EPPlus (NonCommercial)
+            ExcelPackage.LicenseContext = LicenseContext.NonCommercial;
 
             // FILTRO GLOBAL, PERO EXCLUYE EL CONTROLADOR Login
             GlobalFilters.Filters.Add(new CustomAuthorizeAttribute(), 0);

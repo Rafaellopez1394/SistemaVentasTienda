@@ -116,13 +116,28 @@ function Guardar() {
                 if (data.resultado) {
                     tabladata.ajax.reload();
                     $('#FormModal').modal('hide');
+                    
+                    // Mostrar mensaje de éxito
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire("Éxito", "Sucursal guardada correctamente", "success");
+                    } else {
+                        alert("Éxito: Sucursal guardada correctamente");
+                    }
                 } else {
-
-                    swal("Mensaje", "No se pudo guardar los cambios", "warning")
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire("Error", "No se pudo guardar los cambios", "warning");
+                    } else {
+                        alert("Error: No se pudo guardar los cambios");
+                    }
                 }
             },
             error: function (error) {
-                console.log(error)
+                console.log(error);
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire("Error", "Ocurrió un error al guardar", "error");
+                } else {
+                    alert("Error: Ocurrió un error al guardar");
+                }
             },
             beforeSend: function () {
 
@@ -161,12 +176,28 @@ function eliminar($id) {
 
                     if (data.resultado) {
                         tabladata.ajax.reload();
+                        
+                        // Mostrar mensaje de éxito al eliminar
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire("Éxito", "Sucursal eliminada correctamente", "success");
+                        } else {
+                            alert("Éxito: Sucursal eliminada correctamente");
+                        }
                     } else {
-                        swal("Mensaje", "No se pudo eliminar la tienda", "warning")
+                        if (typeof Swal !== 'undefined') {
+                            Swal.fire("Error", "No se pudo eliminar la sucursal", "warning");
+                        } else {
+                            alert("Error: No se pudo eliminar la sucursal");
+                        }
                     }
                 },
                 error: function (error) {
-                    console.log(error)
+                    console.log(error);
+                    if (typeof Swal !== 'undefined') {
+                        Swal.fire("Error", "Ocurrió un error al eliminar", "error");
+                    } else {
+                        alert("Error: Ocurrió un error al eliminar");
+                    }
                 },
                 beforeSend: function () {
 
