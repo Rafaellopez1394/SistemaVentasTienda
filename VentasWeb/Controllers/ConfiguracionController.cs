@@ -52,7 +52,8 @@ namespace VentasWeb.Controllers
                         {
                             using (var imagen = System.Drawing.Image.FromFile(rutaCompleta))
                             {
-                                int anchoLogo = impresora.AnchoPapel > 0 ? (int)(impresora.AnchoPapel * 6) : 300;
+                                // Ancho reducido para mejor centrado visual (4.5 en lugar de 6)
+                                int anchoLogo = impresora.AnchoPapel > 0 ? (int)(impresora.AnchoPapel * 4.5) : 260;
                                 logoBytes = ImageToEscPosBitmap(imagen, anchoLogo);
                             }
                         }
@@ -73,10 +74,10 @@ namespace VentasWeb.Controllers
                 // Crear documento ESC/POS unificado
                 using (var ms = new System.IO.MemoryStream())
                 {
-                    // Inicializar impresora
+                    // Inicializar impresora (sin salto de línea inicial)
                     ms.Write(new byte[] { 0x1B, 0x40 }, 0, 2); // ESC @ - inicializar
                     
-                    // Agregar logo si existe
+                    // Agregar logo si existe (sin espacio adicional arriba)
                     if (logoBytes.Length > 0)
                     {
                         ms.Write(logoBytes, 0, logoBytes.Length);
@@ -431,7 +432,7 @@ namespace VentasWeb.Controllers
                             ms.WriteByte((byte)((height >> 8) & 0xFF));
                             ms.Write(imageBytes, 0, imageBytes.Length);
                             ms.Write(new byte[] { 0x1B, 0x61, 0x00 }, 0, 3); // Alinear izquierda
-                            ms.Write(new byte[] { 0x0A, 0x0A }, 0, 2); // Saltos de línea
+                            ms.Write(new byte[] { 0x0A }, 0, 0); // Un solo salto de línea
                             return ms.ToArray();
                         }
                     }
