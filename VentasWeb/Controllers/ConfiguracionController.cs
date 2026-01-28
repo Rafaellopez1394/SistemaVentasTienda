@@ -424,15 +424,19 @@ namespace VentasWeb.Controllers
 
                         using (var ms = new System.IO.MemoryStream())
                         {
-                            ms.Write(new byte[] { 0x1B, 0x61, 0x01 }, 0, 3); // Centrar
-                            ms.Write(new byte[] { 0x1D, 0x76, 0x30, 0x00 }, 0, 4); // GS v 0
+                            // Activar centrado ANTES del bitmap
+                            ms.Write(new byte[] { 0x1B, 0x61, 0x01 }, 0, 3); // ESC a 1 - centrar
+                            // GS v 0 modo normal (0x00)
+                            ms.Write(new byte[] { 0x1D, 0x76, 0x30, 0x00 }, 0, 4); // GS v 0 0
                             ms.WriteByte((byte)(widthBytes & 0xFF));
                             ms.WriteByte((byte)((widthBytes >> 8) & 0xFF));
                             ms.WriteByte((byte)(height & 0xFF));
                             ms.WriteByte((byte)((height >> 8) & 0xFF));
                             ms.Write(imageBytes, 0, imageBytes.Length);
-                            ms.Write(new byte[] { 0x1B, 0x61, 0x00 }, 0, 3); // Alinear izquierda
-                            ms.Write(new byte[] { 0x0A }, 0, 0); // Un solo salto de línea
+                            // Mantener centrado y agregar salto
+                            ms.Write(new byte[] { 0x0A }, 0, 1); // Salto de línea
+                            // Volver alineación a izquierda para el resto del ticket
+                            ms.Write(new byte[] { 0x1B, 0x61, 0x00 }, 0, 3); // ESC a 0 - izquierda
                             return ms.ToArray();
                         }
                     }
