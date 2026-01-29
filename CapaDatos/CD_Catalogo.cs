@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Data;
 using System.Data.SqlClient;
+using System.Linq;
 
 namespace CapaDatos
 {
@@ -42,24 +43,6 @@ namespace CapaDatos
                     while (dr.Read())
                     {
                         lista.Add(new { Value = dr["UsoCFDIID"].ToString(), Text = dr["Descripcion"].ToString() });
-                    }
-                }
-            }
-            return lista;
-        }
-
-        public List<object> ObtenerTiposCredito()
-        {
-            var lista = new List<object>();
-            using (SqlConnection cnx = new SqlConnection(Conexion.CN))
-            {
-                SqlCommand cmd = new SqlCommand("SELECT TipoCreditoID, Nombre + ' (' + Codigo + ')' AS Nombre FROM CatTiposCredito WHERE Estatus = 1 ORDER BY Nombre", cnx);
-                cnx.Open();
-                using (SqlDataReader dr = cmd.ExecuteReader())
-                {
-                    while (dr.Read())
-                    {
-                        lista.Add(new { Value = dr["TipoCreditoID"].ToString(), Text = dr["Nombre"].ToString() });
                     }
                 }
             }
@@ -137,7 +120,22 @@ namespace CapaDatos
             }
             return lista;
         }
-        // Método duplicado: usar CD_TipoCredito.Instancia.ObtenerTodos() en su lugar
+
+        public List<object> ObtenerTiposCredito()
+        {
+            // Refactorizado para usar CD_TipoCredito en lugar de duplicar código
+            var tiposCredito = CD_TipoCredito.Instancia.ObtenerTodos();
+            var lista = new List<object>();
+            foreach (var tc in tiposCredito.Where(x => x.Activo))
+            {
+                lista.Add(new
+                {
+                    Value = tc.TipoCreditoID.ToString(),
+                    Text = $"{tc.Nombre} ({tc.Codigo})"
+                });
+            }
+            return lista;
+        }
 
         public List<ClaveProdServSAT> ObtenerClavesProdServ()
         {

@@ -295,13 +295,17 @@
 
 **Estado:** ✅ IMPLEMENTADO
 
-### 2. ⚠️ MENOR: Método duplicado
-**Ubicación:** `CapaDatos/CD_Catalogo.cs:140`  
-**Comentario:** Método duplicado para TipoCredito  
-**Impacto:** Ninguno - código funcional  
-**Solución:** Refactorizar para usar CD_TipoCredito directamente  
-**Prioridad:** 🟡 BAJA
-**Estado:** ⏳ PENDIENTE (no crítico)
+### ~~4. ⚠️ MENOR: Método duplicado~~ ✅ CORREGIDO
+**Ubicación:** `CapaDatos/CD_Catalogo.cs:52`  
+**Problema anterior:** Método `ObtenerTiposCredito()` duplicado con consulta SQL directa  
+**Solución aplicada:** Refactorizado para usar `CD_TipoCredito.Instancia.ObtenerTodos()` internamente  
+**Beneficios:**
+- Elimina duplicación de código (mantiene DRY)
+- Un solo punto de cambio para lógica de negocio
+- Usa API existente de capa de datos
+- Mismo comportamiento externo (devuelve `List<object>` para dropdowns)
+
+**Estado:** ✅ IMPLEMENTADO Y DESPLEGADO
 
 ---
 
@@ -326,6 +330,13 @@
 - **Eliminadas:** Variables declaradas pero no usadas
 - **Optimizadas:** Variables ahora usadas en mensajes informativos
 - **Beneficio:** Código más limpio, sin warnings
+
+### 4. ✅ Método duplicado eliminado (CD_Catalogo.cs)
+- **Antes:** Consulta SQL duplicada para tipos de crédito
+- **Ahora:** Usa `CD_TipoCredito.Instancia.ObtenerTodos()` internamente
+- **Beneficio:** Código más mantenible, sin duplicación
+- **Archivos modificados:** CapaDatos.dll
+- **Estado:** Compilado y desplegado
 
 ---
 
@@ -507,13 +518,13 @@ El sistema cumple con **TODOS los requisitos** solicitados:
 - ~~Refactorizar TODOs en código~~ ✅ CORREGIDO
 - ~~Renombrar funciones PowerShell~~ ✅ CORREGIDO
 - ~~Limpiar variables no usadas~~ ✅ CORREGIDO
-- Método duplicado en CD_Catalogo (bajo impacto) ⏳ Pendiente
+- ~~Método duplicado en CD_Catalogo~~ ✅ CORREGIDO
 
 ### ✅ VEREDICTO FINAL:
 **SISTEMA LISTO PARA PRODUCCIÓN**  
 **NIVEL PROFESIONAL: ALTO**  
 **CUMPLIMIENTO: 100%**  
-**MEJORAS IMPLEMENTADAS: 3 de 4 (75%)** ✅
+**MEJORAS IMPLEMENTADAS: 4 de 4 (100%)** ✅
 
 ---
 
@@ -542,5 +553,5 @@ El sistema cumple con **TODOS los requisitos** solicitados:
 **Fecha de auditoría:** 29 de Enero de 2026  
 **Auditor:** GitHub Copilot AI  
 **Estado del sistema:** ✅ PRODUCCIÓN LISTO  
-**Mejoras implementadas:** 29 de Enero de 2026 (3 de 4 completadas)  
+**Mejoras implementadas:** 29 de Enero de 2026 (4 de 4 completadas - 100%)  
 **Próxima revisión:** En 3 meses o al implementar nuevos módulos
