@@ -19,65 +19,65 @@ $msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Curr
 # ========================================
 # FUNCIONES AUXILIARES
 # ========================================
-function Print-Header {
+function Write-Header {
     param([string]$message)
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "   $message" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
 }
 
-function Print-Step {
+function Write-Step {
     param([string]$message)
     Write-Host "`n$message" -ForegroundColor Yellow
 }
 
-function Print-Success {
+function Write-SuccessMessage {
     param([string]$message)
     Write-Host "✓ $message" -ForegroundColor Green
 }
 
-function Print-Error {
+function Write-ErrorMessage {
     param([string]$message)
     Write-Host "✗ $message" -ForegroundColor Red
 }
 
-function Check-Administrator {
+function Test-Administrator {
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
     
     if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-        Print-Error "Este script debe ejecutarse como Administrador"
+        Write-ErrorMessage "Este script debe ejecutarse como Administrador"
         exit 1
     }
-    Print-Success "Ejecutando como Administrador"
+    Write-SuccessMessage "Ejecutando como Administrador"
 }
 
-function Check-Prerequisites {
-    Print-Step "Verificando pre-requisitos..."
+function Test-Prerequisites {
+    Write-Step "Verificando pre-requisitos..."
     
     if (-not (Test-Path $msbuild)) {
-        Print-Error "MSBuild no encontrado en: $msbuild"
+        Write-ErrorMessage "MSBuild no encontrado en: $msbuild"
         exit 1
     }
-    Print-Success "MSBuild encontrado"
+    Write-SuccessMessage "MSBuild encontrado"
     
     if (-not (Test-Path $projectPath)) {
-        Print-Error "Carpeta de proyecto no encontrada: $projectPath"
+        Write-ErrorMessage "Carpeta de proyecto no encontrada: $projectPath"
         exit 1
     }
-    Print-Success "Carpeta de proyecto encontrada"
+    Write-SuccessMessage "Carpeta de proyecto encontrada"
     
     # Verificar módulo WebAdministration
     if (-not (Get-Module -ListAvailable WebAdministration)) {
-        Print-Error "WebAdministration module no disponible"
+        Write-ErrorMessage "WebAdministration module no disponible"
         exit 1
     }
     Import-Module WebAdministration
-    Print-Success "WebAdministration module cargado"
+    Write-SuccessMessage "WebAdministration module cargado"
 }
 
-function Clean-Solution {
-    Print-Step "[1/7] Limpiando compilaciones anteriores..."
+function Clear-Solution {
+    Write-Step "[1/7] Limpiando compilaciones anteriores..."
     
     $binFolders = @(
         "$sourceWebPath\bin",
@@ -94,11 +94,11 @@ function Clean-Solution {
             Write-Host "  - Eliminada: $folder" -ForegroundColor Gray
         }
     }
-    Print-Success "Carpetas limpias"
+    Write-SuccessMessage "Carpetas limpias"
 }
 
-function Build-Solution {
-    Print-Step "[2/7] Compilando solución en modo Release..."
+function Invoke-Build {
+    Write-Step "[2/7] Compilando solución en modo Release..."
     
     Set-Location $projectPath
     
@@ -115,14 +115,14 @@ function Build-Solution {
         /nologo
     
     if ($LASTEXITCODE -ne 0) {
-        Print-Error "Error durante la compilación"
+        Write-ErrorMessage "Error durante la compilación"
         exit 1
     }
-    Print-Success "Compilación exitosa"
+    Write-SuccessMessage "Compilación exitosa"
 }
 
-function Verify-BuildArtifacts {
-    Print-Step "Verificando artefactos compilados..."
+function Test-BuildArtifacts {
+    Write-Step "Verificando artefactos compilados..."
     
     $dllFiles = @(
         "$sourceWebPath\bin\VentasWeb.dll",
@@ -132,17 +132,17 @@ function Verify-BuildArtifacts {
     
     foreach ($dll in $dllFiles) {
         if (Test-Path $dll) {
-            $size = (Get-Item $dll).Length / 1MB
-            Write-Host "  ✓ $(Split-Path $dll -Leaf) - ${size:F2} MB" -ForegroundColor Green
+            $size = [math]::Round((Get-Item $dll).Length / 1MB, 2)
+            Write-Host "  ✓ $(Split-Path $dll -Leaf) - $size MB" -ForegroundColor Green
         } else {
-            Print-Error "DLL no encontrado: $dll"
+            Write-ErrorMessage "DLL no encontrado: $dll"
             exit 1
         }
     }
 }
 
 function Stop-IISSite {
-    Print-Step "[3/7] Deteniendo IIS..."
+    Write-Step "[3/7] Deteniendo IIS..."
     
     if (Get-Website -Name $siteName -ErrorAction SilentlyContinue) {
         Stop-Website -Name $siteName -ErrorAction SilentlyContinue
@@ -150,11 +150,11 @@ function Stop-IISSite {
         Write-Host "  - Sitio detenido" -ForegroundColor Gray
     }
     
-    Print-Success "IIS detenido"
+    Write-SuccessMessage "IIS detenido"
 }
 
-function Prepare-PublishFolder {
-    Print-Step "[4/7] Preparando carpeta de publicación..."
+function Initialize-PublishFolder {
+    Write-Step "[4/7] Preparando carpeta de publicación..."
     
     if (Test-Path $publishPath) {
         Write-Host "  - Limpiando: $publishPath" -ForegroundColor Gray
@@ -166,11 +166,11 @@ function Prepare-PublishFolder {
         Write-Host "  - Carpeta creada: $publishPath" -ForegroundColor Gray
     }
     
-    Print-Success "Carpeta preparada"
+    Write-SuccessMessage "Carpeta preparada"
 }
 
 function Copy-PublishFiles {
-    Print-Step "[5/7] Copiando archivos..."
+    Write-Step "[5/7] Copiando archivos..."
     
     # Crear estructura de directorios
     $directories = @("bin", "Content", "Scripts", "Views", "fonts")
@@ -193,11 +193,11 @@ function Copy-PublishFiles {
         Copy-Item "$sourceWebPath\favicon.ico" -Destination $publishPath -Force
     }
     
-    Print-Success "Archivos copiados"
+    Write-SuccessMessage "Archivos copiados"
 }
 
-function Verify-CriticalFiles {
-    Print-Step "Verificando archivos críticos..."
+function Test-CriticalFiles {
+    Write-Step "Verificando archivos críticos..."
     
     $criticalFiles = @(
         "$publishPath\bin\VentasWeb.dll",
@@ -212,19 +212,19 @@ function Verify-CriticalFiles {
         if (Test-Path $file) {
             Write-Host "  ✓ $(Split-Path $file -Leaf)" -ForegroundColor Green
         } else {
-            Print-Error "Falta: $(Split-Path $file -Leaf)"
+            Write-ErrorMessage "Falta: $(Split-Path $file -Leaf)"
             $allOk = $false
         }
     }
     
     if (-not $allOk) {
-        Print-Error "Faltan archivos críticos"
+        Write-ErrorMessage "Faltan archivos críticos"
         exit 1
     }
 }
 
-function Configure-IIS {
-    Print-Step "[6/7] Configurando IIS..."
+function Set-IISConfiguration {
+    Write-Step "[6/7] Configurando IIS..."
     
     # Configurar Application Pool
     Write-Host "  - Configurando Application Pool" -ForegroundColor Gray
@@ -283,26 +283,26 @@ function Configure-IIS {
     
     Write-Host "  - Permisos configurados" -ForegroundColor Gray
     
-    Print-Success "IIS configurado"
+    Write-SuccessMessage "IIS configurado"
 }
 
 function Start-IISSite {
-    Print-Step "[7/7] Iniciando sitio web..."
+    Write-Step "[7/7] Iniciando sitio web..."
     
     Start-Website -Name $siteName
     Start-Sleep -Seconds 2
     
     $state = (Get-Website -Name $siteName).State
     if ($state -eq "Started") {
-        Print-Success "Sitio iniciado correctamente"
+        Write-SuccessMessage "Sitio iniciado correctamente"
     } else {
-        Print-Error "El sitio no se inició: $state"
+        Write-ErrorMessage "El sitio no se inició: $state"
         exit 1
     }
 }
 
-function Print-Summary {
-    Print-Header "DESPLIEGUE COMPLETADO EXITOSAMENTE"
+function Write-Summary {
+    Write-Header "DESPLIEGUE COMPLETADO EXITOSAMENTE"
     
     Write-Host "`nDetalles del despliegue:" -ForegroundColor Yellow
     Write-Host "  Sitio web: $siteName" -ForegroundColor White
@@ -324,7 +324,7 @@ function Print-Summary {
 # EJECUCIÓN PRINCIPAL
 # ========================================
 try {
-    Print-Header "DESPLIEGUE A IIS PRODUCTIVO"
+    Write-Header "DESPLIEGUE A IIS PRODUCTIVO"
     
     Check-Administrator
     Check-Prerequisites
@@ -340,7 +340,7 @@ try {
     Print-Summary
     
 } catch {
-    Print-Error "Error: $_"
+    Write-ErrorMessage "Error: $_"
     exit 1
 }
 

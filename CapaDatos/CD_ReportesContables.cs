@@ -85,9 +85,21 @@ namespace CapaDatos
         // =============================================
         public EstadoResultados GenerarEstadoResultados(int mes, int año)
         {
+            // Obtener nombre de empresa desde configuración
+            string nombreEmpresa = "Mi Empresa";
+            try
+            {
+                var config = CD_Configuracion.Instancia.ObtenerConfiguracionGeneral();
+                if (config != null && !string.IsNullOrEmpty(config.NombreNegocio))
+                {
+                    nombreEmpresa = config.NombreNegocio;
+                }
+            }
+            catch { /* Usar valor por defecto si falla */ }
+
             var resultado = new EstadoResultados
             {
-                Empresa = "Mi Empresa", // TODO: Obtener de configuración
+                Empresa = nombreEmpresa,
                 Periodo = $"{ObtenerNombreMes(mes)} {año}",
                 FechaInicio = new DateTime(año, mes, 1),
                 FechaFin = new DateTime(año, mes, DateTime.DaysInMonth(año, mes)),

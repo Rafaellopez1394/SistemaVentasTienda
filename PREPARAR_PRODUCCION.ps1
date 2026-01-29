@@ -103,7 +103,7 @@ if ($content -match 'connectionString="([^"]+)"') {
                 $password = $matches[1]
                 
                 try {
-                    $testResult = sqlcmd -S $servidor -U $usuario -P $password -Q "SELECT @@VERSION" -h -1 2>&1
+                    $null = sqlcmd -S $servidor -U $usuario -P $password -Q "SELECT @@VERSION" -h -1 2>&1
                     if ($LASTEXITCODE -eq 0) {
                         Write-Host "  OK: Conexion a SQL Server exitosa" -ForegroundColor Green
                     } else {

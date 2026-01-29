@@ -6,14 +6,14 @@ $ErrorActionPreference = "Stop"
 # ========================================
 # COLORES Y FUNCIONES
 # ========================================
-function Print-Header {
+function Write-Header {
     param([string]$message)
     Write-Host "`n========================================" -ForegroundColor Cyan
     Write-Host "   $message" -ForegroundColor Cyan
     Write-Host "========================================" -ForegroundColor Cyan
 }
 
-function Print-Check {
+function Write-Check {
     param([string]$message, [bool]$pass)
     if ($pass) {
         Write-Host "✓ $message" -ForegroundColor Green
@@ -23,18 +23,18 @@ function Print-Check {
     return $pass
 }
 
-function Check-Administrator {
-    Print-Header "1. VERIFICAR PERMISOS"
+function Test-Administrator {
+    Write-Header "1. VERIFICAR PERMISOS"
     
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent()
     $principal = New-Object Security.Principal.WindowsPrincipal($currentUser)
     $isAdmin = $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
     
-    return Print-Check "Ejecutando como Administrador" $isAdmin
+    return Write-Check "Ejecutando como Administrador" $isAdmin
 }
 
-function Check-DotNetFramework {
-    Print-Header "2. VERIFICAR .NET FRAMEWORK"
+function Test-DotNetFramework {
+    Write-Header "2. VERIFICAR .NET FRAMEWORK"
     
     $registry = Get-Item "HKLM:\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4" -ErrorAction SilentlyContinue
     $hasNet46 = $null -ne $registry
@@ -43,19 +43,19 @@ function Check-DotNetFramework {
         $version = $registry.GetValue("Version")
         Write-Host "✓ .NET Framework detectado: $version" -ForegroundColor Green
     } else {
-        Print-Check ".NET Framework 4.6+" $false
+        Write-Check ".NET Framework 4.6+" $false
     }
     
     return $hasNet46
 }
 
-function Check-MSBuild {
-    Print-Header "3. VERIFICAR MSBUILD"
+function Test-MSBuild {
+    Write-Header "3. VERIFICAR MSBUILD"
     
     $msbuild = "C:\Program Files\Microsoft Visual Studio\2022\Community\MSBuild\Current\Bin\MSBuild.exe"
     $exists = Test-Path $msbuild
     
-    Print-Check "MSBuild encontrado" $exists
+    Write-Check "MSBuild encontrado" $exists
     if ($exists) {
         $version = (Get-Item $msbuild).VersionInfo.FileVersion
         Write-Host "  Versión: $version" -ForegroundColor Gray
@@ -64,19 +64,19 @@ function Check-MSBuild {
     return $exists
 }
 
-function Check-IIS {
-    Print-Header "4. VERIFICAR IIS"
+function Test-IIS {
+    Write-Header "4. VERIFICAR IIS"
     
     # Verificar si IIS está instalado
     $iisFeature = Get-WindowsFeature -Name Web-Server -ErrorAction SilentlyContinue
     $iisInstalled = $null -ne $iisFeature -and $iisFeature.Installed
     
-    Print-Check "IIS instalado" $iisInstalled
+    Write-Check "IIS instalado" $iisInstalled
     
     if ($iisInstalled) {
         # Verificar WebAdministration
         $webAdminModule = Get-Module -ListAvailable WebAdministration -ErrorAction SilentlyContinue
-        Print-Check "WebAdministration module" $null -ne $webAdminModule
+        Write-Check "WebAdministration module" $null -ne $webAdminModule
         
         # Importar módulo
         if ($null -ne $webAdminModule) {
@@ -87,8 +87,8 @@ function Check-IIS {
     return $iisInstalled
 }
 
-function Check-SourceFiles {
-    Print-Header "5. VERIFICAR ARCHIVOS FUENTE"
+function Test-SourceFiles {
+    Write-Header "5. VERIFICAR ARCHIVOS FUENTE"
     
     $projectPath = "C:\Users\Rafael Lopez\Documents\SistemaVentasTienda"
     
@@ -102,22 +102,22 @@ function Check-SourceFiles {
     $allExist = $true
     foreach ($file in $files) {
         $exists = Test-Path $file.Path
-        Print-Check "$($file.Name)" $exists
+        Write-Check "$($file.Name)" $exists
         $allExist = $allExist -and $exists
     }
     
     return $allExist
 }
 
-function Check-Database {
-    Print-Header "6. VERIFICAR BASE DE DATOS"
+function Test-Database {
+    Write-Header "6. VERIFICAR BASE DE DATOS"
     
     try {
         $connectionString = "Server=localhost;Database=master;Integrated Security=true;"
         $connection = New-Object System.Data.SqlClient.SqlConnection($connectionString)
         $connection.Open()
         
-        Print-Check "SQL Server accesible" $true
+        Write-Check "SQL Server accesible" $true
         
         # Verificar DB_TIENDA
         $cmd = $connection.CreateCommand()
@@ -125,7 +125,7 @@ function Check-Database {
         $result = $cmd.ExecuteScalar()
         $dbExists = $null -ne $result
         
-        Print-Check "Base de datos DB_TIENDA existe" $dbExists
+        Write-Check "Base de datos DB_TIENDA existe" $dbExists
         
         if ($dbExists) {
             # Verificar tablas críticas
@@ -140,20 +140,20 @@ WHERE name = 'DB_TIENDA'
             $cmd.CommandText = "USE DB_TIENDA; SELECT COUNT(*) FROM ConfiguracionPAC"
             $configCount = $cmd.ExecuteScalar()
             
-            Print-Check "Tabla ConfiguracionPAC existe" ($configCount -gt 0)
+            Write-Check "Tabla ConfiguracionPAC existe" ($configCount -gt 0)
         }
         
         $connection.Close()
         return $dbExists
     } catch {
-        Print-Check "SQL Server accesible" $false
+        Write-Check "SQL Server accesible" $false
         Write-Host "  Error: $_" -ForegroundColor Yellow
         return $false
     }
 }
 
-function Check-FiscalAPIConfig {
-    Print-Header "7. VERIFICAR CONFIGURACION FISCALAPI"
+function Test-FiscalAPIConfig {
+    Write-Header "7. VERIFICAR CONFIGURACION FISCALAPI"
     
     try {
         $connectionString = "Server=localhost;Database=DB_TIENDA;Integrated Security=true;"
@@ -182,7 +182,7 @@ WHERE ConfigPACID = 1
             $apiKey = $row["ApiKey_Partial"]
             $tenant = $row["Tenant"]
             
-            Print-Check "Configuración FiscalAPI existe" $true
+            Write-Check "Configuración FiscalAPI existe" $true
             
             if ($esProduccion -eq 1) {
                 Write-Host "  ✓ Ambiente: PRODUCCIÓN" -ForegroundColor Green
@@ -195,25 +195,25 @@ WHERE ConfigPACID = 1
             
             return $esProduccion -eq 1
         } else {
-            Print-Check "Configuración FiscalAPI" $false
+            Write-Check "Configuración FiscalAPI" $false
             return $false
         }
         
         $connection.Close()
     } catch {
-        Print-Check "Acceso a configuración FiscalAPI" $false
+        Write-Check "Acceso a configuración FiscalAPI" $false
         Write-Host "  Error: $_" -ForegroundColor Yellow
         return $false
     }
 }
 
-function Check-WebConfig {
-    Print-Header "8. VERIFICAR WEB.CONFIG"
+function Test-WebConfig {
+    Write-Header "8. VERIFICAR WEB.CONFIG"
     
     $webConfigPath = "C:\Users\Rafael Lopez\Documents\SistemaVentasTienda\VentasWeb\Web.config"
     
     if (-not (Test-Path $webConfigPath)) {
-        Print-Check "Web.config existe" $false
+        Write-Check "Web.config existe" $false
         return $false
     }
     
@@ -224,56 +224,56 @@ function Check-WebConfig {
     $isProduction = $debugAttribute -eq "false"
     
     if ($isProduction) {
-        Print-Check "Debug deshabilitado (debug=false)" $true
+        Write-Check "Debug deshabilitado (debug=false)" $true
     } else {
-        Print-Check "Debug habilitado (CAMBIAR A FALSE)" $false
+        Write-Check "Debug habilitado (CAMBIAR A FALSE)" $false
         Write-Host "  ⚠ En Web.config, línea de compilation debe tener: debug=`"false`"" -ForegroundColor Yellow
     }
     
     return $isProduction
 }
 
-function Check-Ports {
-    Print-Header "9. VERIFICAR PUERTOS"
+function Test-Ports {
+    Write-Header "9. VERIFICAR PUERTOS"
     
     $port = 80
-    $protocol = "tcp"
     
     $listening = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     
     if ($listening.Count -gt 0) {
-        Write-Host "⚠ Puerto 80 ya está en uso" -ForegroundColor Yellow
+        Write-Host "⚠ Puerto 80 ya está en uso (TCP)" -ForegroundColor Yellow
         foreach ($conn in $listening) {
             Write-Host "  - PID: $($conn.OwningProcess), Estado: $($conn.State)" -ForegroundColor Gray
         }
         return $false
     } else {
-        Print-Check "Puerto 80 disponible" $true
+        Write-Check "Puerto 80 disponible" $true
         return $true
     }
 }
 
-function Check-Disk {
-    Print-Header "10. VERIFICAR ESPACIO EN DISCO"
+function Test-Disk {
+    Write-Header "10. VERIFICAR ESPACIO EN DISCO"
     
     $driveC = Get-PSDrive -Name C
     $freeSpace = $driveC.Free / 1GB
     $totalSpace = $driveC.Used + $driveC.Free
-    $percentFree = ($driveC.Free / $totalSpace) * 100
+    $percentFree = [math]::Round(($driveC.Free / $totalSpace) * 100, 1)
     
     $isOk = $freeSpace -gt 2
     
-    Print-Check "Espacio en disco >= 2 GB" $isOk
+    Write-Check "Espacio libre: $([math]::Round($freeSpace, 2)) GB ($percentFree% libre)" $isOk
+    Write-Check "Espacio en disco >= 2 GB" $isOk
     Write-Host "  - Espacio libre: $($freeSpace:F2) GB" -ForegroundColor Gray
     Write-Host "  - Uso: $($percentFree:F1)%" -ForegroundColor Gray
     
     return $isOk
 }
 
-function Print-Summary {
+function Write-Summary {
     param([hashtable]$results)
     
-    Print-Header "RESUMEN DE VERIFICACIÓN"
+    Write-Header "RESUMEN DE VERIFICACIÓN"
     
     $passed = ($results.Values | Where-Object { $_ -eq $true }).Count
     $total = $results.Count
@@ -300,19 +300,19 @@ function Print-Summary {
 # EJECUCIÓN PRINCIPAL
 # ========================================
 $results = @{
-    "Administrador" = Check-Administrator
-    ".NET Framework" = Check-DotNetFramework
-    "MSBuild" = Check-MSBuild
-    "IIS" = Check-IIS
-    "Archivos Fuente" = Check-SourceFiles
-    "Base de Datos" = Check-Database
-    "FiscalAPI (Producción)" = Check-FiscalAPIConfig
-    "Web.config (debug=false)" = Check-WebConfig
-    "Puertos Disponibles" = Check-Ports
-    "Espacio en Disco" = Check-Disk
+    "Administrador" = Test-Administrator
+    ".NET Framework" = Test-DotNetFramework
+    "MSBuild" = Test-MSBuild
+    "IIS" = Test-IIS
+    "Archivos Fuente" = Test-SourceFiles
+    "Base de Datos" = Test-Database
+    "FiscalAPI (Producción)" = Test-FiscalAPIConfig
+    "Web.config (debug=false)" = Test-WebConfig
+    "Puertos Disponibles" = Test-Ports
+    "Espacio en Disco" = Test-Disk
 }
 
-$canDeploy = Print-Summary $results
+$canDeploy = Write-Summary $results
 
 Write-Host "`nPresiona Enter para cerrar..." -ForegroundColor Gray
 Read-Host
