@@ -79,6 +79,7 @@
     <Compile Include="CD_ReportesAvanzados.cs" />
     <Compile Include="CD_ReporteUtilidadDiaria.cs" />
     <Compile Include="CD_Gasto.cs" />
+    <Compile Include="CD_InventarioInicial.cs" />
     <Compile Include="CD_Traspaso.cs" />
     <Compile Include="CD_MapeoIVA.cs" />
     <Compile Include="CD_Nomina.cs" />

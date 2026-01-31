@@ -153,6 +153,7 @@
     <Compile Include="Controllers\FacturaController.cs" />
     <!-- <Compile Include="Controllers\FacturaTestController.cs" /> ELIMINADO -->
     <Compile Include="Controllers\HomeController.cs" />
+    <Compile Include="Controllers\InventarioInicialController.cs" />
     <Compile Include="Controllers\LoginController.cs" />
     <Compile Include="Controllers\MermasController.cs" />
     <Compile Include="Controllers\NominaController.cs" />
@@ -2170,6 +2171,9 @@
     <Content Include="Views\CuentasPorPagar\Pagar.cshtml" />
     <Content Include="Views\CuentasPorPagar\ReporteAntiguedad.cshtml" />
     <Content Include="Views\Factura\Index.cshtml" />
+    <Content Include="Views\InventarioInicial\Cargar.cshtml" />
+    <Content Include="Views\InventarioInicial\Index.cshtml" />
+    <Content Include="Views\InventarioInicial\NuevaCarga.cshtml" />
     <Content Include="Views\Mermas\Index.cshtml" />
     <Content Include="Views\Mermas\RegistrarAjuste.cshtml" />
     <Content Include="Views\Mermas\RegistrarMerma.cshtml" />

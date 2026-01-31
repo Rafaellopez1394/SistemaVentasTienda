@@ -1,0 +1,324 @@
+@model List<CapaModelo.InventarioInicial>
+@{
+    ViewBag.Title = "Inventario Inicial";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>
+                <i class="fas fa-boxes"></i> Inventario Inicial
+                <small class="text-muted">Carga inicial de productos desde otro sistema</small>
+            </h2>
+            <hr />
+
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success alert-dismissible">
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    <strong><i class="fas fa-check-circle"></i></strong> @TempData["Success"]
+                </div>
+            }
+
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible">
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    <strong><i class="fas fa-exclamation-triangle"></i></strong> @TempData["Error"]
+                </div>
+            }
+
+            @if (TempData["Warning"] != null)
+            {
+                <div class="alert alert-warning alert-dismissible">
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    <strong><i class="fas fa-exclamation-circle"></i></strong> @TempData["Warning"]
+                </div>
+            }
+
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> ¿Qué es el Inventario Inicial?
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <p>
+                        El <strong>Inventario Inicial</strong> es un módulo especial para cuando migras desde otro sistema.
+                        Te permite cargar todos tus productos existentes con sus cantidades y costos actuales.
+                    </p>
+                    
+                    <div class="alert alert-success">
+                        <i class="fas fa-file-excel"></i>
+                        <strong>Plantilla CSV:</strong> Puedes descargar una plantilla con todos tus productos para llenarla en Excel/LibreOffice 
+                        y tener un registro antes de cargar. 
+                        <a href="@Url.Action("DescargarPlantilla")" class="btn btn-success btn-sm ml-2">
+                            <i class="fas fa-download"></i> Descargar Plantilla
+                        </a>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <i class="fas fa-upload fa-3x text-primary mb-3"></i>
+                                <h5>1. Crear Carga</h5>
+                                <p class="text-muted">Inicia una nueva carga de inventario inicial</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <i class="fas fa-list fa-3x text-success mb-3"></i>
+                                <h5>2. Agregar Productos</h5>
+                                <p class="text-muted">Busca y agrega cada producto con su cantidad actual</p>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="text-center">
+                                <i class="fas fa-check-circle fa-3x text-info mb-3"></i>
+                                <h5>3. Finalizar</h5>
+                                <p class="text-muted">Aplica el inventario inicial al sistema</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info mt-3">
+                        <i class="fas fa-lightbulb"></i>
+                        <strong>Importante:</strong> Este módulo se usa típicamente <strong>una sola vez</strong> al iniciar el sistema.
+                        Después, el inventario se actualiza automáticamente con compras, ventas y ajustes.
+                    </div>
+                </div>
+            </div>
+
+            <div class="card shadow">
+                <div class="card-header py-3 d-flex justify-content-between align-items-center">
+                    <h6 class="m-0 font-weight-bold text-primary">Historial de Cargas</h6>
+                    <div>
+                        <a href="@Url.Action("DescargarPlantilla")" class="btn btn-success btn-sm">
+                            <i class="fas fa-file-excel"></i> Descargar Plantilla CSV
+                        </a>
+                        <a href="@Url.Action("NuevaCarga")" class="btn btn-primary btn-sm">
+                            <i class="fas fa-plus"></i> Nueva Carga Inicial
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    @if (Model != null && Model.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="tablaCa rgas">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Carga #</th>
+                                        <th>Fecha</th>
+                                        <th>Usuario</th>
+                                        <th>Sucursal</th>
+                                        <th>Productos</th>
+                                        <th>Unidades</th>
+                                        <th>Valor Total</th>
+                                        <th>Estado</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var carga in Model)
+                                    {
+                                        <tr>
+                                            <td>@carga.CargaID</td>
+                                            <td>@carga.FechaCarga.ToString("dd/MM/yyyy HH:mm")</td>
+                                            <td>@carga.UsuarioCarga</td>
+                                            <td>@carga.NombreSucursal</td>
+                                            <td class="text-right">@carga.TotalProductos.ToString("N0")</td>
+                                            <td class="text-right">@carga.TotalUnidades.ToString("N2")</td>
+                                            <td class="text-right">$@carga.ValorTotal.ToString("N2")</td>
+                                            <td>
+                                                @if (carga.Estado == "En Proceso")
+                                                {
+                                                    <span class="badge badge-warning">
+                                                        <i class="fas fa-clock"></i> En Proceso
+                                                    </span>
+                                                }
+                                                else
+                                                {
+                                                    <span class="badge badge-success">
+                                                        <i class="fas fa-check"></i> Finalizada
+                                                    </span>
+                                                }
+                                            </td>
+                                            <td>
+                                                @if (carga.Estado == "En Proceso")
+                                                {
+                                                    <a href="@Url.Action("Cargar", new { id = carga.CargaID })" 
+                                                       class="btn btn-sm btn-info" title="Continuar carga">
+                                                        <i class="fas fa-play"></i> Continuar
+                                                    </a>
+                                                }
+                                                else
+                                                {
+                                                    <a href="@Url.Action("Detalle", new { id = carga.CargaID })" 
+                                                       class="btn btn-sm btn-primary" title="Ver detalle">
+                                                        <i class="fas fa-eye"></i> Ver
+                                                    </a>
+                                                }
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay cargas de inventario inicial</h5>
+                            <p class="text-muted">Crea tu primera carga para importar el inventario desde tu sistema anterior.</p>
+                            <a href="@Url.Action("NuevaCarga")" class="btn btn-primary">
+                                <i class="fas fa-plus"></i> Crear Primera Carga
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- IMPORTAR DESDE CSV -->
+    <div class="card shadow mt-4">
+        <div class="card-header py-3 bg-success text-white">
+            <h6 class="m-0 font-weight-bold">
+                <i class="fas fa-upload"></i> Importar Inventario desde CSV
+            </h6>
+        </div>
+        <div class="card-body">
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle"></i>
+                <strong>Cómo usar:</strong>
+                <ol class="mb-0 mt-2">
+                    <li>Descarga la plantilla CSV con el botón verde de arriba</li>
+                    <li>Llena las columnas: CantidadNueva, CostoUnitario, PrecioVenta</li>
+                    <li>Guarda el archivo</li>
+                    <li>Sube el archivo aquí para importar todos los productos automáticamente</li>
+                </ol>
+            </div>
+            
+            @using (Html.BeginForm("ImportarCSV", "InventarioInicial", FormMethod.Post, new { enctype = "multipart/form-data", @class = "mt-3" }))
+            {
+                @Html.AntiForgeryToken()
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-group">
+                            <label><i class="fas fa-file-csv"></i> Selecciona tu archivo CSV lleno:</label>
+                            <input type="file" name="archivo" accept=".csv" class="form-control" required />
+                            <small class="form-text text-muted">Solo archivos .csv</small>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="form-group">
+                            <label><i class="fas fa-comment"></i> Comentarios (opcional):</label>
+                            <input type="text" name="comentarios" class="form-control" 
+                                   placeholder="Ej: Inventario inicial 30/01/2026" 
+                                   maxlength="200" />
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="form-group">
+                            <label>&nbsp;</label>
+                            <button type="submit" class="btn btn-success btn-block">
+                                <i class="fas fa-cloud-upload-alt"></i> Importar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            }
+            
+            <div class="alert alert-warning mt-3">
+                <i class="fas fa-exclamation-triangle"></i>
+                <strong>Importante:</strong> 
+                Solo se importarán productos con CantidadNueva, CostoUnitario y PrecioVenta mayores a 0.
+                Las líneas con errores se omitirán y verás un reporte al final.
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            $('#tablaCargas').DataTable({
+                "language": {
+                    "url": "//cdn.datatables.net/plug-ins/1.10.24/i18n/Spanish.json"
+                },
+                "order": [[0, "desc"]]
+            });
+
+            // Validación del formulario de importación CSV
+            $('form[action*="ImportarCSV"]').on('submit', function (e) {
+                var archivo = $('input[name="archivo"]')[0];
+                
+                if (!archivo.files || archivo.files.length === 0) {
+                    e.preventDefault();
+                    mostrarError('Selecciona un archivo CSV');
+                    return false;
+                }
+
+                var file = archivo.files[0];
+                
+                // Validar extensión
+                var extension = file.name.split('.').pop().toLowerCase();
+                if (extension !== 'csv') {
+                    e.preventDefault();
+                    mostrarError('Solo se permiten archivos CSV (.csv). Archivo seleccionado: .' + extension);
+                    return false;
+                }
+
+                // Validar tamaño (máximo 10 MB)
+                var maxSize = 10 * 1024 * 1024; // 10 MB
+                if (file.size > maxSize) {
+                    e.preventDefault();
+                    var sizeMB = (file.size / 1024 / 1024).toFixed(2);
+                    mostrarError('El archivo es demasiado grande. Máximo: 10 MB. Tamaño: ' + sizeMB + ' MB');
+                    return false;
+                }
+
+                // Mostrar indicador de carga
+                var $btn = $(this).find('button[type="submit"]');
+                var textoOriginal = $btn.html();
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Importando...');
+
+                // Si hay error del servidor, restaurar botón
+                setTimeout(function() {
+                    if ($('.alert-danger').length > 0) {
+                        $btn.prop('disabled', false).html(textoOriginal);
+                    }
+                }, 1000);
+
+                return true;
+            });
+
+            // Función para mostrar errores
+            function mostrarError(mensaje) {
+                var alerta = $('<div class="alert alert-danger alert-dismissible" style="position: fixed; top: 70px; right: 20px; z-index: 9999; min-width: 300px;">')
+                    .html('<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                          '<strong><i class="fas fa-exclamation-triangle"></i></strong> ' + mensaje);
+                
+                $('body').append(alerta);
+                
+                setTimeout(function() {
+                    alerta.fadeOut(function() { $(this).remove(); });
+                }, 5000);
+            }
+
+            // Mostrar nombre del archivo seleccionado
+            $('input[type="file"]').on('change', function() {
+                var fileName = $(this).val().split('\\').pop();
+                var fileSize = this.files[0] ? (this.files[0].size / 1024).toFixed(2) : 0;
+                
+                if (fileName) {
+                    var info = $('<small class="text-muted d-block mt-1">').text('Archivo: ' + fileName + ' (' + fileSize + ' KB)');
+                    $(this).next('.form-text').after(info);
+                }
+            });
+        });
+    </script>
+}

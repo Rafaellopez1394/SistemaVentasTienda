@@ -263,9 +263,12 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <script>
-        var reciboId = @Model.NominaDetalleID;
+        var nominaDetalleID = @Model.NominaDetalleID;
 
         function timbrarRecibo() {
+            // Deshabilitar botón durante el proceso
+            $('#btnTimbrar').prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Timbrando...');
+
             Swal.fire({
                 title: '¿Timbrar Recibo de Nómina?',
                 html: '<p>Se generará un CFDI 4.0 con Complemento de Nómina 1.2</p>' +
@@ -275,45 +278,86 @@
                 confirmButtonText: 'Sí, timbrar',
                 cancelButtonText: 'Cancelar',
                 confirmButtonColor: '#007bff',
+                cancelButtonColor: '#6c757d',
                 showLoaderOnConfirm: true,
                 allowOutsideClick: () => !Swal.isLoading(),
                 preConfirm: () => {
                     return $.ajax({
-                        url: '/Nomina/TimbrarRecibo',
+                        url: '@Url.Action("TimbrarRecibo", "Nomina")',
                         type: 'POST',
-                        data: { reciboId: reciboId },
+                        data: { nominaDetalleID: nominaDetalleID },
                         dataType: 'json'
                     }).then(response => {
-                        if (!response.success) {
-                            throw new Error(response.message || 'Error al timbrar');
+                        console.log('Respuesta del servidor:', response);
+                        if (!response.exitoso) {
+                            throw new Error(response.mensaje || 'Error al timbrar');
                         }
                         return response;
                     }).catch(error => {
-                        Swal.showValidationMessage('Error: ' + (error.message || 'Error de conexión'));
+                        Swal.showValidationMessage('Error: ' + (error.responseJSON?.mensaje || error.message || 'Error de conexión'));
                     });
                 }
             }).then((result) => {
-                if (result.isConfirmed) {
+                if (result.isConfirmed && result.value) {
                     Swal.fire({
                         title: '¡Timbrado Exitoso!',
-                        html: '<p><strong>UUID:</strong></p>' +
-                              '<p style="word-break: break-all; font-size: 11px;">' + result.value.uuid + '</p>' +
-                              '<p class="mt-3"><strong>Fecha:</strong> ' + result.value.fechaTimbrado + '</p>',
+                        html: '<div class="text-left">' +
+                              '<p><strong>UUID:</strong></p>' +
+                              '<p class="border p-2 bg-light" style="word-break: break-all; font-size: 11px; font-family: monospace;">' + 
+                              result.value.uuid + '</p>' +
+                              '<p class="mt-3"><strong>Fecha de Timbrado:</strong> ' + result.value.fechaTimbrado + '</p>' +
+                              (result.value.invoiceId ? '<p><strong>Invoice ID:</strong> ' + result.value.invoiceId + '</p>' : '') +
+                              '</div>',
                         icon: 'success',
-                        confirmButtonText: 'Recargar página'
+                        confirmButtonText: 'Recargar página',
+                        confirmButtonColor: '#28a745'
                     }).then(() => {
                         location.reload();
                     });
+                } else if (result.isDismissed) {
+                    // Restaurar botón si se cancela
+                    $('#btnTimbrar').prop('disabled', false).html('<i class="fas fa-certificate"></i> Timbrar CFDI');
                 }
+            }).catch(error => {
+                console.error('Error en timbrado:', error);
+                Swal.fire({
+                    title: 'Error',
+                    text: 'Ocurrió un error inesperado: ' + error.message,
+                    icon: 'error',
+                    confirmButtonText: 'Cerrar'
+                });
+                $('#btnTimbrar').prop('disabled', false).html('<i class="fas fa-certificate"></i> Timbrar CFDI');
             });
         }
 
         function descargarXML() {
-            window.open('/Nomina/DescargarXMLRecibo?reciboId=' + reciboId, '_blank');
+            var url = '@Url.Action("DescargarXMLRecibo", "Nomina")?nominaDetalleID=' + nominaDetalleID;
+            console.log('Descargando XML desde:', url);
+            window.location.href = url;
         }
 
         function exportarPDF() {
-            window.open('/Nomina/DescargarPDFRecibo?reciboId=' + reciboId, '_blank');
+            @if (!string.IsNullOrEmpty(Model.UUID))
+            {
+                @:var url = '@Url.Action("DescargarPDFRecibo", "Nomina")?nominaDetalleID=' + nominaDetalleID;
+                @:console.log('Descargando PDF desde:', url);
+                @:window.location.href = url;
+            }
+            else
+            {
+                @:Swal.fire({
+                    @:title: 'Recibo no timbrado',
+                    @:text: 'El recibo debe estar timbrado para descargar el PDF oficial. ¿Deseas imprimir este recibo en su lugar?',
+                    @:icon: 'info',
+                    @:showCancelButton: true,
+                    @:confirmButtonText: 'Imprimir',
+                    @:cancelButtonText: 'Cancelar'
+                @:}).then((result) => {
+                    @:if (result.isConfirmed) {
+                        @:window.print();
+                    @:}
+                @:});
+            }
         }
     </script>
 </body>

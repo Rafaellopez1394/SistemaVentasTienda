@@ -32,6 +32,10 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Newtonsoft.Json, Version=11.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\Newtonsoft.Json.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Xml.Linq" />
@@ -76,7 +80,9 @@
     <Compile Include="MovimientoInventario.cs" />
     <Compile Include="MovimientoMerma.cs" />
     <Compile Include="Nomina.cs" />
+    <Compile Include="PAC\FiscalAPINominaRequest.cs" />
     <Compile Include="Permisos.cs" />
+    <Compile Include="InventarioInicial.cs" />
     <Compile Include="Poliza.cs" />
     <Compile Include="PolizaResumen.cs" />
     <Compile Include="Producto.cs" />

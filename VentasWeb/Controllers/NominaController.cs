@@ -395,65 +395,6 @@ namespace VentasWeb.Controllers
             }
         }
 
-        // =============================================
-        // TIMBRADO CFDI NÓMINA
-        // =============================================
-
-        [HttpPost]
-        public async System.Threading.Tasks.Task<JsonResult> TimbrarRecibo(int reciboId)
-        {
-            try
-            {
-                if (Session["Usuario"] == null)
-                    return Json(new { success = false, message = "Sesión expirada" });
-
-                string usuario = Session["Usuario"].ToString();
-
-                // FUNCIONALIDAD DE TIMBRADO ELIMINADA
-                return Json(new
-                {
-                    success = false,
-                    message = "Funcionalidad de timbrado CFDI Nómina eliminada del sistema"
-                });
-
-                /* CÓDIGO ELIMINADO - Timbrado de nómina */
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = $"Error: {ex.Message}" });
-            }
-        }
-
-        [HttpGet]
-        public JsonResult DescargarXMLRecibo(int reciboId)
-        {
-            try
-            {
-                // TODO: Implementar descarga de XML timbrado desde NominasCFDI
-                return Json(new { success = false, message = "Función en desarrollo" }, JsonRequestBehavior.AllowGet);
-            }
-            catch (Exception ex)
-            {
-                return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
-            }
-        }
-
-        [HttpGet]
-        public ActionResult DescargarPDFRecibo(int reciboId)
-        {
-            try
-            {
-                // TODO: Implementar generación de PDF del recibo con iTextSharp
-                TempData["Info"] = "Función de descarga PDF en desarrollo";
-                return RedirectToAction("ReciboEmpleado", new { id = reciboId });
-            }
-            catch (Exception ex)
-            {
-                TempData["Error"] = ex.Message;
-                return RedirectToAction("Index");
-            }
-        }
-
         // GET: Nomina/Procesar
         public ActionResult Procesar()
         {
@@ -600,6 +541,170 @@ namespace VentasWeb.Controllers
             catch (Exception ex)
             {
                 return Json(new { success = false, message = ex.Message }, JsonRequestBehavior.AllowGet);
+            }
+        }
+
+        // =============================================
+        // MÉTODOS DE TIMBRADO DE NÓMINA (CFDI 4.0)
+        // =============================================
+
+        /// <summary>
+        /// Timbra un recibo de nómina individual usando FiscalAPI
+        /// Genera CFDI 4.0 con Complemento de Nómina 1.2
+        /// </summary>
+        /// <param name="nominaDetalleID">ID del recibo a timbrar</param>
+        /// <returns>JSON con resultado del timbrado (UUID, fecha, mensaje)</returns>
+        [HttpPost]
+        public async System.Threading.Tasks.Task<JsonResult> TimbrarRecibo(int nominaDetalleID)
+        {
+            try
+            {
+                if (nominaDetalleID <= 0)
+                {
+                    return Json(new
+                    {
+                        exitoso = false,
+                        mensaje = "ID de recibo inválido"
+                    });
+                }
+
+                // Obtener usuario actual
+                string usuario = User.Identity.Name ?? "Sistema";
+
+                // Llamar al método de timbrado de nómina
+                var resultado = await CD_Nomina.Instancia.TimbrarCFDINomina(nominaDetalleID, usuario);
+
+                // Retornar resultado en formato JSON
+                return Json(new
+                {
+                    exitoso = resultado.Exitoso,
+                    mensaje = resultado.Mensaje,
+                    uuid = resultado.UUID,
+                    fechaTimbrado = resultado.FechaTimbrado.HasValue ? resultado.FechaTimbrado.Value.ToString("dd/MM/yyyy HH:mm:ss") : "",
+                    codigoError = resultado.CodigoError,
+                    selloCFD = !string.IsNullOrEmpty(resultado.SelloCFD) ? resultado.SelloCFD.Substring(0, Math.Min(20, resultado.SelloCFD.Length)) + "..." : null,
+                    selloSAT = !string.IsNullOrEmpty(resultado.SelloSAT) ? resultado.SelloSAT.Substring(0, Math.Min(20, resultado.SelloSAT.Length)) + "..." : null,
+                    invoiceId = resultado.InvoiceId
+                });
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ERROR en TimbrarRecibo: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"StackTrace: {ex.StackTrace}");
+
+                return Json(new
+                {
+                    exitoso = false,
+                    mensaje = $"Excepción en controlador: {ex.Message}",
+                    codigoError = "EXCEPTION"
+                });
+            }
+        }
+
+        /// <summary>
+        /// Descarga el PDF de un recibo de nómina timbrado desde FiscalAPI
+        /// </summary>
+        /// <param name="nominaDetalleID">ID del recibo timbrado</param>
+        /// <returns>Archivo PDF del recibo</returns>
+        [HttpGet]
+        public async System.Threading.Tasks.Task<ActionResult> DescargarPDFRecibo(int nominaDetalleID)
+        {
+            try
+            {
+                if (nominaDetalleID <= 0)
+                {
+                    TempData["Error"] = "ID de recibo inválido";
+                    return RedirectToAction("Index");
+                }
+
+                // Obtener el InvoiceId del recibo timbrado
+                string invoiceId = CD_Nomina.Instancia.ObtenerInvoiceIdRecibo(nominaDetalleID);
+
+                if (string.IsNullOrEmpty(invoiceId))
+                {
+                    TempData["Error"] = "Este recibo no ha sido timbrado o no tiene InvoiceId";
+                    return RedirectToAction("ReciboEmpleado", new { id = nominaDetalleID });
+                }
+
+                // Obtener configuración de FiscalAPI desde la base de datos
+                // Reutiliza la misma configuración que la facturación de ventas
+                var config = CD_Factura.Instancia.ObtenerConfiguracionFiscalAPI();
+
+                if (config == null)
+                {
+                    TempData["Error"] = "No se encontró configuración de FiscalAPI activa";
+                    return RedirectToAction("ReciboEmpleado", new { id = nominaDetalleID });
+                }
+
+                // Descargar PDF desde FiscalAPI
+                using (var fiscalAPIService = new CapaDatos.PAC.FiscalAPIService(config))
+                {
+                    byte[] pdfBytes = await fiscalAPIService.DescargarPDF(invoiceId);
+
+                    if (pdfBytes == null || pdfBytes.Length == 0)
+                    {
+                        TempData["Error"] = "No se pudo descargar el PDF desde FiscalAPI";
+                        return RedirectToAction("ReciboEmpleado", new { id = nominaDetalleID });
+                    }
+
+                    // Generar nombre de archivo
+                    var recibo = CD_Nomina.Instancia.ObtenerReciboPorId(nominaDetalleID);
+                    string nombreArchivo = $"Recibo_Nomina_{recibo?.NumeroEmpleado ?? nominaDetalleID.ToString()}.pdf";
+
+                    System.Diagnostics.Debug.WriteLine($"✓ PDF descargado - Tamaño: {pdfBytes.Length} bytes");
+
+                    return File(pdfBytes, "application/pdf", nombreArchivo);
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ERROR en DescargarPDFRecibo: {ex.Message}");
+                TempData["Error"] = $"Error al descargar PDF: {ex.Message}";
+                return RedirectToAction("ReciboEmpleado", new { id = nominaDetalleID });
+            }
+        }
+
+        /// <summary>
+        /// Descarga el XML timbrado de un recibo de nómina
+        /// </summary>
+        /// <param name="nominaDetalleID">ID del recibo timbrado</param>
+        /// <returns>Archivo XML timbrado</returns>
+        [HttpGet]
+        public ActionResult DescargarXMLRecibo(int nominaDetalleID)
+        {
+            try
+            {
+                if (nominaDetalleID <= 0)
+                {
+                    TempData["Error"] = "ID de recibo inválido";
+                    return RedirectToAction("Index");
+                }
+
+                // Obtener el XML timbrado del recibo
+                string xmlTimbrado = CD_Nomina.Instancia.ObtenerXMLTimbradoRecibo(nominaDetalleID);
+
+                if (string.IsNullOrEmpty(xmlTimbrado))
+                {
+                    TempData["Error"] = "Este recibo no ha sido timbrado o no tiene XML disponible";
+                    return RedirectToAction("ReciboEmpleado", new { id = nominaDetalleID });
+                }
+
+                // Generar nombre de archivo
+                var recibo = CD_Nomina.Instancia.ObtenerReciboPorId(nominaDetalleID);
+                string nombreArchivo = $"Recibo_Nomina_{recibo?.NumeroEmpleado ?? nominaDetalleID.ToString()}.xml";
+
+                // Convertir XML a bytes UTF-8
+                byte[] xmlBytes = System.Text.Encoding.UTF8.GetBytes(xmlTimbrado);
+
+                System.Diagnostics.Debug.WriteLine($"✓ XML descargado - Tamaño: {xmlBytes.Length} bytes");
+
+                return File(xmlBytes, "text/xml", nombreArchivo);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"ERROR en DescargarXMLRecibo: {ex.Message}");
+                TempData["Error"] = $"Error al descargar XML: {ex.Message}";
+                return RedirectToAction("ReciboEmpleado", new { id = nominaDetalleID });
             }
         }
     }

@@ -1,0 +1,100 @@
+@{
+    ViewBag.Title = "Nueva Carga de Inventario Inicial";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-8 offset-md-2">
+            <h2>
+                <i class="fas fa-plus-circle"></i> Nueva Carga de Inventario Inicial
+            </h2>
+            <hr />
+
+            @if (TempData["Error"] != null)
+            {
+                <div class="alert alert-danger alert-dismissible">
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    <strong><i class="fas fa-exclamation-triangle"></i></strong> @TempData["Error"]
+                </div>
+            }
+
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-info-circle"></i> Información de la Carga
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info">
+                        <i class="fas fa-lightbulb"></i>
+                        <strong>¿Qué vas a hacer?</strong><br />
+                        Vas a crear una nueva carga de inventario inicial. Esto te permitirá agregar todos tus productos
+                        con sus cantidades actuales desde tu sistema anterior.
+                    </div>
+
+                    @using (Html.BeginForm("NuevaCarga", "InventarioInicial", FormMethod.Post, new { @class = "form-horizontal" }))
+                    {
+                        @Html.AntiForgeryToken()
+
+                        <div class="form-group">
+                            <label for="comentarios">
+                                <i class="fas fa-comment"></i> Comentarios / Descripción
+                            </label>
+                            <textarea name="comentarios" 
+                                      id="comentarios" 
+                                      class="form-control" 
+                                      rows="3"
+                                      placeholder="Ej: Migración desde sistema QuickBooks - Enero 2026"></textarea>
+                            <small class="form-text text-muted">
+                                Opcional. Describe de dónde viene este inventario o cualquier detalle importante.
+                            </small>
+                        </div>
+
+                        <div class="row mt-4">
+                            <div class="col-md-6">
+                                <div class="card border-primary">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-primary">
+                                            <i class="fas fa-check"></i> Después de crear la carga
+                                        </h5>
+                                        <ul class="list-unstyled">
+                                            <li><i class="fas fa-check-circle text-success"></i> Buscarás productos por nombre o código</li>
+                                            <li><i class="fas fa-check-circle text-success"></i> Ingresarás la cantidad actual de cada uno</li>
+                                            <li><i class="fas fa-check-circle text-success"></i> Definirás el costo y precio de venta</li>
+                                            <li><i class="fas fa-check-circle text-success"></i> Finalizarás para aplicar todo al inventario</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card border-warning">
+                                    <div class="card-body">
+                                        <h5 class="card-title text-warning">
+                                            <i class="fas fa-exclamation-triangle"></i> Importante
+                                        </h5>
+                                        <ul class="list-unstyled">
+                                            <li><i class="fas fa-info-circle text-info"></i> Solo puedes tener una carga activa a la vez</li>
+                                            <li><i class="fas fa-info-circle text-info"></i> Puedes pausar y continuar más tarde</li>
+                                            <li><i class="fas fa-info-circle text-info"></i> Los cambios no se aplican hasta finalizar</li>
+                                            <li><i class="fas fa-info-circle text-info"></i> Verifica bien antes de finalizar</li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group text-right mt-4">
+                            <a href="@Url.Action("Index")" class="btn btn-secondary">
+                                <i class="fas fa-times"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-arrow-right"></i> Crear Carga y Continuar
+                            </button>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

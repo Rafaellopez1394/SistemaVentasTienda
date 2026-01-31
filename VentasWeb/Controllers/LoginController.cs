@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Web;
 using System.Web.Mvc;
+using System.Web.Security;
 using VentasWeb.Utilidades;
 
 namespace VentasWeb.Controllers
@@ -41,6 +42,13 @@ namespace VentasWeb.Controllers
             Session["Usuario"] = ousuario;
             Session["UsuarioRol"] = ousuario.oRol != null ? ousuario.oRol.Descripcion : "EMPLEADO";
             Session["UsuarioNombre"] = ousuario.Nombres + " " + ousuario.Apellidos;
+            
+            // Guardar datos adicionales requeridos por otros módulos
+            Session["RolID"] = ousuario.oRol != null ? ousuario.oRol.RolID : 3; // 3 = Empleado por defecto
+            Session["SucursalID"] = ousuario.oSucursal != null ? ousuario.oSucursal.SucursalID : 1; // 1 = Sucursal principal por defecto
+            
+            // IMPORTANTE: Establecer cookie de autenticación de Forms
+            FormsAuthentication.SetAuthCookie(ousuario.Nombres, false);
             
             // IMPORTANTE: Asegurar que la sesión se persista
             Session.Timeout = 30; // 30 minutos

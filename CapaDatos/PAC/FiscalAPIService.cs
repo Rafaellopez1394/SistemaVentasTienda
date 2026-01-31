@@ -191,6 +191,179 @@ namespace CapaDatos.PAC
         }
 
         /// <summary>
+        /// Crear y timbrar CFDI de Nómina 1.2
+        /// Endpoint: POST /api/v4/invoices (mismo que facturas, solo cambia typeCode = "N")
+        /// Documentación: https://documenter.getpostman.com/view/4346593/2sB2j4eqXr#67e9d554-ce09-4066-b065-688e1919713e
+        /// </summary>
+        public async Task<RespuestaTimbrado> CrearYTimbrarCFDINomina(CapaModelo.PAC.FiscalAPINominaRequest request)
+        {
+            var respuesta = new RespuestaTimbrado
+            {
+                Exitoso = false,
+                FechaTimbrado = DateTime.Now
+            };
+
+            try
+            {
+                // Serializar request a JSON
+                string jsonRequest = JsonConvert.SerializeObject(request, new JsonSerializerSettings
+                {
+                    NullValueHandling = NullValueHandling.Ignore,
+                    Formatting = Formatting.Indented
+                });
+
+                System.Diagnostics.Debug.WriteLine("=== REQUEST NÓMINA A FISCALAPI ===");
+                System.Diagnostics.Debug.WriteLine($"Endpoint: {_configuracion.UrlApi}/api/v4/invoices");
+                System.Diagnostics.Debug.WriteLine($"API Key: {_configuracion.ApiKey?.Substring(0, 20)}...");
+                System.Diagnostics.Debug.WriteLine($"Tenant: {_configuracion.Tenant}");
+                System.Diagnostics.Debug.WriteLine($"Type: NÓMINA (typeCode=N)");
+                System.Diagnostics.Debug.WriteLine($"JSON Request:\n{jsonRequest}");
+                System.Diagnostics.Debug.WriteLine("==================================");
+
+                var content = new StringContent(jsonRequest, Encoding.UTF8, "application/json");
+
+                // Endpoint oficial de FiscalAPI v4 unificado (mismo que facturas)
+                string endpoint = "/api/v4/invoices";
+
+                // Realizar petición POST
+                HttpResponseMessage response = await _httpClient.PostAsync(endpoint, content);
+
+                // Leer contenido de respuesta
+                string responseBody = await response.Content.ReadAsStringAsync();
+
+                System.Diagnostics.Debug.WriteLine("=== RESPONSE NÓMINA DE FISCALAPI ===");
+                System.Diagnostics.Debug.WriteLine($"Status Code: {(int)response.StatusCode} {response.StatusCode}");
+                System.Diagnostics.Debug.WriteLine($"Response Body:\n{responseBody}");
+                System.Diagnostics.Debug.WriteLine("=====================================");
+
+                // Manejar códigos de estado HTTP
+                if (response.IsSuccessStatusCode)
+                {
+                    // Respuesta exitosa (200-299)
+                    var fiscalResponse = JsonConvert.DeserializeObject<FiscalAPICrearCFDIResponse>(responseBody);
+
+                    if (fiscalResponse.Succeeded && fiscalResponse.Data?.Responses != null && fiscalResponse.Data.Responses.Count > 0)
+                    {
+                        var stampResponse = fiscalResponse.Data.Responses[0];
+                        
+                        // Decodificar XML de Base64
+                        byte[] xmlBytes = Convert.FromBase64String(stampResponse.InvoiceBase64);
+                        string xmlTimbrado = Encoding.UTF8.GetString(xmlBytes);
+
+                        respuesta.Exitoso = true;
+                        respuesta.UUID = stampResponse.InvoiceUuid;
+                        respuesta.FechaTimbrado = stampResponse.InvoiceSignatureDate;
+                        respuesta.XMLTimbrado = xmlTimbrado;
+                        respuesta.SelloCFD = stampResponse.InvoiceBase64Sello;
+                        respuesta.SelloSAT = stampResponse.SatBase64Sello;
+                        respuesta.NoCertificadoSAT = stampResponse.SatCertificateNumber;
+                        respuesta.CadenaOriginal = stampResponse.SatBase64OriginalString;
+                        respuesta.InvoiceId = stampResponse.InvoiceId; // ID para descargar PDF
+                        respuesta.Mensaje = "CFDI de Nómina timbrado exitosamente";
+
+                        System.Diagnostics.Debug.WriteLine($"✓ Nómina timbrada - UUID: {respuesta.UUID}");
+                    }
+                    else
+                    {
+                        respuesta.Exitoso = false;
+                        respuesta.Mensaje = fiscalResponse.Message ?? "Error desconocido en respuesta de FiscalAPI";
+                        respuesta.CodigoError = "RESPONSE_ERROR";
+                    }
+
+                    return respuesta;
+                }
+                else
+                {
+                    // Manejar errores HTTP específicos
+                    respuesta.CodigoError = $"HTTP_{(int)response.StatusCode}";
+
+                    switch (response.StatusCode)
+                    {
+                        case HttpStatusCode.Unauthorized: // 401
+                            respuesta.Mensaje = "Error de autenticación: API Key inválida o expirada";
+                            respuesta.CodigoError = "401_UNAUTHORIZED";
+                            break;
+
+                        case HttpStatusCode.Forbidden: // 403
+                            respuesta.Mensaje = "Acceso denegado: Verifica permisos de tu API Key y que tengas timbres disponibles";
+                            respuesta.CodigoError = "403_FORBIDDEN";
+                            break;
+
+                        case (HttpStatusCode)422: // 422 Unprocessable Entity
+                            // Parsear errores de validación (muy común en nómina por campos requeridos)
+                            try
+                            {
+                                var errorResponse = JsonConvert.DeserializeObject<FiscalAPIErrorResponse>(responseBody);
+                                respuesta.Mensaje = $"Error de validación en nómina: {errorResponse.Message ?? "Error desconocido"}";
+                                respuesta.CodigoError = "422_VALIDATION_ERROR";
+                                
+                                if (!string.IsNullOrEmpty(errorResponse.Details))
+                                {
+                                    respuesta.Mensaje += $"\nDetalles: {errorResponse.Details}";
+                                }
+                                
+                                System.Diagnostics.Debug.WriteLine($"✗ Validación fallida: {respuesta.Mensaje}");
+                            }
+                            catch
+                            {
+                                respuesta.Mensaje = $"Error de validación: {responseBody}";
+                            }
+                            break;
+
+                        case HttpStatusCode.BadRequest: // 400
+                            respuesta.Mensaje = $"Petición inválida (nómina): {responseBody}";
+                            respuesta.CodigoError = "400_BAD_REQUEST";
+                            break;
+
+                        case HttpStatusCode.InternalServerError: // 500
+                            respuesta.Mensaje = $"Error interno del servidor de FiscalAPI: {responseBody}";
+                            respuesta.CodigoError = "500_INTERNAL_ERROR";
+                            respuesta.ErrorTecnico = responseBody;
+                            break;
+
+                        default:
+                            respuesta.Mensaje = $"Error HTTP {(int)response.StatusCode}: {responseBody}";
+                            break;
+                    }
+
+                    return respuesta;
+                }
+            }
+            catch (TaskCanceledException ex)
+            {
+                respuesta.Mensaje = "Timeout: FiscalAPI no respondió en 2 minutos (timbrado de nómina)";
+                respuesta.CodigoError = "TIMEOUT";
+                respuesta.ErrorTecnico = ex.ToString();
+                System.Diagnostics.Debug.WriteLine($"✗ Timeout en timbrado de nómina: {ex.Message}");
+                return respuesta;
+            }
+            catch (HttpRequestException ex)
+            {
+                respuesta.Mensaje = $"Error de conexión con FiscalAPI: {ex.Message}";
+                respuesta.CodigoError = "CONNECTION_ERROR";
+                respuesta.ErrorTecnico = ex.ToString();
+                System.Diagnostics.Debug.WriteLine($"✗ Error de conexión: {ex.Message}");
+                return respuesta;
+            }
+            catch (JsonException ex)
+            {
+                respuesta.Mensaje = $"Error al procesar respuesta JSON de nómina: {ex.Message}";
+                respuesta.CodigoError = "JSON_PARSE_ERROR";
+                respuesta.ErrorTecnico = ex.ToString();
+                System.Diagnostics.Debug.WriteLine($"✗ Error JSON: {ex.Message}");
+                return respuesta;
+            }
+            catch (Exception ex)
+            {
+                respuesta.Mensaje = $"Error inesperado al timbrar nómina: {ex.Message}";
+                respuesta.CodigoError = "UNKNOWN_ERROR";
+                respuesta.ErrorTecnico = ex.ToString();
+                System.Diagnostics.Debug.WriteLine($"✗ Error inesperado: {ex}");
+                return respuesta;
+            }
+        }
+
+        /// <summary>
         /// Cancelar CFDI timbrado
         /// Endpoint real: POST /api/v4/cfdi40/cancel
         /// </summary>

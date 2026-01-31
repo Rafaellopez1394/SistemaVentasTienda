@@ -1,0 +1,478 @@
+@model List<object>
+@{
+    ViewBag.Title = "Cargar Productos - Inventario Inicial";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+    var carga = ViewBag.Carga as CapaModelo.InventarioInicial;
+}
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>
+                <i class="fas fa-boxes"></i> Carga de Inventario Inicial #@ViewBag.CargaID
+                <small class="text-muted">@carga?.NombreSucursal</small>
+            </h2>
+            <hr />
+
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success alert-dismissible">
+                    <button type="button" class="close" data-dismiss="alert">&times;</button>
+                    @TempData["Success"]
+                </div>
+            }
+
+            <!-- Panel de información de la carga -->
+            <div class="row mb-3">
+                <div class="col-md-3">
+                    <div class="card border-primary">
+                        <div class="card-body text-center">
+                            <h3 class="text-primary" id="totalProductos">@Model.Count</h3>
+                            <p class="text-muted mb-0">Productos</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-success">
+                        <div class="card-body text-center">
+                            <h3 class="text-success" id="totalUnidades">0</h3>
+                            <p class="text-muted mb-0">Unidades</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-info">
+                        <div class="card-body text-center">
+                            <h3 class="text-info" id="valorTotal">$0.00</h3>
+                            <p class="text-muted mb-0">Valor Total</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card border-warning">
+                        <div class="card-body text-center">
+                            <button type="button" class="btn btn-warning btn-block mb-2" data-toggle="modal" data-target="#modalFinalizar">
+                                <i class="fas fa-check"></i> Finalizar Carga
+                            </button>
+                            <button type="button" class="btn btn-danger btn-block btn-sm" data-toggle="modal" data-target="#modalCancelar">
+                                <i class="fas fa-times"></i> Cancelar Carga
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Buscar y agregar producto -->
+            <div class="card shadow mb-4">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-search"></i> Buscar y Agregar Producto
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label>Buscar Producto</label>
+                                <input type="text" id="txtBuscarProducto" class="form-control" 
+                                       placeholder="Nombre o código del producto..." autocomplete="off" />
+                                <div id="listaProductos" class="list-group" style="position: absolute; z-index: 1000; max-height: 300px; overflow-y: auto; display: none;"></div>
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Cantidad</label>
+                                <input type="number" id="txtCantidad" class="form-control" step="0.01" min="0" placeholder="0.00" />
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Costo Unit.</label>
+                                <input type="number" id="txtCosto" class="form-control" step="0.01" min="0" placeholder="0.00" />
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>Precio Venta</label>
+                                <input type="number" id="txtPrecio" class="form-control" step="0.01" min="0" placeholder="0.00" />
+                            </div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="form-group">
+                                <label>&nbsp;</label>
+                                <button type="button" id="btnAgregarProducto" class="btn btn-primary btn-block">
+                                    <i class="fas fa-plus"></i> Agregar
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <input type="hidden" id="productoSeleccionado" value="" />
+                </div>
+            </div>
+
+            <!-- Lista de productos agregados -->
+            <div class="card shadow">
+                <div class="card-header py-3">
+                    <h6 class="m-0 font-weight-bold text-primary">
+                        <i class="fas fa-list"></i> Productos Agregados (@Model.Count)
+                    </h6>
+                </div>
+                <div class="card-body">
+                    @if (Model.Count > 0)
+                    {
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-hover" id="tablaProductos">
+                                <thead class="thead-light">
+                                    <tr>
+                                        <th>Código</th>
+                                        <th>Producto</th>
+                                        <th class="text-right">Cantidad</th>
+                                        <th class="text-right">Costo Unit.</th>
+                                        <th class="text-right">Precio Venta</th>
+                                        <th class="text-right">Valor Total</th>
+                                        <th>Comentarios</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyProductos">
+                                    @foreach (var item in Model)
+                                    {
+                                        var detalle = item as CapaModelo.InventarioInicialDetalle;
+                                        <tr data-detalleid="@detalle.DetalleID">
+                                            <td>@detalle.CodigoInterno</td>
+                                            <td>@detalle.NombreProducto</td>
+                                            <td class="text-right">@detalle.CantidadCargada.ToString("N2")</td>
+                                            <td class="text-right">$@detalle.CostoUnitario.ToString("N2")</td>
+                                            <td class="text-right">$@detalle.PrecioVenta.ToString("N2")</td>
+                                            <td class="text-right">$@detalle.ValorTotal.ToString("N2")</td>
+                                            <td>@detalle.Comentarios</td>
+                                            <td class="text-center">
+                                                <button type="button" class="btn btn-sm btn-danger btnEliminar" 
+                                                        data-detalleid="@detalle.DetalleID">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                            <h5 class="text-muted">No hay productos agregados</h5>
+                            <p class="text-muted">Usa el buscador para agregar productos a esta carga.</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para confirmar finalización -->
+<div class="modal fade" id="modalFinalizar" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-warning">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Finalizar Carga de Inventario
+                </h5>
+                <button type="button" class="close" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>¿Estás seguro de finalizar esta carga?</strong></p>
+                <p>Se aplicarán los siguientes cambios al inventario:</p>
+                <ul>
+                    <li>Productos: <strong id="modalProductos">0</strong></li>
+                    <li>Unidades: <strong id="modalUnidades">0</strong></li>
+                    <li>Valor Total: <strong id="modalValor">$0.00</strong></li>
+                </ul>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    <strong>¡IMPORTANTE!</strong> Esta acción <strong>ELIMINARÁ TODO el inventario existente</strong> de esta sucursal 
+                    y lo reemplazará con el inventario inicial que acabas de cargar.
+                </div>
+                <div class="alert alert-warning">
+                    <i class="fas fa-info-circle"></i>
+                    Una vez finalizada, <strong>no podrás modificar</strong> esta carga.
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancelar
+                </button>
+                <form method="post" action="@Url.Action("FinalizarCarga")" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="cargaID" value="@ViewBag.CargaID" />
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-check"></i> Sí, Finalizar Carga
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal para cancelar carga -->
+<div class="modal fade" id="modalCancelar" tabindex="-1" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle"></i> Cancelar Carga de Inventario
+                </h5>
+                <button type="button" class="close text-white" data-dismiss="modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p><strong>¿Estás seguro de cancelar esta carga?</strong></p>
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    <strong>¡ADVERTENCIA!</strong> Esta acción <strong>eliminará permanentemente</strong> todos los productos agregados a esta carga.
+                    No se aplicarán cambios al inventario y no podrás recuperar los datos.
+                </div>
+                <p>Esta acción es útil si:</p>
+                <ul>
+                    <li>Detectaste errores importantes en los datos</li>
+                    <li>Necesitas empezar de nuevo</li>
+                    <li>No quieres aplicar estos cambios al inventario</li>
+                </ul>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">
+                    <i class="fas fa-arrow-left"></i> No, Volver
+                </button>
+                <form method="post" action="@Url.Action("CancelarCarga")" style="display: inline;">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="cargaID" value="@ViewBag.CargaID" />
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Sí, Cancelar y Eliminar Todo
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        $(document).ready(function () {
+            var cargaID = @ViewBag.CargaID;
+            var productoSeleccionado = null;
+
+            // Calcular totales iniciales
+            calcularTotales();
+
+            // Buscar productos con debounce
+            var busquedaTimeout;
+            $('#txtBuscarProducto').on('keyup', function () {
+                var termino = $(this).val().trim();
+                clearTimeout(busquedaTimeout);
+                
+                if (termino.length < 2) {
+                    $('#listaProductos').hide();
+                    return;
+                }
+
+                // Indicador de búsqueda
+                var lista = $('#listaProductos');
+                lista.html('<div class="p-3 text-center"><i class="fas fa-spinner fa-spin"></i> Buscando...</div>').show();
+
+                // Debounce: esperar 300ms antes de buscar
+                busquedaTimeout = setTimeout(function() {
+                    $.ajax({
+                        url: '@Url.Action("BuscarProductos")',
+                        type: 'GET',
+                        data: { termino: termino },
+                        success: function (data) {
+                        var lista = $('#listaProductos');
+                        lista.empty();
+
+                        if (data.length > 0) {
+                            data.forEach(function (producto) {
+                                var item = $('<a>')
+                                    .addClass('list-group-item list-group-item-action')
+                                    .attr('href', '#')
+                                    .html('<strong>' + producto.NombreProducto + '</strong><br>' +
+                                        '<small class="text-muted">Código: ' + producto.CodigoInterno + 
+                                        ' | Stock actual: ' + producto.StockActual + '</small>')
+                                    .data('producto', producto)
+                                    .click(function (e) {
+                                        e.preventDefault();
+                                        seleccionarProducto($(this).data('producto'));
+                                    });
+                                lista.append(item);
+                            });
+                            lista.show();
+                        } else {
+                            lista.html('<div class="p-3 text-muted text-center">No se encontraron productos</div>').show();
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error al buscar productos:', error);
+                        lista.html('<div class="p-3 text-danger text-center"><i class="fas fa-exclamation-triangle"></i> Error al buscar productos</div>').show();
+                    }
+                });
+                }, 300); // Debounce de 300ms
+            });
+
+            // Seleccionar producto
+            function seleccionarProducto(producto) {
+                productoSeleccionado = producto;
+                $('#txtBuscarProducto').val(producto.NombreProducto);
+                $('#productoSeleccionado').val(producto.ProductoID);
+                $('#listaProductos').hide();
+                $('#txtCantidad').focus();
+            }
+
+            // Agregar producto con validaciones mejoradas
+            $('#btnAgregarProducto').click(function () {
+                // Validaciones del lado del cliente
+                if (!productoSeleccionado) {
+                    mostrarError('Selecciona un producto de la lista');
+                    $('#txtBuscarProducto').focus();
+                    return;
+                }
+
+                var cantidad = parseFloat($('#txtCantidad').val()) || 0;
+                var costo = parseFloat($('#txtCosto').val()) || 0;
+                var precio = parseFloat($('#txtPrecio').val()) || 0;
+
+                // Validaciones
+                if (cantidad <= 0) {
+                    mostrarError('La cantidad debe ser mayor a 0');
+                    $('#txtCantidad').focus();
+                    return;
+                }
+
+                if (costo < 0) {
+                    mostrarError('El costo no puede ser negativo');
+                    $('#txtCosto').focus();
+                    return;
+                }
+
+                if (precio < 0) {
+                    mostrarError('El precio no puede ser negativo');
+                    $('#txtPrecio').focus();
+                    return;
+                }
+
+                // Mostrar indicador de carga
+                var $btn = $(this);
+                var textoOriginal = $btn.html();
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i> Agregando...');
+
+                $.ajax({
+                    url: '@Url.Action("AgregarProducto")',
+                    type: 'POST',
+                    data: {
+                        cargaID: cargaID,
+                        productoID: productoSeleccionado.ProductoID,
+                        cantidad: cantidad,
+                        costoUnitario: costo,
+                        precioVenta: precio
+                    },
+                    success: function (resultado) {
+                        if (resultado.Resultado) {
+                            location.reload(); // Recargar para mostrar el producto agregado
+                        } else {
+                            mostrarError(resultado.Mensaje);
+                            $btn.prop('disabled', false).html(textoOriginal);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error al agregar producto:', error);
+                        mostrarError('Error al agregar el producto. Inténtalo nuevamente.');
+                        $btn.prop('disabled', false).html(textoOriginal);
+                    }
+                });
+            });
+
+            // Eliminar producto con confirmación y feedback
+            $(document).on('click', '.btnEliminar', function () {
+                if (!confirm('¿Eliminar este producto de la carga?')) return;
+
+                var detalleID = $(this).data('detalleid');
+                var fila = $(this).closest('tr');
+                var $btn = $(this);
+                
+                // Deshabilitar botón y mostrar loading
+                $btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+                $.ajax({
+                    url: '@Url.Action("EliminarProducto")',
+                    type: 'POST',
+                    data: { detalleID: detalleID },
+                    success: function (resultado) {
+                        if (resultado.Resultado) {
+                            fila.fadeOut(300, function () {
+                                $(this).remove();
+                                calcularTotales();
+                                // Verificar si no quedan productos
+                                if ($('#tablaProductos tbody tr').length === 0) {
+                                    location.reload();
+                                }
+                            });
+                        } else {
+                            mostrarError(resultado.Mensaje);
+                            $btn.prop('disabled', false).html('<i class="fas fa-trash"></i>');
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('Error al eliminar producto:', error);
+                        mostrarError('Error al eliminar el producto. Inténtalo nuevamente.');
+                        $btn.prop('disabled', false).html('<i class="fas fa-trash"></i>');
+                    }
+                });
+            });
+
+            // Función para mostrar errores
+            function mostrarError(mensaje) {
+                // Crear alerta temporal
+                var alerta = $('<div class="alert alert-danger alert-dismissible" style="position: fixed; top: 70px; right: 20px; z-index: 9999; min-width: 300px;">')
+                    .html('<button type="button" class="close" data-dismiss="alert">&times;</button>' +
+                          '<strong><i class="fas fa-exclamation-triangle"></i></strong> ' + mensaje);
+                
+                $('body').append(alerta);
+                
+                // Auto-cerrar después de 5 segundos
+                setTimeout(function() {
+                    alerta.fadeOut(function() { $(this).remove(); });
+                }, 5000);
+            }
+
+            // Calcular totales
+            function calcularTotales() {
+                var totalProductos = $('#tablaProductos tbody tr').length;
+                var totalUnidades = 0;
+                var valorTotal = 0;
+
+                $('#tablaProductos tbody tr').each(function () {
+                    var cantidad = parseFloat($(this).find('td:eq(2)').text().replace(',', '')) || 0;
+                    var valor = parseFloat($(this).find('td:eq(5)').text().replace('$', '').replace(',', '')) || 0;
+                    
+                    totalUnidades += cantidad;
+                    valorTotal += valor;
+                });
+
+                $('#totalProductos').text(totalProductos);
+                $('#totalUnidades').text(totalUnidades.toFixed(2));
+                $('#valorTotal').text('$' + valorTotal.toFixed(2));
+
+                // Actualizar modal
+                $('#modalProductos').text(totalProductos);
+                $('#modalUnidades').text(totalUnidades.toFixed(2));
+                $('#modalValor').text('$' + valorTotal.toFixed(2));
+            }
+
+            // Ocultar lista al hacer clic fuera
+            $(document).click(function (e) {
+                if (!$(e.target).closest('#txtBuscarProducto, #listaProductos').length) {
+                    $('#listaProductos').hide();
+                }
+            });
+        });
+    </script>
+}

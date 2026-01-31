@@ -747,25 +747,20 @@ namespace CapaDatos
         }
 
         // =============================================
-        // TIMBRADO DE CFDI NÓMINA
+        // TIMBRADO DE CFDI NÓMINA CON FISCALAPI
         // =============================================
 
         /// <summary>
-        /// Timbra un recibo de nómina individual (por empleado)
-        /// FUNCIONALIDAD ELIMINADA - Generaba CFDI 4.0 con Complemento de Nómina 1.2
+        /// Timbra un recibo de nómina individual (por empleado) usando FiscalAPI
+        /// Genera CFDI 4.0 con Complemento de Nómina 1.2
         /// </summary>
         public async System.Threading.Tasks.Task<RespuestaTimbrado> TimbrarCFDINomina(int nominaDetalleID, string usuario)
         {
             var respuesta = new RespuestaTimbrado
             {
                 Exitoso = false,
-                Mensaje = "Funcionalidad de timbrado CFDI Nómina eliminada del sistema"
+                FechaTimbrado = DateTime.Now
             };
-            
-            return await System.Threading.Tasks.Task.FromResult(respuesta);
-            
-            /* CÓDIGO ELIMINADO - Timbrado de nómina
-            var respuesta = new RespuestaTimbrado();
 
             using (SqlConnection conn = new SqlConnection(Conexion.CN))
             {
@@ -787,47 +782,58 @@ namespace CapaDatos
                     if (!string.IsNullOrEmpty(recibo.UUID))
                     {
                         respuesta.Exitoso = false;
-                        respuesta.Mensaje = "Este recibo ya ha sido timbrado";
+                        respuesta.Mensaje = $"Este recibo ya ha sido timbrado. UUID: {recibo.UUID}";
                         return respuesta;
                     }
 
-                    // 2. Obtener configuración de empresa y PAC
-                    var configEmpresa = ObtenerConfiguracionEmpresa();
-                    var configPAC = ObtenerConfiguracionPAC();
-
-                    // 3. Generar XML sin timbrar - TODO: Implementar
-                    // var generador = new PAC.CFDINomina12XMLGenerator();
-                    // string xmlSinTimbrar = generador.GenerarXML(recibo, configEmpresa, configPAC);
-                    string xmlSinTimbrar = "<?xml version=\"1.0\" encoding=\"utf-8\"?><!-- XML de nómina no implementado -->";
-
-                    // 4. Insertar registro en NominasCFDI con estado PENDIENTE
-                    int nominaCFDIID = InsertarNominaCFDI(recibo, xmlSinTimbrar, usuario, conn, tran);
-
-                    // 5. Timbrar con Finkok - TODO: Implementar
-                    // var finkokPAC = new PAC.FinkokPAC();
-                    // respuesta = await finkokPAC.TimbrarNominaAsync(xmlSinTimbrar, configPAC);
-                    respuesta = new RespuestaTimbrado
+                    // 2. Obtener datos del empleado completos
+                    var empleado = CD_Empleado.Instancia.ObtenerPorId(recibo.EmpleadoID);
+                    if (empleado == null)
                     {
-                        Exitoso = false,
-                        Mensaje = "Timbrado de nómina no implementado"
-                    };
+                        respuesta.Exitoso = false;
+                        respuesta.Mensaje = "Empleado no encontrado";
+                        return respuesta;
+                    }
 
-                    // 6. Actualizar registro según resultado
+                    // 3. Obtener configuración de FiscalAPI
+                    var configFiscalAPI = ObtenerConfiguracionFiscalAPI();
+                    if (configFiscalAPI == null)
+                    {
+                        respuesta.Exitoso = false;
+                        respuesta.Mensaje = "Configuración de FiscalAPI no encontrada en Web.config";
+                        return respuesta;
+                    }
+
+                    // 4. Construir request de FiscalAPI para nómina
+                    var requestNomina = ConstruirRequestFiscalAPINomina(recibo, empleado, configFiscalAPI);
+
+                    // 5. Insertar registro en NominasCFDI con estado PENDIENTE
+                    int nominaCFDIID = InsertarNominaCFDI(recibo, "", usuario, conn, tran);
+
+                    // 6. Timbrar con FiscalAPI
+                    using (var fiscalAPIService = new PAC.FiscalAPIService(configFiscalAPI))
+                    {
+                        respuesta = await fiscalAPIService.CrearYTimbrarCFDINomina(requestNomina);
+                    }
+
+                    // 7. Actualizar registros según resultado
                     if (respuesta.Exitoso)
                     {
                         // Timbrado exitoso
                         ActualizarNominaCFDIExitoso(nominaCFDIID, respuesta, conn, tran);
-                        
-                        // Actualizar NominaDetalle
                         ActualizarReciboTimbrado(nominaDetalleID, respuesta, conn, tran);
 
                         respuesta.Mensaje = $"Recibo timbrado exitosamente. UUID: {respuesta.UUID}";
+                        
+                        System.Diagnostics.Debug.WriteLine($"✓ Nómina timbrada - Empleado: {empleado.Nombre}, UUID: {respuesta.UUID}");
                     }
                     else
                     {
                         // Error en timbrado
                         ActualizarNominaCFDIError(nominaCFDIID, respuesta, conn, tran);
-                        respuesta.Mensaje = $"Error al timbrar: {respuesta.Mensaje}";
+                        respuesta.Mensaje = $"Error al timbrar nómina: {respuesta.Mensaje}";
+                        
+                        System.Diagnostics.Debug.WriteLine($"✗ Error timbrado nómina - Empleado: {empleado.Nombre}, Error: {respuesta.Mensaje}");
                     }
 
                     tran.Commit();
@@ -837,12 +843,303 @@ namespace CapaDatos
                     tran.Rollback();
                     respuesta.Exitoso = false;
                     respuesta.Mensaje = $"Excepción al timbrar nómina: {ex.Message}";
-                    respuesta.CodigoError = "EXCEPCION";
+                    respuesta.CodigoError = "EXCEPTION";
+                    respuesta.ErrorTecnico = ex.ToString();
+                    
+                    System.Diagnostics.Debug.WriteLine($"✗ Excepción en TimbrarCFDINomina: {ex}");
                 }
             }
 
             return respuesta;
-            */
+        }
+
+        /// <summary>
+        /// Construye el request completo de FiscalAPI para nómina
+        /// Mapea datos del sistema a la estructura requerida por FiscalAPI
+        /// </summary>
+        private CapaModelo.PAC.FiscalAPINominaRequest ConstruirRequestFiscalAPINomina(
+            NominaDetalle recibo, 
+            Empleado empleado, 
+            ConfiguracionFiscalAPI config)
+        {
+            // Obtener configuración de empresa
+            var configEmpresa = ObtenerConfiguracionEmpresa();
+
+            var request = new CapaModelo.PAC.FiscalAPINominaRequest
+            {
+                VersionCode = "4.0",
+                Series = configEmpresa.SerieCFDINomina ?? "NOM",
+                Date = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss"),
+                PaymentMethodCode = "PUE", // Pago en una sola exhibición
+                CurrencyCode = "MXN",
+                TypeCode = "N", // N = Nómina
+                ExpeditionZipCode = configEmpresa.CodigoPostal,
+                ExportCode = "01", // No aplica
+
+                // EMISOR (Patrón)
+                Issuer = new CapaModelo.PAC.FiscalAPIIssuerNomina
+                {
+                    Tin = configEmpresa.RFC,
+                    LegalName = configEmpresa.RazonSocial,
+                    TaxRegimeCode = configEmpresa.RegimenFiscal,
+                    EmployerData = new CapaModelo.PAC.FiscalAPIEmployerData
+                    {
+                        EmployerRegistration = configEmpresa.RegistroPatronal ?? "Z0000000000"
+                    },
+                    TaxCredentials = ObtenerCredencialesFiscales(config)
+                },
+
+                // RECEPTOR (Empleado)
+                Recipient = new CapaModelo.PAC.FiscalAPIRecipientNomina
+                {
+                    Tin = empleado.RFC,
+                    LegalName = empleado.Nombre,
+                    ZipCode = empleado.CodigoPostal ?? "00000",
+                    TaxRegimeCode = "605", // Sueldos y Salarios
+                    CfdiUseCode = "CN01", // Nómina
+                    EmployeeData = new CapaModelo.PAC.FiscalAPIEmployeeData
+                    {
+                        Curp = empleado.CURP ?? "XEXX010101HNEXXXA4",
+                        SocialSecurityNumber = empleado.NSS ?? "00000000000",
+                        LaborRelationStartDate = empleado.FechaIngreso.ToString("yyyy-MM-dd"),
+                        Seniority = CalcularAntiguedadISO8601(empleado.FechaIngreso),
+                        SatContractTypeId = empleado.TipoContrato ?? "01", // Indeterminado
+                        SatUnionizedStatusId = "No",
+                        SatTaxRegimeTypeId = empleado.TipoRegimen ?? "02", // Sueldos
+                        EmployeeNumber = recibo.NumeroEmpleado,
+                        Department = empleado.Departamento ?? "GENERAL",
+                        Position = recibo.Puesto ?? empleado.Puesto ?? "EMPLEADO",
+                        SatJobRiskId = "1", // Clase I - Riesgo mínimo
+                        SatPaymentPeriodicityId = ObtenerPeriodicidadPago(recibo),
+                        SatBankId = empleado.CodigoBanco ?? "012", // Banamex default
+                        BankAccount = empleado.CuentaBancaria,
+                        BaseSalaryForContributions = empleado.SalarioDiario > 0 ? empleado.SalarioDiario : recibo.SalarioDiario,
+                        IntegratedDailySalary = empleado.SalarioDiarioIntegrado.HasValue ? empleado.SalarioDiarioIntegrado.Value : 0,
+                        SatPayrollStateId = ObtenerEstadoPorCP(configEmpresa.CodigoPostal)
+                    }
+                },
+
+                // COMPLEMENTO DE NÓMINA
+                Complement = new CapaModelo.PAC.FiscalAPINominaComplement
+                {
+                    Payroll = new CapaModelo.PAC.FiscalAPIPayroll
+                    {
+                        Version = "1.2",
+                        PayrollTypeCode = "O", // O = Ordinaria
+                        PaymentDate = DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        InitialPaymentDate = recibo.FechaInicio.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        FinalPaymentDate = recibo.FechaFin.ToString("yyyy-MM-ddTHH:mm:ss"),
+                        DaysPaid = recibo.DiasTrabajados,
+
+                        // PERCEPCIONES
+                        Earnings = new CapaModelo.PAC.FiscalAPIEarningsContainer
+                        {
+                            Earnings = ConvertirPercepcionesAFiscalAPI(recibo.Percepciones),
+                            OtherPayments = new List<CapaModelo.PAC.FiscalAPIOtherPayment>
+                            {
+                                // Subsidio al empleo (si aplica)
+                                new CapaModelo.PAC.FiscalAPIOtherPayment
+                                {
+                                    OtherPaymentTypeCode = "002",
+                                    Code = "SUB",
+                                    Concept = "Subsidio para el empleo",
+                                    Amount = 0.0m,
+                                    SubsidyCaused = 0.0m
+                                }
+                            }
+                        },
+
+                        // DEDUCCIONES
+                        Deductions = ConvertirDeduccionesAFiscalAPI(recibo.Deducciones)
+                    }
+                }
+            };
+
+            return request;
+        }
+
+        /// <summary>
+        /// Convierte percepciones del sistema a formato FiscalAPI
+        /// </summary>
+        private List<CapaModelo.PAC.FiscalAPIEarning> ConvertirPercepcionesAFiscalAPI(List<NominaPercepcion> percepciones)
+        {
+            var lista = new List<CapaModelo.PAC.FiscalAPIEarning>();
+
+            foreach (var p in percepciones)
+            {
+                lista.Add(new CapaModelo.PAC.FiscalAPIEarning
+                {
+                    EarningTypeCode = p.TipoPercepcion ?? "001", // 001 = Sueldos por default
+                    Code = p.Clave,
+                    Concept = p.Concepto,
+                    TaxedAmount = p.ImporteGravado,
+                    ExemptAmount = p.ImporteExento
+                });
+            }
+
+            return lista;
+        }
+
+        /// <summary>
+        /// Convierte deducciones del sistema a formato FiscalAPI
+        /// </summary>
+        private List<CapaModelo.PAC.FiscalAPIDeduction> ConvertirDeduccionesAFiscalAPI(List<NominaDeduccion> deducciones)
+        {
+            var lista = new List<CapaModelo.PAC.FiscalAPIDeduction>();
+
+            foreach (var d in deducciones)
+            {
+                lista.Add(new CapaModelo.PAC.FiscalAPIDeduction
+                {
+                    DeductionTypeCode = d.TipoDeduccion ?? "004", // 004 = Otros por default
+                    Code = d.Clave,
+                    Concept = d.Concepto,
+                    Amount = d.Importe
+                });
+            }
+
+            return lista;
+        }
+
+        /// <summary>
+        /// Calcula antigüedad en formato ISO 8601 Duration (P[n]Y[n]M[n]W[n]D)
+        /// Ejemplo: P2Y3M = 2 años, 3 meses
+        /// </summary>
+        private string CalcularAntiguedadISO8601(DateTime fechaIngreso)
+        {
+            TimeSpan diff = DateTime.Now - fechaIngreso;
+            int semanas = (int)(diff.TotalDays / 7);
+            
+            // Formato simple: P[semanas]W
+            return $"P{semanas}W";
+        }
+
+        /// <summary>
+        /// Obtiene código de periodicidad según días trabajados
+        /// </summary>
+        private string ObtenerPeriodicidadPago(NominaDetalle recibo)
+        {
+            int dias = (int)recibo.DiasTrabajados;
+            
+            if (dias <= 7) return "02"; // Semanal
+            if (dias <= 10) return "10"; // Decenal
+            if (dias <= 14) return "03"; // Catorcenal
+            if (dias <= 15) return "04"; // Quincenal
+            if (dias <= 31) return "05"; // Mensual
+            
+            return "99"; // Otra periodicidad
+        }
+
+        /// <summary>
+        /// Obtiene código de estado SAT según código postal
+        /// </summary>
+        private string ObtenerEstadoPorCP(string cp)
+        {
+            if (string.IsNullOrEmpty(cp) || cp.Length < 2) return "CMX";
+            
+            // Mapeo básico por rangos de CP (los más comunes)
+            int codigo = int.Parse(cp.Substring(0, 2));
+            
+            if (codigo >= 1 && codigo <= 16) return "CMX"; // Ciudad de México
+            if (codigo >= 20 && codigo <= 23) return "AGU"; // Aguascalientes
+            if (codigo >= 44 && codigo <= 49) return "JAL"; // Jalisco
+            if (codigo >= 64 && codigo <= 67) return "NLE"; // Nuevo León
+            
+            return "MEX"; // Estado de México por default
+        }
+
+        /// <summary>
+        /// Obtiene credenciales fiscales (certificado y llave) en base64
+        /// </summary>
+        private List<CapaModelo.PAC.FiscalAPITaxCredential> ObtenerCredencialesFiscales(ConfiguracionFiscalAPI config)
+        {
+            var credenciales = new List<CapaModelo.PAC.FiscalAPITaxCredential>();
+
+            // Certificado .CER
+            if (!string.IsNullOrEmpty(config.CertificadoBase64))
+            {
+                credenciales.Add(new CapaModelo.PAC.FiscalAPITaxCredential
+                {
+                    Base64File = config.CertificadoBase64,
+                    FileType = 0, // 0 = .CER
+                    Password = config.PasswordLlave
+                });
+            }
+
+            // Llave privada .KEY
+            if (!string.IsNullOrEmpty(config.LlavePrivadaBase64))
+            {
+                credenciales.Add(new CapaModelo.PAC.FiscalAPITaxCredential
+                {
+                    Base64File = config.LlavePrivadaBase64,
+                    FileType = 1, // 1 = .KEY
+                    Password = config.PasswordLlave
+                });
+            }
+
+            return credenciales;
+        }
+
+        /// <summary>
+        /// Obtiene configuración de FiscalAPI desde Web.config
+        /// </summary>
+        /// <summary>
+        /// Obtiene la configuración de FiscalAPI desde la base de datos
+        /// Reutiliza la misma configuración que la facturación de ventas
+        /// </summary>
+        private ConfiguracionFiscalAPI ObtenerConfiguracionFiscalAPI()
+        {
+            try
+            {
+                using (SqlConnection cnx = new SqlConnection(Conexion.CN))
+                {
+                    cnx.Open();
+
+                    string query = @"
+                        SELECT TOP 1 ConfiguracionID, ApiKey, Tenant, Ambiente, RfcEmisor, NombreEmisor,
+                               RegimenFiscal, CertificadoBase64, LlavePrivadaBase64, PasswordLlave,
+                               CodigoPostal, Activo
+                        FROM ConfiguracionFiscalAPI
+                        WHERE Activo = 1
+                        ORDER BY FechaCreacion DESC";
+
+                    SqlCommand cmd = new SqlCommand(query, cnx);
+
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        if (dr.Read())
+                        {
+                            var config = new ConfiguracionFiscalAPI
+                            {
+                                ConfiguracionID = Convert.ToInt32(dr["ConfiguracionID"]),
+                                ApiKey = dr["ApiKey"].ToString(),
+                                Tenant = dr["Tenant"].ToString(),
+                                Ambiente = dr["Ambiente"].ToString(), // "TEST" o "PRODUCTION"
+                                RfcEmisor = dr["RfcEmisor"].ToString(),
+                                NombreEmisor = dr["NombreEmisor"].ToString(),
+                                RegimenFiscal = dr["RegimenFiscal"].ToString(),
+                                CertificadoBase64 = dr["CertificadoBase64"]?.ToString(),
+                                LlavePrivadaBase64 = dr["LlavePrivadaBase64"]?.ToString(),
+                                PasswordLlave = dr["PasswordLlave"]?.ToString(),
+                                CodigoPostal = dr["CodigoPostal"].ToString(),
+                                Activo = Convert.ToBoolean(dr["Activo"])
+                            };
+
+                            // UrlApi se calcula automáticamente según Ambiente (propiedad de solo lectura)
+                            // PasswordLlave ya está mapeado en la asignación anterior
+
+                            return config;
+                        }
+                    }
+                }
+
+                return null;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error al obtener configuración FiscalAPI: {ex.Message}");
+                return null;
+            }
         }
 
         private NominaDetalle ObtenerReciboCompleto(int nominaDetalleID, SqlConnection conn, SqlTransaction tran)
@@ -1003,10 +1300,11 @@ namespace CapaDatos
                 UPDATE NominasCFDI
                 SET UUID = @UUID,
                     FechaTimbrado = @FechaTimbrado,
-                    EstadoTimbrado = 'TIMBRADO',
+                    EstadoTimbrado = 'EXITOSO',
                     XMLTimbrado = @XMLTimbrado,
                     SelloCFD = @SelloCFD,
                     SelloSAT = @SelloSAT,
+                    InvoiceId = @InvoiceId,
                     NoCertificadoSAT = @NoCertificadoSAT,
                     CadenaOriginal = @CadenaOriginal,
                     UltimaActualizacion = GETDATE()
@@ -1019,6 +1317,7 @@ namespace CapaDatos
                 cmd.Parameters.AddWithValue("@XMLTimbrado", respuesta.XMLTimbrado);
                 cmd.Parameters.AddWithValue("@SelloCFD", respuesta.SelloCFD ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@SelloSAT", respuesta.SelloSAT ?? (object)DBNull.Value);
+                cmd.Parameters.AddWithValue("@InvoiceId", respuesta.InvoiceId ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@NoCertificadoSAT", respuesta.NoCertificadoSAT ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@CadenaOriginal", "" ?? (object)DBNull.Value);
                 cmd.Parameters.AddWithValue("@ID", nominaCFDIID);
@@ -1066,6 +1365,118 @@ namespace CapaDatos
                 cmd.Parameters.AddWithValue("@ID", nominaCFDIID);
                 cmd.ExecuteNonQuery();
             }
+        }
+
+        /// <summary>
+        /// Obtiene el InvoiceId de FiscalAPI para un recibo timbrado
+        /// Usado para descargar el PDF desde FiscalAPI
+        /// </summary>
+        public string ObtenerInvoiceIdRecibo(int nominaDetalleID)
+        {
+            string invoiceId = null;
+
+            using (SqlConnection conn = new SqlConnection(Conexion.CN))
+            {
+                string query = @"
+                    SELECT TOP 1 InvoiceId
+                    FROM NominasCFDI
+                    WHERE NominaDetalleID = @NominaDetalleID
+                      AND EstadoTimbrado = 'EXITOSO'
+                      AND InvoiceId IS NOT NULL
+                    ORDER BY FechaTimbrado DESC";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@NominaDetalleID", nominaDetalleID);
+                    conn.Open();
+
+                    object result = cmd.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        invoiceId = result.ToString();
+                    }
+                }
+            }
+
+            return invoiceId;
+        }
+
+        /// <summary>
+        /// Obtiene el XML timbrado de un recibo de nómina
+        /// </summary>
+        public string ObtenerXMLTimbradoRecibo(int nominaDetalleID)
+        {
+            string xmlTimbrado = null;
+
+            using (SqlConnection conn = new SqlConnection(Conexion.CN))
+            {
+                string query = @"
+                    SELECT TOP 1 XMLTimbrado
+                    FROM NominasCFDI
+                    WHERE NominaDetalleID = @NominaDetalleID
+                      AND EstadoTimbrado = 'EXITOSO'
+                      AND XMLTimbrado IS NOT NULL
+                    ORDER BY FechaTimbrado DESC";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@NominaDetalleID", nominaDetalleID);
+                    conn.Open();
+
+                    object result = cmd.ExecuteScalar();
+                    if (result != null && result != DBNull.Value)
+                    {
+                        xmlTimbrado = result.ToString();
+                    }
+                }
+            }
+
+            return xmlTimbrado;
+        }
+
+        /// <summary>
+        /// Obtiene los datos básicos de un recibo por su ID
+        /// </summary>
+        public NominaDetalle ObtenerReciboPorId(int nominaDetalleID)
+        {
+            NominaDetalle recibo = null;
+
+            using (SqlConnection conn = new SqlConnection(Conexion.CN))
+            {
+                string query = @"
+                    SELECT nd.*
+                    FROM NominaDetalle nd
+                    WHERE nd.NominaDetalleID = @NominaDetalleID";
+
+                using (SqlCommand cmd = new SqlCommand(query, conn))
+                {
+                    cmd.Parameters.AddWithValue("@NominaDetalleID", nominaDetalleID);
+                    conn.Open();
+
+                    using (SqlDataReader dr = cmd.ExecuteReader())
+                    {
+                        if (dr.Read())
+                        {
+                            recibo = new NominaDetalle
+                            {
+                                NominaDetalleID = Convert.ToInt32(dr["NominaDetalleID"]),
+                                NominaID = Convert.ToInt32(dr["NominaID"]),
+                                EmpleadoID = Convert.ToInt32(dr["EmpleadoID"]),
+                                NumeroEmpleado = dr["Folio"]?.ToString(),
+                                UUID = dr["UUID"] != DBNull.Value ? dr["UUID"].ToString() : null,
+                                DiasTrabajados = Convert.ToDecimal(dr["DiasTrabajados"]),
+                                TotalPercepciones = Convert.ToDecimal(dr["TotalPercepciones"]),
+                                TotalDeducciones = Convert.ToDecimal(dr["TotalDeducciones"]),
+                                NetoPagar = Convert.ToDecimal(dr["NetoAPagar"]),
+                                EstatusTimbre = dr["EstatusTimbre"] != DBNull.Value ? dr["EstatusTimbre"].ToString() : null,
+                                FechaTimbrado = dr["FechaTimbrado"] != DBNull.Value ? Convert.ToDateTime(dr["FechaTimbrado"]) : (DateTime?)null
+                            };
+                        }
+                    }
+                }
+            }
+
+            return recibo;
         }
     }
 }

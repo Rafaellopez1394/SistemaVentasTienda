@@ -26,7 +26,8 @@ namespace CapaModelo
         public string NombreSucursal { get; set; }
         public string Puesto { get; set; }
         public string Departamento { get; set; }
-        public string TipoContrato { get; set; }
+        public string TipoContrato { get; set; } // Catálogo SAT c_TipoContrato: "01"=Indeterminado
+        public string TipoRegimen { get; set; } // Catálogo SAT c_TipoRegimen: "02"=Sueldos
         public string TipoJornada { get; set; }
         public string PeriodicidadPago { get; set; }
         
@@ -43,6 +44,7 @@ namespace CapaModelo
         
         // Datos bancarios
         public string Banco { get; set; }
+        public string CodigoBanco { get; set; } // Catálogo SAT c_Banco: "012"=Banamex
         public string CuentaBancaria { get; set; }
         public string CLABE { get; set; }
         

@@ -168,7 +168,11 @@ namespace CapaDatos
                             Clave = dr["Clave"].ToString(),
                             SucursalID = Convert.ToInt32(dr["SucursalID"].ToString()),
                             RolID = Convert.ToInt32(dr["RolID"].ToString()),
-                            oRol = new Rol() { Descripcion = dr["DescripcionRol"].ToString() },
+                            oRol = new Rol() 
+                            { 
+                                RolID = Convert.ToInt32(dr["RolID"].ToString()),
+                                Descripcion = dr["DescripcionRol"].ToString() 
+                            },
                             Activo = Convert.ToBoolean(dr["Activo"])
 
                         });
